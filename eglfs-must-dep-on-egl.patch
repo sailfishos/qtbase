@@ -1,0 +1,12 @@
+diff --git a/qtbase/src/plugins/platforms/eglfs/eglfs.pro b/src/plugins/platforms/eglfs/eglfs.pro
+index 471cf63..e35e890 100644
+--- a/qtbase/src/plugins/platforms/eglfs/eglfs.pro
++++ b/qtbase/src/plugins/platforms/eglfs/eglfs.pro
+@@ -1,6 +1,7 @@
+ TARGET = qeglfs
+ TEMPLATE = lib
+ CONFIG += plugin
++CONFIG += egl
+ 
+ QT += opengl core-private gui-private opengl-private
+ 

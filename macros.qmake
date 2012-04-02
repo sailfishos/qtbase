@@ -1,0 +1,28 @@
+#
+# QMake macros
+#
+
+%_qt_prefix         %{_prefix}
+%_qt_bindir         %{_prefix}/bin
+%_qt_libdir         %{_prefix}/%{_lib}
+%_qt_docdir         %{_prefix}/share/doc/qt4
+%_qt_headerdir      %{_prefix}/include/qt4
+%_qt_datadir        %{_prefix}/share/qt4
+%_qt_plugindir      %{_prefix}/%{_lib}/qt4/plugins
+%_qt_importdir      %{_prefix}/%{_lib}/qt4/imports
+%_qt_translationdir %{_prefix}/share/qt4/translations
+%_qt_sysconfdir     %{_sysconfdir}/xdg
+%_qt_demosdir       %{_prefix}/%{_lib}/qt4/demos
+%_qt_examplesdir    %{_prefix}/%{_lib}/qt4/examples
+
+%qmake \
+  qmake -makefile -nocache \\\
+  "QMAKE_CFLAGS_RELEASE=${CFLAGS:-%optflags}" \\\
+  "QMAKE_CFLAGS_DEBUG=${CFLAGS:-%optflags}" \\\
+  "QMAKE_CXXFLAGS_RELEASE=${CXXFLAGS:-%optflags}" \\\
+  "QMAKE_CXXFLAGS_DEBUG=${CXXFLAGS:-%optflags}" \\\
+  QMAKE_STRIP=: \\\
+  PREFIX=%{_prefix}
+
+%qmake_install make install INSTALL_ROOT=%{buildroot}
+

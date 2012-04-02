@@ -1,0 +1,12 @@
+diff --git a/qtbase.pro b/qtbase.pro
+index ecbb183..a5b5c32 100644
+--- a/qtbase.pro
++++ b/qtbase.pro
+@@ -132,6 +132,7 @@ INSTALLS += qmake
+ #syncqt
+ syncqt.path=$$[QT_INSTALL_BINS]
+ syncqt.files=$$QT_BUILD_TREE/bin/syncqt
++syncqt.files += $$QT_BUILD_TREE/bin/qtmodule-configtests
+ win32:syncqt.files=$$QT_BUILD_TREE/bin/syncqt.bat
+ INSTALLS += syncqt
+ 

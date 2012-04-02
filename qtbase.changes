@@ -1,0 +1,30 @@
+* Tue Apr  3 2012 Mika Boström <mika.bostrom@nomovok.com> - 5~git5706.g2e7b4bf
+- Automated source update
+
+* Wed Feb 15 2012 Mika Boström <mika.bostrom@nomovok.com> - 5~git4490.g3296b73
+- Automated source update
+
+* Sun Feb  5 2012 Mika Boström <mika.bostrom@nomovok.com> - 5~git4247.g92b1124
+- Automated source update
+
+* Sun Jan 15 2012 Mika Boström <mika.bostrom@nomovok.com> - 5~git3753.ge1ddac9
+- Automated source update
+
+* Wed Oct  5 2011 Mika Boström <mika.bostrom@nomovok.com> - 5~git2215.g3f88da8
+- Automated source update
+
+* Mon Jul 25 2011 Mika Boström <mika.bostrom@nomovok.com> - 5~git995.ga150880
+- Automated source update
+
+* Tue Jul 12 2011 Mika Boström <mika.bostrom@nomovok.com> - 4.9.90.20110711
+- Use latest snapshot
+
+* Thu Jun 30 2011 Mika Boström <mika.bostrom@nomovok.com> - 4.9.90.20110630
+- Add more packages to further split the build into reasonable
+  components. Use the includes in qt5/Qt/Qt* files as guide.
+
+* Wed Jun 29 2011 Mika Boström <mika.bostrom@nomovok.com> - 4.9.90.20110627
+- Start working on completely modular build, splitting everything in new
+  Qt5 tree to smaller components.
+- Removed "-demosdir" from configure line entirely. It is no longer
+  available.
