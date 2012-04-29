@@ -1,4 +1,4 @@
-%define _qtmodule_snapshot_version 5~git5706.g2e7b4bf
+%define _qtmodule_snapshot_version 5~5.0.0~alpha1
 %ifarch armv7l armv7el armv7hl amv7nhl armv7thl armv7tnhl
 %define arch_arg armv6
 %endif
@@ -174,14 +174,6 @@ Requires:   %{name}-qtcore = %{version}-%{release}
 This package contains the JPEG imageformat plugin
 
 
-#%package plugin-imageformat-tiff
-#Summary:    TIFF image format plugin
-#Group:      Qt/Qt
-#
-#%description plugin-imageformat-tiff
-#This package contains the TIFF imageformat plugin
-
-
 %package plugin-platform-minimal
 Summary:    Minimal platform plugin
 Group:      Qt/Qt
@@ -198,14 +190,6 @@ Requires:   %{name}-qtcore = %{version}-%{release}
 
 %description plugin-platform-inputcontext-maliit
 This package contains MALIIT platform inputcontext plugin
-
-
-#%package plugin-platform-wayland
-#Summary:    Wayland platform plugin
-#Group:      Qt/Qt
-#
-#%description plugin-platform-wayland
-#This package contains the wayland platform plugin
 
 
 %package plugin-platform-eglfs
@@ -781,7 +765,8 @@ install -D -p -m 0644 %{_sourcedir}/macros.qmake \
 %{_datadir}/qt5/mkspecs/win32-icc/
 %{_datadir}/qt5/mkspecs/win32-msvc20*/
 %{_datadir}/qt5/mkspecs/wince*/
-%{_datadir}/qt5/mkspecs/devices/
+#%{_datadir}/qt5/mkspecs/devices/
+# NOTE: the above is present in qtbase master, but not in alpha1
 %{_datadir}/qt5/mkspecs/qdevice.pri
 %{_sysconfdir}/rpm/macros.qmake
 
@@ -1249,10 +1234,6 @@ install -D -p -m 0644 %{_sourcedir}/macros.qmake \
 %files plugin-imageformat-jpeg
 %defattr(-,root,root,-)
 %{_libdir}/qt5/plugins/imageformats/libqjpeg.so
-
-#%files plugin-imageformat-tiff
-#%defattr(-,root,root,-)
-#%{_libdir}/qt5/plugins/imageformats/libqtiff.so
 
 %files plugin-platform-minimal
 %defattr(-,root,root,-)
