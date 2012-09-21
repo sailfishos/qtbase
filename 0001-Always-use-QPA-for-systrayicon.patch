@@ -1,0 +1,31 @@
+From 49b355ab7d461b33f92f2426c6f25b57a9cac038 Mon Sep 17 00:00:00 2001
+From: =?UTF-8?q?Mika=20Bostr=C3=B6m?= <bostik@odin.bostik.iki.fi>
+Date: Mon, 28 May 2012 08:49:40 +0300
+Subject: [PATCH] Always use QPA for systrayicon
+
+Systrayicon checks whether XCB is used and selects x11 config option
+(and thus creates a dependency on libx11). This is undesirable. We can't
+disable XCB from the build, as it's used for other things too.
+
+Since there is a stub QPA implementation, always use that.
+---
+ src/widgets/util/util.pri |    3 ---
+ 1 file changed, 3 deletions(-)
+
+diff --git a/src/widgets/util/util.pri b/src/widgets/util/util.pri
+index 958958f..1676555 100644
+--- a/src/widgets/util/util.pri
++++ b/src/widgets/util/util.pri
+@@ -29,9 +29,6 @@ SOURCES += \
+ 
+ win32:!wince* {
+     SOURCES += util/qsystemtrayicon_win.cpp
+-} else:contains(QT_CONFIG, xcb) {
+-    SOURCES += util/qsystemtrayicon_x11.cpp
+-    CONFIG += x11
+ } else {
+     SOURCES += util/qsystemtrayicon_qpa.cpp
+ }
+-- 
+1.7.10
+
