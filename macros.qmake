@@ -5,15 +5,15 @@
 %_qt_prefix         %{_prefix}
 %_qt_bindir         %{_prefix}/bin
 %_qt_libdir         %{_prefix}/%{_lib}
-%_qt_docdir         %{_prefix}/share/doc/qt4
-%_qt_headerdir      %{_prefix}/include/qt4
-%_qt_datadir        %{_prefix}/share/qt4
-%_qt_plugindir      %{_prefix}/%{_lib}/qt4/plugins
-%_qt_importdir      %{_prefix}/%{_lib}/qt4/imports
-%_qt_translationdir %{_prefix}/share/qt4/translations
+%_qt_docdir         %{_prefix}/share/doc/qt5
+%_qt_headerdir      %{_prefix}/include/qt5
+%_qt_datadir        %{_prefix}/share/qt5
+%_qt_plugindir      %{_prefix}/%{_lib}/qt5/plugins
+%_qt_importdir      %{_prefix}/%{_lib}/qt5/imports
+%_qt_translationdir %{_prefix}/share/qt5/translations
 %_qt_sysconfdir     %{_sysconfdir}/xdg
-%_qt_demosdir       %{_prefix}/%{_lib}/qt4/demos
-%_qt_examplesdir    %{_prefix}/%{_lib}/qt4/examples
+%_qt_demosdir       %{_prefix}/%{_lib}/qt5/demos
+%_qt_examplesdir    %{_prefix}/%{_lib}/qt5/examples
 
 %qmake \
   qmake -makefile -nocache \\\

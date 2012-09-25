@@ -1,3 +1,6 @@
+* Sat Sep 22 2012 Carsten Munk <carsten.munk@jollamobile.com> - 5.0.0~beta1
+- Add some typical qt5 dirs and make sure they're there.
+
 * Fri Sep 21 2012 Carsten Munk <carsten.munk@jollamobile.com> - 5.0.0~beta1
 - Automatic source update
 

@@ -562,6 +562,14 @@ find %{buildroot}%{_libdir}/pkgconfig -type f -name '*.pc' \
 # Fix wrong path in prl files
 find %{buildroot}%{_libdir} -type f -name '*.prl' \
 -exec sed -i -e "/^QMAKE_PRL_BUILD_DIR/d;s/\(QMAKE_PRL_LIBS =\).*/\1/" {} \;
+
+# Make sure these are around
+mkdir -p %{buildroot}%{_includedir}/qt5/
+mkdir -p %{buildroot}%{_datadir}/qt5/
+mkdir -p %{buildroot}%{_libdir}/qt5/plugins/
+mkdir -p %{buildroot}%{_libdir}/qt5/imports/
+mkdir -p %{buildroot}%{_libdir}/qt5/translations/
+mkdir -p %{buildroot}%{_libdir}/qt5/examples/
 #
 # Install qmake rpm macros
 install -D -p -m 0644 %{_sourcedir}/macros.qmake \
@@ -624,6 +632,12 @@ install -D -p -m 0644 %{_sourcedir}/macros.qmake \
 
 %files qtcore
 %defattr(-,root,root,-)
+%dir %{_includedir}/qt5/
+%dir %{_datadir}/qt5/
+%dir %{_libdir}/qt5/plugins/
+%dir %{_libdir}/qt5/imports/
+%dir %{_libdir}/qt5/translations/
+%dir %{_libdir}/qt5/examples/
 %{_libdir}/libQtCore.so.*
 
 %files qtcore-devel
