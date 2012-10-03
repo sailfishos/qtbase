@@ -544,6 +544,7 @@ applications that use QtConcurrent
     -nomake tests \
     -nomake examples \
     -nomake demos \
+    -no-xinput2 \
     -xcb
 #
 make %{?_smp_mflags}
