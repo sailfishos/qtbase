@@ -31,6 +31,7 @@ Source0:    qtbase-opensource-src-%{_qtmodule_snapshot_version}.tar.xz
 Source1:    macros.qmake
 Source100:  qtbase-rpmlintrc
 Patch1:     0001-Always-use-QPA-for-systrayicon.patch
+Patch2:     0002-add-unicode-for-special-characters.patch
 BuildRequires:  pkgconfig(alsa)
 BuildRequires:  pkgconfig(dbus-1)
 BuildRequires:  pkgconfig(egl)
@@ -498,6 +499,7 @@ applications that use QtConcurrent
 %prep
 %setup -q -n  qtbase-opensource-src-%{_qtmodule_snapshot_version}
 %patch1 -p1
+%patch2 -p1
 
 
 %build
