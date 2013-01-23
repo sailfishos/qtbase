@@ -1,4 +1,4 @@
-%define _qtmodule_snapshot_version 5.0.0-beta1
+%define _qtmodule_snapshot_version 5.0.0
 %ifarch armv7l armv7el armv7hl amv7nhl armv7thl armv7tnhl
 %define arch_arg armv6
 %endif
@@ -21,7 +21,7 @@
 
 Name:       qt5
 Summary:    Cross-platform application and UI framework
-Version:    5.0.0~beta1
+Version:    5.0.0
 Release:    1%{?dist}
 Group:      Qt/Qt
 License:    LGPLv2.1 with exception or GPLv3
@@ -32,6 +32,8 @@ Source1:    macros.qmake
 Source100:  qtbase-rpmlintrc
 Patch1:     0001-Always-use-QPA-for-systrayicon.patch
 Patch2:     0002-add-unicode-for-special-characters.patch
+Patch3:     hackeglfs.patch
+Patch4:     no_moc_timestamp.patch
 BuildRequires:  pkgconfig(alsa)
 BuildRequires:  pkgconfig(dbus-1)
 BuildRequires:  pkgconfig(egl)
@@ -63,6 +65,7 @@ BuildRequires:  pkgconfig(xt)
 BuildRequires:  pkgconfig(xtst)
 BuildRequires:  pkgconfig(xv)
 BuildRequires:  pkgconfig(zlib)
+BuildRequires:  pkgconfig(udev)
 BuildRequires:  cups-devel
 BuildRequires:  fdupes
 BuildRequires:  flex
@@ -249,6 +252,13 @@ Requires:   %{name}-qtcore = %{version}-%{release}
 %description plugin-printsupport-cups
 This package contains the CUPS print support plugin
 
+%package plugin-accessible-widgets
+Summary:     Accessible widgets plugin
+Group:       Qt/Qt
+Requires:    %{name}-qtcore = %{version}-%{release}
+
+%description plugin-accessible-widgets
+This package contains the access widgets plugin
 
 # %package plugin-platform-xlib
 # Summary:    Xlib platform plugin
@@ -450,12 +460,20 @@ This package contains the files necessary to develop
 applications that use QtWidgets
 
 %package qtplatformsupport-devel
-Summary:    The QtWidgets library
+Summary:    Development files for QtPlatformSupport
 Group:      Qt/Qt
 
 %description qtplatformsupport-devel
 This package contains the files necessary to develop
 applications that use QtPlatformSupport
+
+%package qtbootstrap-devel
+Summary:    Development files for QtBootstrap
+Group:      Qt/Qt
+
+%description qtbootstrap-devel
+This package contains the files necessary to develop
+applications that use QtBootstrap
 
 %package qtprintsupport
 Summary:    The QtPrintSupport
@@ -500,7 +518,8 @@ applications that use QtConcurrent
 %setup -q -n  qtbase-opensource-src-%{_qtmodule_snapshot_version}
 %patch1 -p1
 %patch2 -p1
-
+%patch3 -p1
+%patch4 -p1
 
 %build
 ./configure --disable-static \
@@ -510,7 +529,7 @@ applications that use QtConcurrent
     -prefix "%{_prefix}" \
     -bindir "%{_bindir}" \
     -libdir "%{_libdir}" \
-    -docdir "%{_docdir}" \
+    -docdir "%{_docdir}/qt5/" \
     -headerdir "%{_includedir}/qt5" \
     -datadir "%{_datadir}/qt5" \
     -plugindir "%{_libdir}/qt5/plugins" \
@@ -518,6 +537,9 @@ applications that use QtConcurrent
     -translationdir "%{_datadir}/qt5/translations" \
     -sysconfdir "%{_sysconfdir}/xdg" \
     -examplesdir "%{_libdir}/qt5/examples" \
+    -archdatadir "%{_datadir}/qt5" \
+    -testsdir "%{_libdir}/qt5/tests" \
+    -qmldir "%{_libdir}/qt5/qml" \
     -opensource \
     -no-sql-ibase \
     -no-sql-mysql \
@@ -565,6 +587,8 @@ find %{buildroot}%{_libdir}/pkgconfig -type f -name '*.pc' \
 # Fix wrong path in prl files
 find %{buildroot}%{_libdir} -type f -name '*.prl' \
 -exec sed -i -e "/^QMAKE_PRL_BUILD_DIR/d;s/\(QMAKE_PRL_LIBS =\).*/\1/" {} \;
+
+find %{buildroot}%{_docdir}/qt5/ -type f -exec chmod ugo-x {} \;
 
 # Make sure these are around
 mkdir -p %{buildroot}%{_includedir}/qt5/
@@ -632,6 +656,7 @@ install -D -p -m 0644 %{_sourcedir}/macros.qmake \
 %{_bindir}/syncqt
 %{_bindir}/uic
 %{_bindir}/qdoc
+%{_docdir}/qt5/*
 
 %files qtcore
 %defattr(-,root,root,-)
@@ -641,26 +666,25 @@ install -D -p -m 0644 %{_sourcedir}/macros.qmake \
 %dir %{_libdir}/qt5/imports/
 %dir %{_libdir}/qt5/translations/
 %dir %{_libdir}/qt5/examples/
-%{_libdir}/libQtCore.so.*
+%{_libdir}/libQt5Core.so.*
 
 %files qtcore-devel
 %defattr(-,root,root,-)
 %{_includedir}/qt5/QtCore/
-%{_libdir}/libQtCore.prl
-%{_libdir}/libQtCore.so
-%{_libdir}/pkgconfig/QtCore.pc
-%{_datadir}/qt5/mkspecs/modules/qt_core.pri
+%{_libdir}/libQt5Core.prl
+%{_libdir}/libQt5Core.so
+%{_libdir}/pkgconfig/Qt5Core.pc
+%{_datadir}/qt5/mkspecs/modules/qt_lib_core.pri
 %{_libdir}/cmake/
-%{_datadir}/qt5/mkspecs/cmake/
 
 %files qmake
 %defattr(-,root,root,-)
 %{_bindir}/qmake
 %{_datadir}/qt5/mkspecs/aix-*/
+%{_datadir}/qt5/mkspecs/blackberry*/
 %{_datadir}/qt5/mkspecs/common/
 %{_datadir}/qt5/mkspecs/cygwin-*/
 %{_datadir}/qt5/mkspecs/darwin-*/
-%{_datadir}/qt5/mkspecs/default
 %{_datadir}/qt5/mkspecs/features/
 %{_datadir}/qt5/mkspecs/freebsd-*/
 %{_datadir}/qt5/mkspecs/hpux-*
@@ -674,6 +698,7 @@ install -D -p -m 0644 %{_sourcedir}/macros.qmake \
 %{_datadir}/qt5/mkspecs/openbsd-*/
 %{_datadir}/qt5/mkspecs/qconfig.pri
 %{_datadir}/qt5/mkspecs/qmodule.pri
+%{_datadir}/qt5/mkspecs/qnx*/
 %{_datadir}/qt5/mkspecs/sco-*/
 %{_datadir}/qt5/mkspecs/solaris-*/
 %{_datadir}/qt5/mkspecs/tru64-*/
@@ -685,12 +710,11 @@ install -D -p -m 0644 %{_sourcedir}/macros.qmake \
 %{_datadir}/qt5/mkspecs/wince*/
 %{_datadir}/qt5/mkspecs/devices/
 %{_datadir}/qt5/mkspecs/qdevice.pri
-%{_datadir}/qt5/mkspecs/default-host
 %{_sysconfdir}/rpm/macros.qmake
 
 %files qtdbus
 %defattr(-,root,root,-)
-%{_libdir}/libQtDBus.so.*
+%{_libdir}/libQt5DBus.so.*
 
 
 %files qtdbus-devel
@@ -698,135 +722,142 @@ install -D -p -m 0644 %{_sourcedir}/macros.qmake \
 %{_bindir}/qdbuscpp2xml
 %{_bindir}/qdbusxml2cpp
 %{_includedir}/qt5/QtDBus/
-%{_libdir}/libQtDBus.so
-%{_libdir}/libQtDBus.prl
-%{_libdir}/pkgconfig/QtDBus.pc
-%{_datadir}/qt5/mkspecs/modules/qt_dbus.pri
+%{_libdir}/libQt5DBus.so
+%{_libdir}/libQt5DBus.prl
+%{_libdir}/pkgconfig/Qt5DBus.pc
+%{_datadir}/qt5/mkspecs/modules/qt_lib_dbus.pri
 
 
 %files qtgui
 %defattr(-,root,root,-)
-%{_libdir}/libQtGui.so.*
+%{_libdir}/libQt5Gui.so.*
 
 
 %files qtgui-devel
 %defattr(-,root,root,-)
 %{_includedir}/qt5/QtGui/
-%{_libdir}/libQtGui.prl
-%{_libdir}/libQtGui.so
-%{_libdir}/pkgconfig/QtGui.pc
-%{_datadir}/qt5/mkspecs/modules/qt_gui.pri
+%{_libdir}/libQt5Gui.prl
+%{_libdir}/libQt5Gui.so
+%{_libdir}/pkgconfig/Qt5Gui.pc
+%{_datadir}/qt5/mkspecs/modules/qt_lib_gui.pri
 
 
 %files qtnetwork
 %defattr(-,root,root,-)
-%{_libdir}/libQtNetwork.so.*
+%{_libdir}/libQt5Network.so.*
 
 
 %files qtnetwork-devel
 %defattr(-,root,root,-)
 %{_includedir}/qt5/QtNetwork/
-%{_libdir}/libQtNetwork.prl
-%{_libdir}/libQtNetwork.so
-%{_libdir}/pkgconfig/QtNetwork.pc
-%{_datadir}/qt5/mkspecs/modules/qt_network.pri
+%{_libdir}/libQt5Network.prl
+%{_libdir}/libQt5Network.so
+%{_libdir}/pkgconfig/Qt5Network.pc
+%{_datadir}/qt5/mkspecs/modules/qt_lib_network.pri
 
 
 %files qtopengl
 %defattr(-,root,root,-)
-%{_libdir}/libQtOpenGL.so.*
+%{_libdir}/libQt5OpenGL.so.*
 
 
 %files qtopengl-devel
 %defattr(-,root,root,-)
 %{_includedir}/qt5/QtOpenGL/
-%{_libdir}/libQtOpenGL.prl
-%{_libdir}/libQtOpenGL.so
-%{_libdir}/pkgconfig/QtOpenGL.pc
-%{_datadir}/qt5/mkspecs/modules/qt_opengl.pri
+%{_libdir}/libQt5OpenGL.prl
+%{_libdir}/libQt5OpenGL.so
+%{_libdir}/pkgconfig/Qt5OpenGL.pc
+%{_datadir}/qt5/mkspecs/modules/qt_lib_opengl.pri
 
 
 %files qtsql
 %defattr(-,root,root,-)
-%{_libdir}/libQtSql.so.*
+%{_libdir}/libQt5Sql.so.*
 
 
 %files qtsql-devel
 %defattr(-,root,root,-)
 %{_includedir}/qt5/QtSql/
-%{_libdir}/libQtSql.prl
-%{_libdir}/libQtSql.so
-%{_libdir}/pkgconfig/QtSql.pc
-%{_datadir}/qt5/mkspecs/modules/qt_sql.pri
+%{_libdir}/libQt5Sql.prl
+%{_libdir}/libQt5Sql.so
+%{_libdir}/pkgconfig/Qt5Sql.pc
+%{_datadir}/qt5/mkspecs/modules/qt_lib_sql.pri
 
 
 %files qttest
 %defattr(-,root,root,-)
-%{_libdir}/libQtTest.so.*
+%{_libdir}/libQt5Test.so.*
 
 %files qttest-devel
 %defattr(-,root,root,-)
 %{_includedir}/qt5/QtTest/
-%{_libdir}/libQtTest.prl
-%{_libdir}/libQtTest.so
-%{_libdir}/pkgconfig/QtTest.pc
-%{_datadir}/qt5/mkspecs/modules/qt_testlib.pri
+%{_libdir}/libQt5Test.prl
+%{_libdir}/libQt5Test.so
+%{_libdir}/pkgconfig/Qt5Test.pc
+%{_datadir}/qt5/mkspecs/modules/qt_lib_testlib.pri
 
 %files qtxml
 %defattr(-,root,root,-)
-%{_libdir}/libQtXml.so.*
+%{_libdir}/libQt5Xml.so.*
 
 %files qtxml-devel
 %defattr(-,root,root,-)
 %{_includedir}/qt5/QtXml/
-%{_libdir}/libQtXml.prl
-%{_libdir}/libQtXml.so
-%{_libdir}/pkgconfig/QtXml.pc
-%{_datadir}/qt5/mkspecs/modules/qt_xml.pri
+%{_libdir}/libQt5Xml.prl
+%{_libdir}/libQt5Xml.so
+%{_libdir}/pkgconfig/Qt5Xml.pc
+%{_datadir}/qt5/mkspecs/modules/qt_lib_xml.pri
 
 %files qtwidgets
 %defattr(-,root,root,-)
-%{_libdir}/libQtWidgets.so.*
+%{_libdir}/libQt5Widgets.so.*
 
 %files qtwidgets-devel
 %defattr(-,root,root,-)
 %{_includedir}/qt5/QtWidgets/
-%{_libdir}/libQtWidgets.prl
-%{_libdir}/libQtWidgets.so
-%{_libdir}/pkgconfig/QtWidgets.pc
-%{_datadir}/qt5/mkspecs/modules/qt_widgets.pri
+%{_libdir}/libQt5Widgets.prl
+%{_libdir}/libQt5Widgets.so
+%{_libdir}/pkgconfig/Qt5Widgets.pc
+%{_datadir}/qt5/mkspecs/modules/qt_lib_widgets.pri
 
 %files qtplatformsupport-devel
 %defattr(-,root,root,-)
 %{_includedir}/qt5/QtPlatformSupport/
-%{_libdir}/libQtPlatformSupport.prl
-%{_libdir}/libQtPlatformSupport.a
-%{_libdir}/pkgconfig/QtPlatformSupport.pc
-%{_datadir}/qt5/mkspecs/modules/qt_platformsupport.pri
+%{_libdir}/libQt5PlatformSupport.prl
+%{_libdir}/libQt5PlatformSupport.a
+%{_libdir}/pkgconfig/Qt5PlatformSupport.pc
+%{_datadir}/qt5/mkspecs/modules/qt_lib_platformsupport.pri
+
+%files qtbootstrap-devel
+%defattr(-,root,root,-)
+%{_libdir}/libQt5Bootstrap.prl
+%{_libdir}/libQt5Bootstrap.a
+%{_libdir}/pkgconfig/Qt5Bootstrap.pc
+%{_datadir}/qt5/mkspecs/modules/qt_lib_bootstrap.pri
 
 %files qtprintsupport
 %defattr(-,root,root,-)
-%{_libdir}/libQtPrintSupport.so.*
+%{_libdir}/libQt5PrintSupport.so.*
 
 %files qtprintsupport-devel
 %defattr(-,root,root,-)
 %{_includedir}/qt5/QtPrintSupport/
-%{_libdir}/libQtPrintSupport.prl
-%{_libdir}/libQtPrintSupport.so
-%{_libdir}/pkgconfig/QtPrintSupport.pc
-%{_datadir}/qt5/mkspecs/modules/qt_printsupport.pri
+%{_libdir}/libQt5PrintSupport.prl
+%{_libdir}/libQt5PrintSupport.so
+%{_libdir}/pkgconfig/Qt5PrintSupport.pc
+%{_datadir}/qt5/mkspecs/modules/qt_lib_printsupport.pri
 
 %files qtconcurrent
 %defattr(-,root,root,-)
-%{_libdir}/libQtConcurrent.so.*
+%{_libdir}/libQt5Concurrent.so.*
 
 %files qtconcurrent-devel
 %defattr(-,root,root,-)
 %{_includedir}/qt5/QtConcurrent/
-%{_libdir}/libQtConcurrent.prl
-%{_libdir}/libQtConcurrent.so
-%{_libdir}/pkgconfig/QtConcurrent.pc
-%{_datadir}/qt5/mkspecs/modules/qt_concurrent.pri
+%{_libdir}/libQt5Concurrent.prl
+%{_libdir}/libQt5Concurrent.so
+%{_libdir}/pkgconfig/Qt5Concurrent.pc
+%{_datadir}/qt5/mkspecs/modules/qt_lib_concurrent.pri
 
 
 
@@ -879,7 +910,7 @@ install -D -p -m 0644 %{_sourcedir}/macros.qmake \
 
 %files plugin-platform-xcb
 %defattr(-,root,root,-)
-%{_libdir}/qt5/plugins/platforms/libxcb.so
+%{_libdir}/qt5/plugins/platforms/libqxcb.so
 
 %files plugin-platform-linuxfb
 %defattr(-,root,root,-)
@@ -888,6 +919,10 @@ install -D -p -m 0644 %{_sourcedir}/macros.qmake \
 %files plugin-printsupport-cups
 %defattr(-,root,root,-)
 %{_libdir}/qt5/plugins/printsupport/libcupsprintersupport.so
+
+%files plugin-accessible-widgets
+%defattr(-,root,root,-)
+%{_libdir}/qt5/plugins/accessible/libqtaccessiblewidgets.so
 
 # %files plugin-platform-xlib
 # %defattr(-,root,root,-)

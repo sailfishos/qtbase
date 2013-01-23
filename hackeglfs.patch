@@ -1,0 +1,25 @@
+diff -ru qtbase-opensource-src-5.0.0-beta1/src/plugins/platforms/eglfs/qeglfshooks_stub.cpp qtbase-opensource-src-5.0.0-beta1-hackeglfs/src/plugins/platforms/eglfs/qeglfshooks_stub.cpp
+--- qtbase-opensource-src-5.0.0-beta1/src/plugins/platforms/eglfs/qeglfshooks_stub.cpp	2012-08-28 21:40:54.000000000 +0200
++++ qtbase-opensource-src-5.0.0-beta1-hackeglfs/src/plugins/platforms/eglfs/qeglfshooks_stub.cpp	2012-10-06 14:50:22.748034778 +0200
+@@ -130,7 +130,20 @@
+ 
+ QSurfaceFormat QEglFSHooks::surfaceFormatFor(const QSurfaceFormat &inputFormat) const
+ {
+-    return inputFormat;
++    QSurfaceFormat newFormat = inputFormat; 
++    QByteArray depthString = qgetenv("QT_QPA_EGLFS_DEPTH");
++    if (depthString.toInt() == 16) {
++        newFormat.setRedBufferSize(5);
++        newFormat.setGreenBufferSize(6);
++        newFormat.setBlueBufferSize(5);
++    } else {
++        newFormat.setStencilBufferSize(8);
++        newFormat.setRedBufferSize(8);
++        newFormat.setGreenBufferSize(8);
++        newFormat.setBlueBufferSize(8);
++    }
++
++    return newFormat;
+ }
+ 
+ EGLNativeWindowType QEglFSHooks::createNativeWindow(const QSize &size, const QSurfaceFormat &format)
