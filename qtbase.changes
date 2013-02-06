@@ -1,3 +1,6 @@
+* Wed Feb 06 2013 Carsten Munk <carsten.munk@jollamobile.com> - 5.0.0
+- Fix linuxfb crash on startup
+
 * Wed Jan 23 2013 Carsten Munk <carsten.munk@gmail.com> - 5.0.0
 - Upgrade to 5.0.0 tarball
 

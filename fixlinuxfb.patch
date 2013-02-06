@@ -1,0 +1,37 @@
+The switchToGraphicsMode() function calls the KDGETMODE ioctl() call,
+but passes the address of oldMode, which is already a
+pointer. Therefore, the current code makes the kernel write the "mode"
+value returned by the KDGETMODE ioctl() at the address of the oldMode
+pointer. This pointer becomes NULL, which makes the following line
+trigger a segfault.
+
+Since the function already receives as argument the address of
+oldMode, there is no need to do &oldMode when doing the ioctl() call.
+
+This patch fixes the following segfault:
+
+Program received signal SIGSEGV, Segmentation fault.
+0x768acc40 in switchToGraphicsMode (oldMode=0x0, ttyfd=7) at qlinuxfbscreen.cpp:268
+268	       if (*oldMode != KD_GRAPHICS) {
+(gdb) bt
+
+Signed-off-by: Thomas Petazzoni <thomas.petazzoni at free-electrons.com>
+---
+ src/plugins/platforms/linuxfb/qlinuxfbscreen.cpp |    2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/src/plugins/platforms/linuxfb/qlinuxfbscreen.cpp b/src/plugins/platforms/linuxfb/qlinuxfbscreen.cpp
+index 1dac60a..4d170f1 100644
+--- a/src/plugins/platforms/linuxfb/qlinuxfbscreen.cpp
++++ b/src/plugins/platforms/linuxfb/qlinuxfbscreen.cpp
+@@ -264,7 +264,7 @@ static int openTtyDevice(const QString &device)
+ 
+ static bool switchToGraphicsMode(int ttyfd, int *oldMode)
+ {
+-    ioctl(ttyfd, KDGETMODE, &oldMode);
++    ioctl(ttyfd, KDGETMODE, oldMode);
+     if (*oldMode != KD_GRAPHICS) {
+        if (ioctl(ttyfd, KDSETMODE, KD_GRAPHICS) != 0)
+             return false;
+-- 
+1.7.9.5
