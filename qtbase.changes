@@ -1,6 +1,3 @@
-* Wed Mar 13 2013 Martin Kampas <martin.kampas@tieto.com> - 5.0.0
-- Do not pass -nocache in %qmake RPM macro
-
 * Wed Feb 06 2013 Carsten Munk <carsten.munk@jollamobile.com> - 5.0.0
 - Fix linuxfb crash on startup
 

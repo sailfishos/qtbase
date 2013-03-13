@@ -16,7 +16,7 @@
 %_qt_examplesdir    %{_prefix}/%{_lib}/qt5/examples
 
 %qmake \
-  qmake -makefile \\\
+  qmake -makefile -nocache \\\
   "QMAKE_CFLAGS_RELEASE=${CFLAGS:-%optflags}" \\\
   "QMAKE_CFLAGS_DEBUG=${CFLAGS:-%optflags}" \\\
   "QMAKE_CXXFLAGS_RELEASE=${CXXFLAGS:-%optflags}" \\\
