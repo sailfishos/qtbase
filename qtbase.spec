@@ -1,8 +1,8 @@
-%define _qtmodule_snapshot_version 5.0.0
+%define _qtmodule_snapshot_version 5.0.1
 %ifarch armv7l armv7el armv7hl amv7nhl armv7thl armv7tnhl
 %define arch_arg armv6
 %endif
-%ifarch i586
+%ifarch i486 i586
 %define arch_arg i386
 %endif
 
@@ -21,20 +21,19 @@
 
 Name:       qt5
 Summary:    Cross-platform application and UI framework
-Version:    5.0.0
+Version:    5.0.1
 Release:    1%{?dist}
 Group:      Qt/Qt
 License:    LGPLv2.1 with exception or GPLv3
 URL:        http://qt.nokia.com
 #Source0:    %{name}-qtbase-%{version}.tar.xz
 Source0:    qtbase-opensource-src-%{_qtmodule_snapshot_version}.tar.xz
-Source1:    macros.qmake
+Source1:    macros.qt5-default
 Source100:  qtbase-rpmlintrc
 Patch1:     0001-Always-use-QPA-for-systrayicon.patch
 Patch2:     0002-add-unicode-for-special-characters.patch
 Patch3:     hackeglfs.patch
-Patch4:     no_moc_timestamp.patch
-Patch5:     fixlinuxfb.patch
+Patch4:     fixlinuxfb.patch
 BuildRequires:  pkgconfig(alsa)
 BuildRequires:  pkgconfig(dbus-1)
 BuildRequires:  pkgconfig(egl)
@@ -89,6 +88,7 @@ mobile and embedded systems without rewriting the source code.
 %package tools
 Summary:    Development tools for qtbase
 Group:      Qt/Qt
+Requires:   qtchooser
 
 %description tools
 This package contains useful tools for Qt development
@@ -109,6 +109,7 @@ Requires:   %{name}-qmake
 Requires:   %{name}-tools
 Requires:   %{name}-qtcore = %{version}-%{release}
 Requires:   fontconfig-devel
+Requires:   qtchooser
 
 %description qtcore-devel
 This package contains the files necessary to develop applications
@@ -118,8 +119,7 @@ that use the QtCore
 %package qmake
 Summary:    QMake
 Group:      Qt/Qt
-Conflicts:  qt-qmake
-#Requires:   gdb
+Requires:   qtchooser
 
 %description qmake
 This package contains qmake
@@ -512,6 +512,21 @@ Requires:   %{name}-qtconcurrent = %{version}-%{release}
 This package contains the files necessary to develop
 applications that use QtConcurrent
 
+%package -n qt5-default
+Summary:    Qt5 development defaults packafge
+Group:      Development/Libraries
+Requires:   qtchooser
+Provides:   qt-default
+Conflicts:   qt4-default
+
+%description -n qt5-default
+Qt is a cross-platform application and UI framework. Using Qt, you can write
+web-enabled applications once and deploy them across desktop, mobile and
+embedded operating systems without rewriting the source code.
+
+This package contains the Qt5 development defaults package
+
+
 
 ##### Build section
 
@@ -521,14 +536,14 @@ applications that use QtConcurrent
 %patch2 -p1
 %patch3 -p1
 %patch4 -p1
-%patch5 -p1
+
 %build
 ./configure --disable-static \
     -confirm-license \
     -developer-build \
     -platform linux-g++ \
     -prefix "%{_prefix}" \
-    -bindir "%{_bindir}" \
+    -bindir "%{_libdir}/qt5/bin" \
     -libdir "%{_libdir}" \
     -docdir "%{_docdir}/qt5/" \
     -headerdir "%{_includedir}/qt5" \
@@ -600,8 +615,15 @@ mkdir -p %{buildroot}%{_libdir}/qt5/translations/
 mkdir -p %{buildroot}%{_libdir}/qt5/examples/
 #
 # Install qmake rpm macros
-install -D -p -m 0644 %{_sourcedir}/macros.qmake \
-%{buildroot}/%{_sysconfdir}/rpm/macros.qmake
+install -D -p -m 0644 %{_sourcedir}/macros.qt5-default \
+%{buildroot}/%{_sysconfdir}/rpm/macros.qt5-default
+
+# Add a configuration for qtchooser
+mkdir -p %{buildroot}/etc/xdg/qtchooser
+echo "%{_libdir}/qt5/bin" > %{buildroot}%{_sysconfdir}/xdg/qtchooser/5.conf
+echo "%{_libdir}" >> %{buildroot}%{_sysconfdir}/xdg/qtchooser/5.conf
+ln -s %{_sysconfdir}/xdg/qtchooser/qt5.conf %{buildroot}%{_sysconfdir}/xdg/qtchooser/default.conf
+
 #
 %fdupes %{buildroot}/%{_libdir}
 %fdupes %{buildroot}/%{_includedir}
@@ -652,11 +674,11 @@ install -D -p -m 0644 %{_sourcedir}/macros.qmake \
 
 %files tools
 %defattr(-,root,root,-)
-%{_bindir}/moc
-%{_bindir}/rcc
-%{_bindir}/syncqt
-%{_bindir}/uic
-%{_bindir}/qdoc
+%{_libdir}/qt5/bin/moc
+%{_libdir}/qt5/bin/rcc
+%{_libdir}/qt5/bin/syncqt
+%{_libdir}/qt5/bin/uic
+%{_libdir}/qt5/bin/qdoc
 %{_docdir}/qt5/*
 
 %files qtcore
@@ -680,7 +702,7 @@ install -D -p -m 0644 %{_sourcedir}/macros.qmake \
 
 %files qmake
 %defattr(-,root,root,-)
-%{_bindir}/qmake
+%{_libdir}/qt5/bin/qmake
 %{_datadir}/qt5/mkspecs/aix-*/
 %{_datadir}/qt5/mkspecs/blackberry*/
 %{_datadir}/qt5/mkspecs/common/
@@ -711,7 +733,8 @@ install -D -p -m 0644 %{_sourcedir}/macros.qmake \
 %{_datadir}/qt5/mkspecs/wince*/
 %{_datadir}/qt5/mkspecs/devices/
 %{_datadir}/qt5/mkspecs/qdevice.pri
-%{_sysconfdir}/rpm/macros.qmake
+%{_sysconfdir}/xdg/qtchooser/5.conf
+%config(noreplace) %{_sysconfdir}/rpm/macros.qt5-default
 
 %files qtdbus
 %defattr(-,root,root,-)
@@ -720,8 +743,8 @@ install -D -p -m 0644 %{_sourcedir}/macros.qmake \
 
 %files qtdbus-devel
 %defattr(-,root,root,-)
-%{_bindir}/qdbuscpp2xml
-%{_bindir}/qdbusxml2cpp
+%{_libdir}/qt5/bin/qdbuscpp2xml
+%{_libdir}/qt5/bin/qdbusxml2cpp
 %{_includedir}/qt5/QtDBus/
 %{_libdir}/libQt5DBus.so
 %{_libdir}/libQt5DBus.prl
@@ -941,6 +964,8 @@ install -D -p -m 0644 %{_sourcedir}/macros.qmake \
 %defattr(-,root,root,-)
 %{_libdir}/qt5/plugins/generic/libqevdev*plugin.so
 
-
+%files -n qt5-default
+%defattr(-,root,root,-)
+%{_sysconfdir}/xdg/qtchooser/default.conf
 
 #### No changelog section, separate $pkg.changes contains the history
