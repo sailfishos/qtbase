@@ -538,6 +538,7 @@ This package contains the Qt5 development defaults package
 %patch4 -p1
 
 %build
+MAKEFLAGS=%{?_smp_mflags} \
 ./configure --disable-static \
     -confirm-license \
     -developer-build \
