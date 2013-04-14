@@ -1,0 +1,11 @@
+diff -ru qtbase-opensource-src-5.0.1/src/platformsupport/input/evdevtouch/evdevtouch.pri qtbase-opensource-src-5.0.1-mtdev/src/platformsupport/input/evdevtouch/evdevtouch.pri
+--- qtbase-opensource-src-5.0.1/src/platformsupport/input/evdevtouch/evdevtouch.pri	2013-01-29 20:03:00.000000000 +0100
++++ qtbase-opensource-src-5.0.1-mtdev/src/platformsupport/input/evdevtouch/evdevtouch.pri	2013-04-14 15:06:21.227737384 +0200
+@@ -8,6 +8,6 @@
+     LIBS += $$QMAKE_LIBS_LIBUDEV
+ }
+ 
+-# DEFINES += USE_MTDEV
++DEFINES += USE_MTDEV
+ 
+ contains(DEFINES, USE_MTDEV): LIBS += -lmtdev

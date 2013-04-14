@@ -34,6 +34,7 @@ Patch1:     0001-Always-use-QPA-for-systrayicon.patch
 Patch2:     0002-add-unicode-for-special-characters.patch
 Patch3:     hackeglfs.patch
 Patch4:     fixlinuxfb.patch
+Patch5:     mtdev.patch
 BuildRequires:  pkgconfig(alsa)
 BuildRequires:  pkgconfig(dbus-1)
 BuildRequires:  pkgconfig(egl)
@@ -66,6 +67,7 @@ BuildRequires:  pkgconfig(xtst)
 BuildRequires:  pkgconfig(xv)
 BuildRequires:  pkgconfig(zlib)
 BuildRequires:  pkgconfig(udev)
+BuildRequires:  pkgconfig(mtdev)
 BuildRequires:  cups-devel
 BuildRequires:  fdupes
 BuildRequires:  flex
@@ -536,6 +538,7 @@ This package contains the Qt5 development defaults package
 %patch2 -p1
 %patch3 -p1
 %patch4 -p1
+%patch5 -p1
 
 %build
 MAKEFLAGS=%{?_smp_mflags} \

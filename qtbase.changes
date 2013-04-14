@@ -1,3 +1,6 @@
+* Sun Apr 14 2013 Carsten Munk <carsten.munk@jollamobile.com> - 5.0.1
+- Use mtdev
+
 * Mon Apr 08 2013 Juha Kallioinen <juha.kallioinen@jollamobile.com> - 5.0.1
 - Pass MAKEFLAGS to configure script (builds qmake with concurrency)
 
