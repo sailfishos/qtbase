@@ -1,3 +1,6 @@
+* Fri Apr 19 2013 Juha Kallioinen <juha.kallioinen@jollamobile.com> - 5.0.1
+- Fix qt5-default link
+
 * Sun Apr 14 2013 Carsten Munk <carsten.munk@jollamobile.com> - 5.0.1
 - Use mtdev
 

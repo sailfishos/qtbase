@@ -626,7 +626,7 @@ install -D -p -m 0644 %{_sourcedir}/macros.qt5-default \
 mkdir -p %{buildroot}/etc/xdg/qtchooser
 echo "%{_libdir}/qt5/bin" > %{buildroot}%{_sysconfdir}/xdg/qtchooser/5.conf
 echo "%{_libdir}" >> %{buildroot}%{_sysconfdir}/xdg/qtchooser/5.conf
-ln -s %{_sysconfdir}/xdg/qtchooser/qt5.conf %{buildroot}%{_sysconfdir}/xdg/qtchooser/default.conf
+ln -s %{_sysconfdir}/xdg/qtchooser/5.conf %{buildroot}%{_sysconfdir}/xdg/qtchooser/default.conf
 
 #
 %fdupes %{buildroot}/%{_libdir}
