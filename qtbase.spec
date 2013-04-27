@@ -1,4 +1,4 @@
-%define _qtmodule_snapshot_version 5.0.1
+%define _qtmodule_snapshot_version 5.0.2
 %ifarch armv7l armv7el armv7hl amv7nhl armv7thl armv7tnhl
 %define arch_arg armv6
 %endif
@@ -21,7 +21,7 @@
 
 Name:       qt5
 Summary:    Cross-platform application and UI framework
-Version:    5.0.1
+Version:    5.0.2
 Release:    1%{?dist}
 Group:      Qt/Qt
 License:    LGPLv2.1 with exception or GPLv3
@@ -33,8 +33,7 @@ Source100:  qtbase-rpmlintrc
 Patch1:     0001-Always-use-QPA-for-systrayicon.patch
 Patch2:     0002-add-unicode-for-special-characters.patch
 Patch3:     hackeglfs.patch
-Patch4:     fixlinuxfb.patch
-Patch5:     mtdev.patch
+Patch4:     mtdev.patch
 BuildRequires:  pkgconfig(alsa)
 BuildRequires:  pkgconfig(dbus-1)
 BuildRequires:  pkgconfig(egl)
@@ -538,7 +537,6 @@ This package contains the Qt5 development defaults package
 %patch2 -p1
 %patch3 -p1
 %patch4 -p1
-%patch5 -p1
 
 %build
 MAKEFLAGS=%{?_smp_mflags} \
