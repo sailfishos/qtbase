@@ -622,10 +622,8 @@ mkdir -p %{buildroot}%{_libdir}/qt5/examples/
 install -D -p -m 0644 %{_sourcedir}/macros.qt5-default \
 %{buildroot}/%{_sysconfdir}/rpm/macros.qt5-default
 
-# Add a configuration for qtchooser
+# Add a configuration link for qtchooser - the 5.conf is installed by qtchooser
 mkdir -p %{buildroot}/etc/xdg/qtchooser
-echo "%{_libdir}/qt5/bin" > %{buildroot}%{_sysconfdir}/xdg/qtchooser/5.conf
-echo "%{_libdir}" >> %{buildroot}%{_sysconfdir}/xdg/qtchooser/5.conf
 ln -s %{_sysconfdir}/xdg/qtchooser/5.conf %{buildroot}%{_sysconfdir}/xdg/qtchooser/default.conf
 
 #
@@ -737,7 +735,6 @@ ln -s %{_sysconfdir}/xdg/qtchooser/5.conf %{buildroot}%{_sysconfdir}/xdg/qtchoos
 %{_datadir}/qt5/mkspecs/wince*/
 %{_datadir}/qt5/mkspecs/devices/
 %{_datadir}/qt5/mkspecs/qdevice.pri
-%{_sysconfdir}/xdg/qtchooser/5.conf
 %config(noreplace) %{_sysconfdir}/rpm/macros.qt5-default
 
 %files qtdbus

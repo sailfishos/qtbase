@@ -1,3 +1,6 @@
+* Fri Apr 29 2013 Juha Kallioinen <juha.kallioinen@jollamobile.com> - 5.0.1
+- Do not install /etc/xdg/qtchooser/5.conf, it will be installed by qtchooser
+
 * Fri Apr 19 2013 Juha Kallioinen <juha.kallioinen@jollamobile.com> - 5.0.1
 - Fix qt5-default link
 
