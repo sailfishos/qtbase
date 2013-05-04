@@ -1,0 +1,24 @@
+diff -ru qtbase-opensource-src-5.0.0/src/gui/opengl/qopenglengineshadersource_p.h qtbase-opensource-src-5.0.0-bradius/src/gui/opengl/qopenglengineshadersource_p.h
+--- qtbase-opensource-src-5.0.0/src/gui/opengl/qopenglengineshadersource_p.h	2012-12-18 20:03:37.000000000 +0100
++++ qtbase-opensource-src-5.0.0-bradius/src/gui/opengl/qopenglengineshadersource_p.h	2013-04-22 08:25:34.550187591 +0200
+@@ -240,7 +240,7 @@
+     uniform   mediump vec2      halfViewportSize; \n\
+     uniform   highp   mat3      brushTransform; \n\
+     uniform   highp   vec2      fmp; \n\
+-    uniform   highp   vec3      bradius; \n\
++    uniform   mediump   vec3      bradius; \n\
+     varying   highp   float     b; \n\
+     varying   highp   vec2      A; \n\
+     void setPosition(void) \n\
+diff -ru qtbase-opensource-src-5.0.0/src/opengl/gl2paintengineex/qglengineshadersource_p.h qtbase-opensource-src-5.0.0-bradius/src/opengl/gl2paintengineex/qglengineshadersource_p.h
+--- qtbase-opensource-src-5.0.0/src/opengl/gl2paintengineex/qglengineshadersource_p.h	2012-12-18 20:03:44.000000000 +0100
++++ qtbase-opensource-src-5.0.0-bradius/src/opengl/gl2paintengineex/qglengineshadersource_p.h	2013-04-22 08:24:59.163049561 +0200
+@@ -240,7 +240,7 @@
+     uniform   mediump vec2      halfViewportSize; \n\
+     uniform   highp   mat3      brushTransform; \n\
+     uniform   highp   vec2      fmp; \n\
+-    uniform   highp   vec3      bradius; \n\
++    uniform   mediump   vec3      bradius; \n\
+     varying   highp   float     b; \n\
+     varying   highp   vec2      A; \n\
+     void setPosition(void) \n\
