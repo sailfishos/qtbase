@@ -560,6 +560,7 @@ MAKEFLAGS=%{?_smp_mflags} \
     -archdatadir "%{_datadir}/qt5" \
     -testsdir "%{_libdir}/qt5/tests" \
     -qmldir "%{_libdir}/qt5/qml" \
+    -libexecdir "%{_libdir}/qt5/libexec" \
     -opensource \
     -no-sql-ibase \
     -no-sql-mysql \
