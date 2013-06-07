@@ -1,0 +1,1 @@
+warning("CONFIG+=module is obsolete. load(qt_module) is sufficient.")

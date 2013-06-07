@@ -1,0 +1,103 @@
+
+if (NOT TARGET Qt5::qmake)
+    add_executable(Qt5::qmake IMPORTED)
+
+    set_target_properties(Qt5::qmake PROPERTIES
+!!IF isEmpty(CMAKE_BIN_DIR_IS_ABSOLUTE)
+        IMPORTED_LOCATION \"${_qt5Core_install_prefix}/$${CMAKE_BIN_DIR}qmake$$CMAKE_BIN_SUFFIX\"
+!!ELSE
+        IMPORTED_LOCATION \"$${CMAKE_BIN_DIR}qmake$$CMAKE_BIN_SUFFIX\"
+!!ENDIF
+    )
+endif()
+
+if (NOT TARGET Qt5::moc)
+    add_executable(Qt5::moc IMPORTED)
+
+    set_target_properties(Qt5::moc PROPERTIES
+!!IF isEmpty(CMAKE_BIN_DIR_IS_ABSOLUTE)
+        IMPORTED_LOCATION \"${_qt5Core_install_prefix}/$${CMAKE_BIN_DIR}moc$$CMAKE_BIN_SUFFIX\"
+!!ELSE
+        IMPORTED_LOCATION \"$${CMAKE_BIN_DIR}moc$$CMAKE_BIN_SUFFIX\"
+!!ENDIF
+    )
+    # For CMake automoc feature
+    get_target_property(QT_MOC_EXECUTABLE Qt5::moc LOCATION)
+endif()
+
+if (NOT TARGET Qt5::rcc)
+    add_executable(Qt5::rcc IMPORTED)
+
+    set_target_properties(Qt5::rcc PROPERTIES
+!!IF isEmpty(CMAKE_BIN_DIR_IS_ABSOLUTE)
+        IMPORTED_LOCATION \"${_qt5Core_install_prefix}/$${CMAKE_BIN_DIR}rcc$$CMAKE_BIN_SUFFIX\"
+!!ELSE
+        IMPORTED_LOCATION \"$${CMAKE_BIN_DIR}rcc$$CMAKE_BIN_SUFFIX\"
+!!ENDIF
+    )
+endif()
+
+set(Qt5Core_QMAKE_EXECUTABLE Qt5::qmake)
+set(Qt5Core_MOC_EXECUTABLE Qt5::moc)
+set(Qt5Core_RCC_EXECUTABLE Qt5::rcc)
+
+!!IF isEmpty(CMAKE_ARCHDATA_DIR_IS_ABSOLUTE)
+list(APPEND Qt5Core_INCLUDE_DIRS \"${_qt5Core_install_prefix}/$$CMAKE_INCLUDE_DIR\" \"${_qt5Core_install_prefix}/$${CMAKE_ARCHDATA_DIR}/mkspecs/$${CMAKE_MKSPEC}\")
+!!ELSE
+list(APPEND Qt5Core_INCLUDE_DIRS \"$$CMAKE_INCLUDE_DIR\" \"$${CMAKE_ARCHDATA_DIR}mkspecs/$${CMAKE_MKSPEC}\")
+!!ENDIF
+
+!!IF !isEmpty(CMAKE_ADD_FPIE_FLAGS)
+# Targets using Qt need to use the POSITION_INDEPENDENT_CODE property. The
+# Qt5_POSITION_INDEPENDENT_CODE variable is used in the # qt5_use_module
+# macro to add it.
+set(Qt5_POSITION_INDEPENDENT_CODE True)
+set(Qt5Core_EXECUTABLE_COMPILE_FLAGS \"-fPIE\")
+!!ENDIF
+
+!!IF !isEmpty(QT_NAMESPACE)
+list(APPEND Qt5Core_DEFINITIONS -DQT_NAMESPACE=$$QT_NAMESPACE)
+list(APPEND Qt5Core_COMPILE_DEFINITIONS QT_NAMESPACE=$$QT_NAMESPACE)
+!!ENDIF
+
+!!IF contains(QT_CONFIG, reduce_exports)
+set(QT_VISIBILITY_AVAILABLE \"True\")
+!!ENDIF
+
+!!IF !isEmpty(QT_LIBINFIX)
+set(QT_LIBINFIX \"$${QT_LIBINFIX}\")
+!!ENDIF
+
+!!IF !isEmpty(CMAKE_WINDOWS_BUILD)
+set(Qt5Core_QTMAIN_LIBRARIES Qt5::WinMain)
+
+if (NOT TARGET Qt5::WinMain)
+    add_library(Qt5::WinMain STATIC IMPORTED)
+
+!!IF !isEmpty(CMAKE_DEBUG_TYPE)
+    set_property(TARGET Qt5::WinMain APPEND PROPERTY IMPORTED_CONFIGURATIONS DEBUG)
+    set_target_properties(Qt5::WinMain PROPERTIES
+!!IF isEmpty(CMAKE_LIB_DIR_IS_ABSOLUTE)
+        IMPORTED_LOCATION_DEBUG \"${_qt5Core_install_prefix}/$${CMAKE_LIB_DIR}$${CMAKE_WINMAIN_FILE_LOCATION_DEBUG}\"
+!!ELSE
+        IMPORTED_LOCATION_DEBUG \"$${CMAKE_LIB_DIR}$${CMAKE_WINMAIN_FILE_LOCATION_DEBUG}\"
+!!ENDIF
+    )
+!!ENDIF
+
+!!IF !isEmpty(CMAKE_RELEASE_TYPE)
+    set_property(TARGET Qt5::WinMain APPEND PROPERTY IMPORTED_CONFIGURATIONS RELEASE)
+    set_target_properties(Qt5::WinMain PROPERTIES
+!!IF isEmpty(CMAKE_LIB_DIR_IS_ABSOLUTE)
+        IMPORTED_LOCATION_RELEASE \"${_qt5Core_install_prefix}/$${CMAKE_LIB_DIR}$${CMAKE_WINMAIN_FILE_LOCATION_RELEASE}\"
+!!ELSE
+        IMPORTED_LOCATION_RELEASE \"$${CMAKE_LIB_DIR}$${CMAKE_WINMAIN_FILE_LOCATION_RELEASE}\"
+!!ENDIF
+    )
+!!ENDIF
+endif()
+!!ENDIF
+
+get_filename_component(_Qt5CoreConfigDir ${CMAKE_CURRENT_LIST_FILE} PATH)
+
+set(_Qt5CTestMacros \"${_Qt5CoreConfigDir}/Qt5CTestMacros.cmake\")
