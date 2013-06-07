@@ -526,7 +526,7 @@ This package contains the Qt5 development defaults package
 ##### Build section
 
 %prep
-%setup -q -n qtbase-%{version}/qtbase
+%setup -q -n qt5-%{version}/qtbase
 
 %build
 MAKEFLAGS=%{?_smp_mflags} \
