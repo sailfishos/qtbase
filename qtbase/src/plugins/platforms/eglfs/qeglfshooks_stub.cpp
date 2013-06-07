@@ -131,7 +131,20 @@ QImage::Format QEglFSHooks::screenFormat() const
 
 QSurfaceFormat QEglFSHooks::surfaceFormatFor(const QSurfaceFormat &inputFormat) const
 {
-    return inputFormat;
+    QSurfaceFormat newFormat = inputFormat; 
+    QByteArray depthString = qgetenv("QT_QPA_EGLFS_DEPTH");
+    if (depthString.toInt() == 16) {
+        newFormat.setRedBufferSize(5);
+        newFormat.setGreenBufferSize(6);
+        newFormat.setBlueBufferSize(5);
+    } else {
+        newFormat.setStencilBufferSize(8);
+        newFormat.setRedBufferSize(8);
+        newFormat.setGreenBufferSize(8);
+        newFormat.setBlueBufferSize(8);
+    }
+
+    return newFormat;
 }
 
 EGLNativeWindowType QEglFSHooks::createNativeWindow(const QSize &size, const QSurfaceFormat &format)
