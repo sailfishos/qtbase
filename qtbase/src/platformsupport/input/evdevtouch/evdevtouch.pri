@@ -8,6 +8,6 @@ contains(QT_CONFIG, libudev) {
     LIBS += $$QMAKE_LIBS_LIBUDEV
 }
 
-# DEFINES += USE_MTDEV
+DEFINES += USE_MTDEV
 
 contains(DEFINES, USE_MTDEV): LIBS += -lmtdev
