@@ -240,7 +240,7 @@ static const char* const qopenglslPositionWithRadialGradientBrushVertexShader = 
     uniform   mediump vec2      halfViewportSize; \n\
     uniform   highp   mat3      brushTransform; \n\
     uniform   highp   vec2      fmp; \n\
-    uniform   highp   vec3      bradius; \n\
+    uniform   mediump   vec3      bradius; \n\
     varying   highp   float     b; \n\
     varying   highp   vec2      A; \n\
     void setPosition(void) \n\
