@@ -866,6 +866,27 @@ void QAbstractItemModelPrivate::columnsRemoved(const QModelIndex &parent,
 }
 
 /*!
+    \since 4.8
+
+    This slot is called just after the internal data of a model is cleared
+    while it is being reset.
+
+    This slot is provided the convenience of subclasses of concrete proxy
+    models, such as subclasses of QSortFilterProxyModel which maintain extra
+    data.
+
+    \snippet code/src_corelib_kernel_qabstractitemmodel.cpp 12
+
+    \note Due to a mistake, this slot is missing in Qt 5.0.
+
+    \sa modelAboutToBeReset(), modelReset()
+*/
+void QAbstractItemModel::resetInternalData()
+{
+
+}
+
+/*!
     \class QModelIndex
     \inmodule QtCore
 
@@ -1658,6 +1679,9 @@ bool QAbstractItemModel::hasIndex(int row, int column, const QModelIndex &parent
 
     Use rowCount() on the parent to find out the number of children.
 
+    Note that it is undefined behavior to report that a particular index hasChildren
+    with this method if the same index has the flag Qt::ItemNeverHasChildren set.
+
     \sa parent(), index()
 */
 bool QAbstractItemModel::hasChildren(const QModelIndex &parent) const
@@ -2088,9 +2112,8 @@ void QAbstractItemModel::fetchMore(const QModelIndex &)
 
     The default implementation always returns false.
 
-    If canFetchMore() returns true, QAbstractItemView will call fetchMore().
-    However, the fetchMore() function is only called when the model is being
-    populated incrementally.
+    If canFetchMore() returns true, the fetchMore() function should
+    be called. This is the behavior of QAbstractItemView, for example.
 
     \sa fetchMore()
 */
@@ -3054,6 +3077,7 @@ void QAbstractItemModel::endResetModel()
 {
     Q_D(QAbstractItemModel);
     d->invalidatePersistentIndexes();
+    QMetaObject::invokeMethod(this, "resetInternalData");
     emit modelReset(QPrivateSignal());
 }
 
@@ -3271,6 +3295,17 @@ bool QAbstractTableModel::hasChildren(const QModelIndex &parent) const
 }
 
 /*!
+    \reimp
+ */
+Qt::ItemFlags QAbstractTableModel::flags(const QModelIndex &index) const
+{
+    Qt::ItemFlags f = QAbstractItemModel::flags(index);
+    if (index.isValid())
+        f |= Qt::ItemNeverHasChildren;
+    return f;
+}
+
+/*!
     \class QAbstractListModel
     \inmodule QtCore
     \brief The QAbstractListModel class provides an abstract model that can be
@@ -3388,6 +3423,17 @@ QModelIndex QAbstractListModel::index(int row, int column, const QModelIndex &pa
 QModelIndex QAbstractListModel::parent(const QModelIndex & /* index */) const
 {
     return QModelIndex();
+}
+
+/*!
+    \reimp
+ */
+Qt::ItemFlags QAbstractListModel::flags(const QModelIndex &index) const
+{
+    Qt::ItemFlags f = QAbstractItemModel::flags(index);
+    if (index.isValid())
+        f |= Qt::ItemNeverHasChildren;
+    return f;
 }
 
 /*!

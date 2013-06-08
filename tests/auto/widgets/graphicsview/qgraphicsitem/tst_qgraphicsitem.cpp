@@ -424,6 +424,7 @@ private slots:
     void activate();
     void setActivePanelOnInactiveScene();
     void activationOnShowHide();
+    void deactivateInactivePanel();
     void moveWhileDeleting();
     void ensureDirtySceneTransform();
     void focusScope();
@@ -548,7 +549,7 @@ void tst_QGraphicsItem::construction()
 
         QCOMPARE(item->scene(), (QGraphicsScene *)0);
         QCOMPARE(item->parentItem(), (QGraphicsItem *)0);
-        QVERIFY(item->children().isEmpty());
+        QVERIFY(item->childItems().isEmpty());
         QVERIFY(item->isVisible());
         QVERIFY(item->isEnabled());
         QVERIFY(!item->isSelected());
@@ -588,7 +589,7 @@ public:
     QRectF boundingRect() const
     {
         QRectF tmp = QGraphicsRectItem::boundingRect();
-        foreach (QGraphicsItem *child, children())
+        foreach (QGraphicsItem *child, childItems())
             tmp |= child->boundingRect(); // <- might be pure virtual
         return tmp;
     }
@@ -604,11 +605,11 @@ void tst_QGraphicsItem::constructionWithParent()
     scene.addItem(item0);
     scene.addItem(item1);
     QGraphicsItem *item2 = new BoundingRectItem(item1);
-    QCOMPARE(item1->children(), QList<QGraphicsItem *>() << item2);
+    QCOMPARE(item1->childItems(), QList<QGraphicsItem *>() << item2);
     QCOMPARE(item1->boundingRect(), QRectF(0, 0, 200, 200));
 
     item2->setParentItem(item0);
-    QCOMPARE(item0->children(), QList<QGraphicsItem *>() << item2);
+    QCOMPARE(item0->childItems(), QList<QGraphicsItem *>() << item2);
     QCOMPARE(item0->boundingRect(), QRectF(0, 0, 200, 200));
 }
 
@@ -635,9 +636,9 @@ void tst_QGraphicsItem::destruction()
         QGraphicsItem *parent = new QGraphicsRectItem;
         Item *child = new Item;
         child->setParentItem(parent);
-        QCOMPARE(parent->children().size(), 1);
+        QCOMPARE(parent->childItems().size(), 1);
         delete child;
-        QCOMPARE(parent->children().size(), 0);
+        QCOMPARE(parent->childItems().size(), 0);
         delete parent;
         QCOMPARE(itemDeleted, 2);
     }
@@ -660,9 +661,9 @@ void tst_QGraphicsItem::destruction()
         child->setParentItem(parent);
         scene.addItem(parent);
         QCOMPARE(child->scene(), &scene);
-        QCOMPARE(parent->children().size(), 1);
+        QCOMPARE(parent->childItems().size(), 1);
         delete child;
-        QCOMPARE(parent->children().size(), 0);
+        QCOMPARE(parent->childItems().size(), 0);
         delete parent;
         QCOMPARE(itemDeleted, 4);
     }
@@ -691,7 +692,7 @@ void tst_QGraphicsItem::destruction()
         QCOMPARE(child->scene(), (QGraphicsScene *)0);
         QCOMPARE(parent->scene(), &scene);
         QCOMPARE(child->parentItem(), (QGraphicsItem *)0);
-        QVERIFY(parent->children().isEmpty());
+        QVERIFY(parent->childItems().isEmpty());
         delete parent;
         QCOMPARE(itemDeleted, 5);
         delete child;
@@ -861,15 +862,15 @@ void tst_QGraphicsItem::setParentItem()
 void tst_QGraphicsItem::children()
 {
     QGraphicsRectItem item;
-    QVERIFY(item.children().isEmpty());
+    QVERIFY(item.childItems().isEmpty());
 
     QGraphicsRectItem *item2 = new QGraphicsRectItem(QRectF(), &item);
-    QCOMPARE(item.children().size(), 1);
-    QCOMPARE(item.children().first(), (QGraphicsItem *)item2);
-    QVERIFY(item2->children().isEmpty());
+    QCOMPARE(item.childItems().size(), 1);
+    QCOMPARE(item.childItems().first(), (QGraphicsItem *)item2);
+    QVERIFY(item2->childItems().isEmpty());
 
     delete item2;
-    QVERIFY(item.children().isEmpty());
+    QVERIFY(item.childItems().isEmpty());
 }
 
 void tst_QGraphicsItem::flags()
@@ -2204,7 +2205,6 @@ void tst_QGraphicsItem::sceneMatrix()
 void tst_QGraphicsItem::setMatrix()
 {
     QGraphicsScene scene;
-    qRegisterMetaType<QList<QRectF> >("QList<QRectF>");
     QSignalSpy spy(&scene, SIGNAL(changed(QList<QRectF>)));
     QRectF unrotatedRect(-12, -34, 56, 78);
     QGraphicsRectItem item(unrotatedRect, 0);
@@ -3573,7 +3573,7 @@ void tst_QGraphicsItem::group()
     QCOMPARE(parent->sceneBoundingRect(), parentSceneBoundingRect);
 
     QCOMPARE(parent->parentItem(), (QGraphicsItem *)group);
-    QCOMPARE(group->children().size(), 1);
+    QCOMPARE(group->childItems().size(), 1);
     QCOMPARE(scene.items().size(), 4);
     QCOMPARE(scene.items(group->sceneBoundingRect()).size(), 3);
 
@@ -3585,7 +3585,7 @@ void tst_QGraphicsItem::group()
     QCOMPARE(parent2->sceneBoundingRect(), parent2SceneBoundingRect);
 
     QCOMPARE(parent2->parentItem(), (QGraphicsItem *)group);
-    QCOMPARE(group->children().size(), 2);
+    QCOMPARE(group->childItems().size(), 2);
     QCOMPARE(scene.items().size(), 4);
     QCOMPARE(scene.items(group->sceneBoundingRect()).size(), 4);
 
@@ -3686,7 +3686,7 @@ void tst_QGraphicsItem::nestedGroups()
     QCOMPARE(rect->group(), group1);
     QCOMPARE(rect2->group(), group1);
     QCOMPARE(group1->group(), (QGraphicsItemGroup *)0);
-    QVERIFY(group2->children().isEmpty());
+    QVERIFY(group2->childItems().isEmpty());
 
     delete group2;
 }
@@ -3737,7 +3737,7 @@ void tst_QGraphicsItem::removeFromGroup()
 
     QGraphicsItemGroup *group = scene.createItemGroup(scene.selectedItems());
     QVERIFY(group);
-    QCOMPARE(group->children().size(), 2);
+    QCOMPARE(group->childItems().size(), 2);
     qApp->processEvents(); // index items
     qApp->processEvents(); // emit changed
 
@@ -4505,10 +4505,10 @@ protected:
         case QGraphicsItem::ItemParentHasChanged:
             break;
         case QGraphicsItem::ItemChildAddedChange:
-            oldValues << children().size();
+            oldValues << childItems().size();
             break;
         case QGraphicsItem::ItemChildRemovedChange:
-            oldValues << children().size();
+            oldValues << childItems().size();
             break;
         case QGraphicsItem::ItemSceneChange:
             oldValues << QVariant::fromValue<QGraphicsScene *>(scene());
@@ -9030,6 +9030,40 @@ public:
     }
 };
 
+void tst_QGraphicsItem::deactivateInactivePanel()
+{
+    QGraphicsScene scene;
+    QGraphicsItem *panel1 = scene.addRect(QRectF(0, 0, 10, 10));
+    panel1->setFlag(QGraphicsItem::ItemIsPanel);
+
+    QGraphicsItem *panel2 = scene.addRect(QRectF(0, 0, 10, 10));
+    panel2->setFlag(QGraphicsItem::ItemIsPanel);
+
+    QEvent event(QEvent::WindowActivate);
+    qApp->sendEvent(&scene, &event);
+
+    panel1->setActive(true);
+    QVERIFY(scene.isActive());
+    QVERIFY(panel1->isActive());
+    QVERIFY(!panel2->isActive());
+    QCOMPARE(scene.activePanel(), panel1);
+
+    panel2->setActive(true);
+    QVERIFY(panel2->isActive());
+    QVERIFY(!panel1->isActive());
+    QCOMPARE(scene.activePanel(), panel2);
+
+    panel2->setActive(false);
+    QVERIFY(panel1->isActive());
+    QVERIFY(!panel2->isActive());
+    QCOMPARE(scene.activePanel(), panel1);
+
+    panel2->setActive(false);
+    QVERIFY(panel1->isActive());
+    QVERIFY(!panel2->isActive());
+    QCOMPARE(scene.activePanel(), panel1);
+}
+
 void tst_QGraphicsItem::moveWhileDeleting()
 {
     QGraphicsScene scene;
@@ -10333,23 +10367,24 @@ void tst_QGraphicsItem::modality_clickFocus()
     EventSpy2 rect1Spy(&scene, rect1);
     EventSpy2 rect2Spy(&scene, rect2);
 
-    // activate rect1, it should not get focus
+    // activate rect1, it should get focus
     rect1->setActive(true);
-    QCOMPARE(scene.focusItem(), (QGraphicsItem *) 0);
+    QCOMPARE(scene.focusItem(), (QGraphicsItem *) rect1);
 
-    // focus stays unset when rect2 becomes modal
+    // focus stays when rect2 becomes modal
     rect2->setPanelModality(QGraphicsItem::SceneModal);
-    QCOMPARE(scene.focusItem(), (QGraphicsItem *) 0);
-    QCOMPARE(rect1Spy.counts[QEvent::FocusIn], 0);
+    QCOMPARE(scene.focusItem(), (QGraphicsItem *) rect1);
+    QCOMPARE(rect1Spy.counts[QEvent::FocusIn], 1);
     QCOMPARE(rect1Spy.counts[QEvent::FocusOut], 0);
     QCOMPARE(rect2Spy.counts[QEvent::FocusIn], 0);
     QCOMPARE(rect2Spy.counts[QEvent::FocusOut], 0);
 
     // clicking on rect1 should not set it's focus item
+    rect1->clearFocus();
     sendMouseClick(&scene, QPointF(-25, -25));
     QCOMPARE(rect1->focusItem(), (QGraphicsItem *) 0);
-    QCOMPARE(rect1Spy.counts[QEvent::FocusIn], 0);
-    QCOMPARE(rect1Spy.counts[QEvent::FocusOut], 0);
+    QCOMPARE(rect1Spy.counts[QEvent::FocusIn], 1);
+    QCOMPARE(rect1Spy.counts[QEvent::FocusOut], 1);
     QCOMPARE(rect2Spy.counts[QEvent::FocusIn], 0);
     QCOMPARE(rect2Spy.counts[QEvent::FocusOut], 0);
 
@@ -10357,33 +10392,34 @@ void tst_QGraphicsItem::modality_clickFocus()
     rect2->setActive(true);
     sendMouseClick(&scene, QPointF(75, 75));
     QCOMPARE(scene.focusItem(), (QGraphicsItem *) rect2);
-    QCOMPARE(rect1Spy.counts[QEvent::FocusIn], 0);
-    QCOMPARE(rect1Spy.counts[QEvent::FocusOut], 0);
+    QCOMPARE(rect1Spy.counts[QEvent::FocusIn], 1);
+    QCOMPARE(rect1Spy.counts[QEvent::FocusOut], 1);
     QCOMPARE(rect2Spy.counts[QEvent::FocusIn], 1);
     QCOMPARE(rect2Spy.counts[QEvent::FocusOut], 0);
 
     // clicking on rect1 does *not* give it focus
     rect1->setActive(true);
+    rect1->clearFocus();
     sendMouseClick(&scene, QPointF(-25, -25));
     QCOMPARE(scene.focusItem(), (QGraphicsItem *) 0);
-    QCOMPARE(rect1Spy.counts[QEvent::FocusIn], 0);
-    QCOMPARE(rect1Spy.counts[QEvent::FocusOut], 0);
+    QCOMPARE(rect1Spy.counts[QEvent::FocusIn], 2);
+    QCOMPARE(rect1Spy.counts[QEvent::FocusOut], 2);
     QCOMPARE(rect2Spy.counts[QEvent::FocusIn], 1);
     QCOMPARE(rect2Spy.counts[QEvent::FocusOut], 1);
 
     // focus doesn't change when leaving modality either
     rect2->setPanelModality(QGraphicsItem::NonModal);
     QCOMPARE(scene.focusItem(), (QGraphicsItem *) 0);
-    QCOMPARE(rect1Spy.counts[QEvent::FocusIn], 0);
-    QCOMPARE(rect1Spy.counts[QEvent::FocusOut], 0);
+    QCOMPARE(rect1Spy.counts[QEvent::FocusIn], 2);
+    QCOMPARE(rect1Spy.counts[QEvent::FocusOut], 2);
     QCOMPARE(rect2Spy.counts[QEvent::FocusIn], 1);
     QCOMPARE(rect2Spy.counts[QEvent::FocusOut], 1);
 
     // click on rect1, it should get focus now
     sendMouseClick(&scene, QPointF(-25, -25));
     QCOMPARE(scene.focusItem(), (QGraphicsItem *) rect1);
-    QCOMPARE(rect1Spy.counts[QEvent::FocusIn], 1);
-    QCOMPARE(rect1Spy.counts[QEvent::FocusOut], 0);
+    QCOMPARE(rect1Spy.counts[QEvent::FocusIn], 3);
+    QCOMPARE(rect1Spy.counts[QEvent::FocusOut], 2);
     QCOMPARE(rect2Spy.counts[QEvent::FocusIn], 1);
     QCOMPARE(rect2Spy.counts[QEvent::FocusOut], 1);
 }

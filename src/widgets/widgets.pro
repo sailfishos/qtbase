@@ -7,6 +7,9 @@ DEFINES   += QT_NO_USING_NAMESPACE
 win32-msvc*|win32-icc:QMAKE_LFLAGS += /BASE:0x65000000
 irix-cc*:QMAKE_CXXFLAGS += -no_prelink -ptused
 
+MODULE_PLUGIN_TYPES = \
+    accessible
+
 QMAKE_DOCS = $$PWD/doc/qtwidgets.qdocconf
 
 load(qt_module)
@@ -32,7 +35,7 @@ QMAKE_LIBS += $$QMAKE_LIBS_GUI
 
 contains(DEFINES,QT_EVAL):include($$QT_SOURCE_TREE/src/corelib/eval.pri)
 
-QMAKE_DYNAMIC_LIST_FILE = $$PWD/QtGui.dynlist
+QMAKE_DYNAMIC_LIST_FILE = $$PWD/QtWidgets.dynlist
 
 # Code coverage with TestCocoon
 # The following is required as extra compilers use $$QMAKE_CXX instead of $(CXX).

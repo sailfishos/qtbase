@@ -48,8 +48,6 @@
 
 #include <limits>
 
-QT_BEGIN_HEADER
-
 QT_BEGIN_NAMESPACE
 
 
@@ -264,6 +262,10 @@ public:
 private:
     friend class QDateTimePrivate;
     void detach();
+
+    // ### Qt6: Using a private here has high impact on runtime
+    // on users such as QFileInfo. In Qt 6, the data members
+    // should be inlined.
     QExplicitlySharedDataPointer<QDateTimePrivate> d;
 
 #ifndef QT_NO_DATASTREAM
@@ -295,7 +297,5 @@ Q_CORE_EXPORT uint qHash(const QDate &key, uint seed = 0) Q_DECL_NOTHROW;
 Q_CORE_EXPORT uint qHash(const QTime &key, uint seed = 0) Q_DECL_NOTHROW;
 
 QT_END_NAMESPACE
-
-QT_END_HEADER
 
 #endif // QDATETIME_H

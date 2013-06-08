@@ -41,6 +41,8 @@ OBJECTIVE_SOURCES += main.mm \
     qcocoaintrospection.mm \
     qcocoakeymapper.mm \
 
+SOURCES += messages.cpp
+
 HEADERS += qcocoaintegration.h \
     qcocoatheme.h \
     qcocoabackingstore.h \
@@ -75,10 +77,11 @@ HEADERS += qcocoaintegration.h \
     qcocoasystemtrayicon.h \
     qcocoaintrospection.h \
     qcocoakeymapper.h \
+    messages.h
 
 RESOURCES += qcocoaresources.qrc
 
-LIBS += -framework Cocoa -framework IOKit
+LIBS += -framework Cocoa -framework Carbon -framework IOKit
 
 QT += core-private gui-private platformsupport-private
 
@@ -101,9 +104,6 @@ OTHER_FILES += cocoa.json
 # Acccessibility debug support
 # DEFINES += QT_COCOA_ENABLE_ACCESSIBILITY_INSPECTOR
 # include ($$PWD/../../../../util/accessibilityinspector/accessibilityinspector.pri)
-
-# Accessibility is currently unstable and disabled.
-DEFINES += QT_NO_COCOA_ACCESSIBILITY
 
 # Window debug support
 #DEFINES += QT_COCOA_ENABLE_WINDOW_DEBUG

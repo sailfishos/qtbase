@@ -985,12 +985,22 @@ void QXmlNamespaceSupport::reset()
 
     Constructs an empty attribute list.
 */
+QXmlAttributes::QXmlAttributes()
+{
+    // ### In Qt 5.0, this function was inlined and d was not initialized
+    // The member cannot be used until Qt 6.0
+    Q_UNUSED(d);
+}
 
 /*!
     \fn QXmlAttributes::~QXmlAttributes()
 
     Destroys the attributes object.
 */
+QXmlAttributes::~QXmlAttributes()
+{
+}
+
 
 /*!
     Looks up the index of an attribute by the qualified name \a qName.
@@ -2400,11 +2410,21 @@ events are reported.
 
     Constructs a handler for use with subclasses of QXmlReader.
 */
+QXmlDefaultHandler::QXmlDefaultHandler()
+{
+    // ### In Qt 5.0, this function was inlined and d was not initialized
+    // The member cannot be used until Qt 6.0
+    Q_UNUSED(d);
+}
+
 /*!
     \fn QXmlDefaultHandler::~QXmlDefaultHandler()
 
     Destroys the handler.
 */
+QXmlDefaultHandler::~QXmlDefaultHandler()
+{
+}
 
 /*!
     \reimp
@@ -3037,10 +3057,10 @@ void QXmlSimpleReaderPrivate::initIncrementalParsing()
     A common way to perform incremental parsing is to connect the \c
     readyRead() signal of a \l{QNetworkReply} {network reply} a slot,
     and handle the incoming data there. See QNetworkAccessManager.
-    
+
     Aspects of the parsing behavior can be adapted using setFeature()
     and setProperty().
-    
+
     \snippet code/src_xml_sax_qxml.cpp 0
 
     QXmlSimpleReader is not reentrant. If you want to use the class

@@ -39,13 +39,17 @@
 **
 ****************************************************************************/
 
-#include <QtWidgets>
 #include "../shared/shared.h"
+
+#include <QApplication>
+#include <QMainWindow>
+#include <QTableWidget>
+#include <QPaintEvent>
 
 class CellWidget : public QWidget
 {
 public:
-    CellWidget (QWidget *parent = 0) : QWidget(parent) { }
+    CellWidget(QWidget *parent = 0) : QWidget(parent) {}
     void paintEvent(QPaintEvent * event)
     {
         static int value = 200;
@@ -69,8 +73,7 @@ int main(int argc, char **argv)
        tableWidget.setCellWidget(row, col, new CellWidget());
     tableWidget.resize(400, 600);
     tableWidget.show();
-    
-    
+
     return app.exec();
 }
 

@@ -196,6 +196,8 @@ private slots:
     void stringRef_local8Bit();
     void fromLatin1();
     void fromAscii();
+    void fromUcs4();
+    void toUcs4();
     void arg();
     void number();
     void arg_fillChar_data();
@@ -239,7 +241,7 @@ private slots:
 #ifdef QT_USE_ICU
     void toUpperLower_icu();
 #endif
-#if defined(QT_UNICODE_LITERAL) && (defined(Q_COMPILER_LAMBDA) || defined(Q_CC_GNU))
+#if !defined(QT_NO_UNICODE_LITERAL) && defined(Q_COMPILER_LAMBDA)
     void literals();
 #endif
     void eightBitLiterals_data();
@@ -1005,10 +1007,12 @@ void tst_QString::sprintf()
     a.sprintf("%s%n%s", "hello", &n1, "goodbye");
     QCOMPARE(n1, 5);
     QCOMPARE(a, QString("hellogoodbye"));
+#ifndef Q_CC_MINGW // does not know %ll
     qlonglong n2;
     a.sprintf("%s%s%lln%s", "foo", "bar", &n2, "whiz");
     QCOMPARE((int)n2, 6);
     QCOMPARE(a, QString("foobarwhiz"));
+#endif
 }
 
 /*
@@ -1160,8 +1164,6 @@ void tst_QString::indexOf()
             options |= QRegularExpression::CaseInsensitiveOption;
 
         QRegularExpression re(QRegularExpression::escape(needle), options);
-        QEXPECT_FAIL("data58", "QRegularExpression does not support case folding", Continue);
-        QEXPECT_FAIL("data59", "QRegularExpression does not support case folding", Continue);
         QCOMPARE( haystack.indexOf(re, startpos), resultpos );
     }
 
@@ -1433,6 +1435,55 @@ void tst_QString::contains()
     QVERIFY(a.contains(QRegExp("[G][HE]")));
     QVERIFY(a.contains(QRegularExpression("[FG][HI]")));
     QVERIFY(a.contains(QRegularExpression("[G][HE]")));
+
+    {
+        QRegularExpressionMatch match;
+        QVERIFY(!match.hasMatch());
+
+        QVERIFY(a.contains(QRegularExpression("[FG][HI]"), &match));
+        QVERIFY(match.hasMatch());
+        QCOMPARE(match.capturedStart(), 6);
+        QCOMPARE(match.capturedEnd(), 8);
+        QCOMPARE(match.captured(), QStringLiteral("GH"));
+
+        QVERIFY(a.contains(QRegularExpression("[G][HE]"), &match));
+        QVERIFY(match.hasMatch());
+        QCOMPARE(match.capturedStart(), 6);
+        QCOMPARE(match.capturedEnd(), 8);
+        QCOMPARE(match.captured(), QStringLiteral("GH"));
+
+        QVERIFY(a.contains(QRegularExpression("[f](.*)[FG]"), &match));
+        QVERIFY(match.hasMatch());
+        QCOMPARE(match.capturedStart(), 10);
+        QCOMPARE(match.capturedEnd(), 15);
+        QCOMPARE(match.captured(), QString("fGEFG"));
+        QCOMPARE(match.capturedStart(1), 11);
+        QCOMPARE(match.capturedEnd(1), 14);
+        QCOMPARE(match.captured(1), QStringLiteral("GEF"));
+
+        QVERIFY(a.contains(QRegularExpression("[f](.*)[F]"), &match));
+        QVERIFY(match.hasMatch());
+        QCOMPARE(match.capturedStart(), 10);
+        QCOMPARE(match.capturedEnd(), 14);
+        QCOMPARE(match.captured(), QString("fGEF"));
+        QCOMPARE(match.capturedStart(1), 11);
+        QCOMPARE(match.capturedEnd(1), 13);
+        QCOMPARE(match.captured(1), QStringLiteral("GE"));
+
+        QVERIFY(!a.contains(QRegularExpression("ZZZ"), &match));
+        // doesn't match, but ensure match didn't change
+        QVERIFY(match.hasMatch());
+        QCOMPARE(match.capturedStart(), 10);
+        QCOMPARE(match.capturedEnd(), 14);
+        QCOMPARE(match.captured(), QStringLiteral("fGEF"));
+        QCOMPARE(match.capturedStart(1), 11);
+        QCOMPARE(match.capturedEnd(1), 13);
+        QCOMPARE(match.captured(1), QStringLiteral("GE"));
+
+        // don't crash with a null pointer
+        QVERIFY(a.contains(QRegularExpression("[FG][HI]"), 0));
+        QVERIFY(!a.contains(QRegularExpression("ZZZ"), 0));
+    }
 
     CREATE_REF(QLatin1String("FG"));
     QVERIFY(a.contains(ref));
@@ -3894,6 +3945,52 @@ void tst_QString::fromAscii()
     QVERIFY(a.size() == 5);
 }
 
+void tst_QString::fromUcs4()
+{
+    QString s;
+    s = QString::fromUcs4( 0 );
+    QVERIFY( s.isNull() );
+    QCOMPARE( s.size(), 0 );
+    s = QString::fromUcs4( 0, 0 );
+    QVERIFY( s.isNull() );
+    QCOMPARE( s.size(), 0 );
+    s = QString::fromUcs4( 0, 5 );
+    QVERIFY( s.isNull() );
+    QCOMPARE( s.size(), 0 );
+
+    uint nil = '\0';
+    s = QString::fromUcs4( &nil );
+    QVERIFY( !s.isNull() );
+    QCOMPARE( s.size(), 0 );
+    s = QString::fromUcs4( &nil, 0 );
+    QVERIFY( !s.isNull() );
+    QCOMPARE( s.size(), 0 );
+
+    uint bmp = 'a';
+    s = QString::fromUcs4( &bmp, 1 );
+    QVERIFY( !s.isNull() );
+    QCOMPARE( s.size(), 1 );
+
+    uint smp = 0x10000;
+    s = QString::fromUcs4( &smp, 1 );
+    QVERIFY( !s.isNull() );
+    QCOMPARE( s.size(), 2 );
+}
+
+void tst_QString::toUcs4()
+{
+    QString s;
+    QCOMPARE( s.toUcs4().size(), 0 );
+
+    QChar bmp = QLatin1Char('a');
+    s = QString(&bmp, 1);
+    QCOMPARE( s.toUcs4().size(), 1 );
+
+    QChar smp[] = { QChar::highSurrogate(0x10000), QChar::lowSurrogate(0x10000) };
+    s = QString(smp, 2);
+    QCOMPARE( s.toUcs4().size(), 1 );
+}
+
 void tst_QString::arg()
 {
 /*
@@ -3985,8 +4082,22 @@ void tst_QString::arg()
 
     QCOMPARE( QString("%2 %L1").arg(12345.6789).arg(12345.6789),
              QString("12345.7 12.345,7") );
+    QCOMPARE( QString("[%2] [%L1]").arg(12345.6789, 9).arg(12345.6789, 9),
+              QString("[  12345.7] [ 12.345,7]") );
+    QCOMPARE( QString("[%2] [%L1]").arg(12345.6789, 9, 'g', 7).arg(12345.6789, 9, 'g', 7),
+              QString("[ 12345.68] [12.345,68]") );
+    QCOMPARE( QString("[%2] [%L1]").arg(12345.6789, 10, 'g', 7, QLatin1Char('0')).arg(12345.6789, 10, 'g', 7, QLatin1Char('0')),
+              QString("[0012345.68] [012.345,68]") );
+
     QCOMPARE( QString("%2 %L1").arg(123456789).arg(123456789),
              QString("123456789 123.456.789") );
+    QCOMPARE( QString("[%2] [%L1]").arg(123456789, 12).arg(123456789, 12),
+              QString("[   123456789] [ 123.456.789]") );
+    QCOMPARE( QString("[%2] [%L1]").arg(123456789, 13, 10, QLatin1Char('0')).arg(123456789, 12, 10, QLatin1Char('0')),
+              QString("[000123456789] [00123.456.789]") );
+    QCOMPARE( QString("[%2] [%L1]").arg(123456789, 13, 16, QLatin1Char('0')).arg(123456789, 12, 16, QLatin1Char('0')),
+              QString("[0000075bcd15] [00000075bcd15]") );
+
     QCOMPARE( QString("%L2 %L1 %3").arg(12345.7).arg(123456789).arg('c'),
              QString("123.456.789 12.345,7 c") );
 
@@ -4028,6 +4139,14 @@ void tst_QString::arg()
     QCOMPARE(QString("%1").arg(1000., 3, 'g', -1, QChar('x')), QString("1000"));
     QCOMPARE(QString("%1").arg(-1., 3, 'g', -1, QChar('x')), QString("x-1"));
     QCOMPARE(QString("%1").arg(-100., 3, 'g', -1, QChar('x')), QString("-100"));
+
+    QLocale::setDefault(QString("ar"));
+    QCOMPARE( QString("%L1").arg(12345.6789, 10, 'g', 7, QLatin1Char('0')),
+              QString::fromUtf8("\xd9\xa0\xd9\xa1\xd9\xa2\xd9\xac\xd9\xa3\xd9\xa4\xd9\xa5\xd9\xab\xd9\xa6\xd9\xa8") ); // "٠١٢٬٣٤٥٫٦٨"
+    QCOMPARE( QString("%L1").arg(123456789, 13, 10, QLatin1Char('0')),
+              QString("\xd9\xa0\xd9\xa0\xd9\xa1\xd9\xa2\xd9\xa3\xd9\xac\xd9\xa4\xd9\xa5\xd9\xa6\xd9\xac\xd9\xa7\xd9\xa8\xd9\xa9") ); // ٠٠١٢٣٬٤٥٦٬٧٨٩
+
+    QLocale::setDefault(QLocale::system());
 }
 
 void tst_QString::number()
@@ -5201,6 +5320,9 @@ void tst_QString::QCharRefDetaching() const
 
 void tst_QString::sprintfZU() const
 {
+#ifdef Q_CC_MINGW
+    QSKIP("MinGW does not support '%zu'.");
+#else
     {
         QString string;
         size_t s = 6;
@@ -5229,6 +5351,7 @@ void tst_QString::sprintfZU() const
         string.sprintf("%zu %s\n", s, "foo");
         QCOMPARE(string, QString::fromLatin1("6 foo\n"));
     }
+#endif // !Q_CC_MINGW
 }
 
 void tst_QString::repeatedSignature() const
@@ -5396,7 +5519,7 @@ void tst_QString::toUpperLower_icu()
 }
 #endif
 
-#if defined(QT_UNICODE_LITERAL) && (defined(Q_COMPILER_LAMBDA) || defined(Q_CC_GNU))
+#if !defined(QT_NO_UNICODE_LITERAL) && defined(Q_COMPILER_LAMBDA)
 // Only tested on c++0x compliant compiler or gcc
 void tst_QString::literals()
 {

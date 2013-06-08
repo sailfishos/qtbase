@@ -45,20 +45,64 @@
 #include "qreadwritelock.h"
 #include "qatomic.h"
 #include "qstring.h"
+#include "qelapsedtimer.h"
+#include "private/qcore_unix_p.h"
 
 #include "qmutex_p.h"
 #include "qreadwritelock_p.h"
 
 #include <errno.h>
+#include <sys/time.h>
+#include <time.h>
 
 #ifndef QT_NO_THREAD
 
 QT_BEGIN_NAMESPACE
 
+#ifdef Q_OS_ANDROID
+// Android lacks pthread_condattr_setclock, but it does have a nice function
+// for relative waits. Use weakref so we can determine at runtime whether it is
+// present.
+static int local_cond_timedwait_relative(pthread_cond_t*, pthread_mutex_t *, const timespec *)
+__attribute__((weakref("__pthread_cond_timedwait_relative")));
+#endif
+
 static void report_error(int code, const char *where, const char *what)
 {
     if (code != 0)
         qWarning("%s: %s failure: %s", where, what, qPrintable(qt_error_string(code)));
+}
+
+void qt_initialize_pthread_cond(pthread_cond_t *cond, const char *where)
+{
+    pthread_condattr_t condattr;
+
+    pthread_condattr_init(&condattr);
+#if !defined(Q_OS_MAC) && !defined(Q_OS_ANDROID) && (_POSIX_MONOTONIC_CLOCK-0 >= 0)
+    if (QElapsedTimer::clockType() == QElapsedTimer::MonotonicClock)
+        pthread_condattr_setclock(&condattr, CLOCK_MONOTONIC);
+#endif
+    report_error(pthread_cond_init(cond, &condattr), where, "cv init");
+    pthread_condattr_destroy(&condattr);
+}
+
+void qt_abstime_for_timeout(timespec *ts, int timeout)
+{
+#ifdef Q_OS_MAC
+    // on Mac, qt_gettime() (on qelapsedtimer_mac.cpp) returns ticks related to the Mach absolute time
+    // that doesn't work with pthread
+    // Mac also doesn't have clock_gettime
+    struct timeval tv;
+    gettimeofday(&tv, 0);
+    ts->tv_sec = tv.tv_sec;
+    ts->tv_nsec = tv.tv_usec * 1000;
+#else
+    *ts = qt_gettime();
+#endif
+
+    ts->tv_sec += timeout / 1000;
+    ts->tv_nsec += timeout % 1000 * Q_UINT64_C(1000) * 1000;
+    normalizedTimespec(*ts);
 }
 
 class QWaitConditionPrivate {
@@ -68,20 +112,26 @@ public:
     int waiters;
     int wakeups;
 
+    int wait_relative(unsigned long time)
+    {
+        timespec ti;
+#ifdef Q_OS_ANDROID
+        if (Q_LIKELY(local_cond_timedwait_relative)) {
+            ti.tv_sec = time / 1000;
+            ti.tv_nsec = time % 1000 * Q_UINT64_C(1000) * 1000;
+            return local_cond_timedwait_relative(&cond, &mutex, &ti);
+        }
+#endif
+        qt_abstime_for_timeout(&ti, time);
+        return pthread_cond_timedwait(&cond, &mutex, &ti);
+    }
+
     bool wait(unsigned long time)
     {
         int code;
         forever {
             if (time != ULONG_MAX) {
-                struct timeval tv;
-                gettimeofday(&tv, 0);
-
-                timespec ti;
-                ti.tv_nsec = (tv.tv_usec + (time % 1000) * 1000) * 1000;
-                ti.tv_sec = tv.tv_sec + (time / 1000) + (ti.tv_nsec / 1000000000);
-                ti.tv_nsec %= 1000000000;
-
-                code = pthread_cond_timedwait(&cond, &mutex, &ti);
+                code = wait_relative(time);
             } else {
                 code = pthread_cond_wait(&cond, &mutex);
             }
@@ -114,7 +164,7 @@ QWaitCondition::QWaitCondition()
 {
     d = new QWaitConditionPrivate;
     report_error(pthread_mutex_init(&d->mutex, NULL), "QWaitCondition", "mutex init");
-    report_error(pthread_cond_init(&d->cond, NULL), "QWaitCondition", "cv init");
+    qt_initialize_pthread_cond(&d->cond, "QWaitCondition");
     d->waiters = d->wakeups = 0;
 }
 

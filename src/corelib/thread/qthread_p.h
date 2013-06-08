@@ -142,6 +142,8 @@ public:
     QThreadPrivate(QThreadData *d = 0);
     ~QThreadPrivate();
 
+    void setPriority(QThread::Priority prio);
+
     mutable QMutex mutex;
     QAtomicInt quitLockRef;
 
@@ -223,18 +225,27 @@ public:
     ~QThreadData();
 
     static QThreadData *current();
+    static void clearCurrentThreadData();
     static QThreadData *get2(QThread *thread)
     { Q_ASSERT_X(thread != 0, "QThread", "internal error"); return thread->d_func()->data; }
 
 
     void ref();
     void deref();
+    inline bool hasEventDispatcher() const
+    { return eventDispatcher.load() != 0; }
+
+    bool canWaitLocked()
+    {
+        QMutexLocker locker(&postEventList.mutex);
+        return canWait;
+    }
 
     QThread *thread;
     Qt::HANDLE threadId;
     bool quitNow;
     int loopLevel;
-    QAbstractEventDispatcher *eventDispatcher;
+    QAtomicPointer<QAbstractEventDispatcher> eventDispatcher;
     QStack<QEventLoop *> eventLoops;
     QPostEventList postEventList;
     bool canWait;

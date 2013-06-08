@@ -133,6 +133,10 @@ private slots:
     void parseString();
     void fromString_data();
     void fromString();
+    void listToString_data();
+    void listToString();
+    void listFromString_data();
+    void listFromString();
 #ifdef QT_BUILD_INTERNAL
     void ensureSorted();
 #endif
@@ -506,6 +510,11 @@ void tst_QKeySequence::toStringFromKeycode_data()
     QTest::newRow("A") << QKeySequence(Qt::Key_A) << "A";
     QTest::newRow("-1") << QKeySequence(-1) << "";
     QTest::newRow("Unknown") << QKeySequence(Qt::Key_unknown) << "";
+    QTest::newRow("Ctrl+Numpad+Ins") << QKeySequence(Qt::ControlModifier | Qt::KeypadModifier | Qt::Key_Insert) << "Ctrl+Numpad+Ins";
+    QTest::newRow("Ctrl+Numpad+Del") << QKeySequence(Qt::ControlModifier | Qt::KeypadModifier | Qt::Key_Delete) << "Ctrl+Numpad+Del";
+    QTest::newRow("Ctrl+Alt+Numpad+Del") << QKeySequence(Qt::ControlModifier | Qt::AltModifier | Qt::KeypadModifier | Qt::Key_Delete) << "Ctrl+Alt+Numpad+Del";
+    QTest::newRow("Ctrl+Ins") << QKeySequence(Qt::ControlModifier | Qt::Key_Insert) << "Ctrl+Ins";
+    QTest::newRow("Ctrl+Numpad+Ins(1)") << QKeySequence(Qt::Key_Insert | Qt::KeypadModifier | Qt::ControlModifier) << "Ctrl+Numpad+Ins";
 }
 
 void tst_QKeySequence::toStringFromKeycode()
@@ -629,6 +638,104 @@ void tst_QKeySequence::fromString()
     QCOMPARE(ks2, ks1);
     QCOMPARE(ks3, ks1);
     QCOMPARE(ks4, ks1);
+}
+
+void tst_QKeySequence::listToString_data()
+{
+    QTest::addColumn<QString>("strSequences");
+    QTest::addColumn<QList<QKeySequence> >("sequences");
+
+    QList<QKeySequence> sequences;
+
+    sequences << QKeySequence(Qt::CTRL + Qt::Key_Left)
+              << QKeySequence(Qt::META + Qt::Key_A);
+    QTest::newRow("Ctrl+Left; Meta+A") << "Ctrl+Left; Meta+A" << sequences;
+
+    sequences.clear();
+    sequences << QKeySequence(Qt::CTRL + Qt::Key_Semicolon)
+              << QKeySequence(Qt::META + Qt::Key_A);
+    QTest::newRow("Ctrl+;; Meta+A") << "Ctrl+;; Meta+A" << sequences;
+
+    sequences.clear();
+    sequences << QKeySequence(Qt::Key_Semicolon)
+              << QKeySequence(Qt::META + Qt::Key_A);
+    QTest::newRow(";; Meta+A") << ";; Meta+A" << sequences;
+
+    sequences.clear();
+    sequences << QKeySequence(Qt::CTRL + Qt::Key_Left)
+              << QKeySequence(Qt::META + Qt::Key_Semicolon);
+    QTest::newRow("Ctrl+Left; Meta+;") << "Ctrl+Left; Meta+;" << sequences;
+
+    sequences.clear();
+    sequences << QKeySequence(Qt::CTRL + Qt::Key_Left)
+              << QKeySequence();
+    QTest::newRow("Ctrl+Left; ") << "Ctrl+Left; " << sequences;
+
+    sequences.clear();
+    sequences << QKeySequence(Qt::CTRL + Qt::Key_Left)
+              << QKeySequence()
+              << QKeySequence(Qt::META + Qt::Key_A);
+    QTest::newRow("Ctrl+Left; ; Meta+A") << "Ctrl+Left; ; Meta+A" << sequences;
+}
+
+void tst_QKeySequence::listToString()
+{
+    QFETCH(QList<QKeySequence>, sequences);
+    QFETCH(QString, strSequences);
+
+    QCOMPARE(QKeySequence::listToString(sequences), strSequences);
+}
+
+void tst_QKeySequence::listFromString_data()
+{
+    QTest::addColumn<QString>("strSequences");
+    QTest::addColumn<QList<QKeySequence> >("sequences");
+
+    QList<QKeySequence> sequences;
+
+    sequences << QKeySequence(Qt::CTRL + Qt::Key_Left)
+              << QKeySequence(Qt::META + Qt::Key_A);
+    QTest::newRow("Ctrl+Left; Meta+A") << "Ctrl+Left; Meta+A" << sequences;
+
+    sequences.clear();
+    sequences << QKeySequence(Qt::CTRL + Qt::Key_Semicolon)
+              << QKeySequence(Qt::META + Qt::Key_A);
+    QTest::newRow("Ctrl+;; Meta+A") << "Ctrl+;; Meta+A" << sequences;
+
+    sequences.clear();
+    sequences << QKeySequence(Qt::Key_Semicolon)
+              << QKeySequence(Qt::META + Qt::Key_A);
+    QTest::newRow(";; Meta+A") << ";; Meta+A" << sequences;
+
+    sequences.clear();
+    sequences << QKeySequence(Qt::CTRL + Qt::Key_Left)
+              << QKeySequence(Qt::META + Qt::Key_Semicolon);
+    QTest::newRow("Ctrl+Left; Meta+;") << "Ctrl+Left; Meta+;" << sequences;
+
+    sequences.clear();
+    sequences << QKeySequence(Qt::CTRL + Qt::Key_Left)
+              << QKeySequence();
+    QTest::newRow("Ctrl+Left; ") << "Ctrl+Left; " << sequences;
+
+    sequences.clear();
+    sequences << QKeySequence(Qt::CTRL + Qt::Key_Left)
+              << QKeySequence()
+              << QKeySequence(Qt::META + Qt::Key_A);
+    QTest::newRow("Ctrl+Left; ; Meta+A") << "Ctrl+Left; ; Meta+A" << sequences;
+
+    sequences.clear();
+    sequences << QKeySequence(Qt::CTRL + Qt::Key_Left)
+              << QKeySequence(Qt::Key_unknown)
+              << QKeySequence(Qt::META + Qt::Key_A);
+    QTest::newRow("Ctrl+Left; 4+3=2; Meta+A") << "Ctrl+Left; 4+3=2; Meta+A" << sequences;
+}
+
+void tst_QKeySequence::listFromString()
+{
+    QFETCH(QList<QKeySequence>, sequences);
+    QFETCH(QString, strSequences);
+
+    QCOMPARE(QKeySequence::listFromString(strSequences), sequences);
 }
 
 #if !defined (Q_OS_MAC) && !defined (Q_OS_WINCE)

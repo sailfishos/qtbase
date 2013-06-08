@@ -44,7 +44,7 @@
 
 #include "../qsqldatabase/tst_databases.h"
 
-const QString qtest(qTableName( "qtest", __FILE__ ));
+const QString qtest(qTableName("qtest", __FILE__, QSqlDatabase()));
 
 class tst_QSqlQuery : public QObject
 {
@@ -97,7 +97,7 @@ private slots:
     void record_sqlite();
     void finish_data() { generic_data(); }
     void finish();
-    void sqlite_finish_data() { generic_data(); }
+    void sqlite_finish_data() { generic_data("QSQLITE"); }
     void sqlite_finish();
     void nextResult_data() { generic_data(); }
     void nextResult();
@@ -107,14 +107,14 @@ private slots:
     void forwardOnly();
 
     // bug specific tests
-    void bitField_data() {generic_data("QTDS"); }
-    void bitField();
-    void nullBlob_data() { generic_data("QOCI"); }
-    void nullBlob();
+    void tds_bitField_data() { generic_data("QTDS"); }
+    void tds_bitField();
+    void oci_nullBlob_data() { generic_data("QOCI"); }
+    void oci_nullBlob();
     void blob_data() { generic_data(); }
     void blob();
-    void rawField_data() { generic_data("QOCI"); }
-    void rawField();
+    void oci_rawField_data() { generic_data("QOCI"); }
+    void oci_rawField();
     void precision_data() { generic_data(); }
     void precision();
     void nullResult_data() { generic_data(); }
@@ -131,8 +131,8 @@ private slots:
     void synonyms();
     void oraOutValues_data() { generic_data("QOCI"); }
     void oraOutValues();
-    void mysqlOutValues_data() { generic_data("QMYSQL"); }
-    void mysqlOutValues();
+    void mysql_outValues_data() { generic_data("QMYSQL"); }
+    void mysql_outValues();
     void oraClob_data() { generic_data("QOCI"); }
     void oraClob();
     void oraLong_data() { generic_data("QOCI"); }
@@ -163,8 +163,8 @@ private slots:
     void lastQuery();
     void bindBool_data() { generic_data(); }
     void bindBool();
-    void bindWithDoubleColonCastOperator_data() { generic_data(); }
-    void bindWithDoubleColonCastOperator();
+    void psql_bindWithDoubleColonCastOperator_data() { generic_data("QPSQL"); }
+    void psql_bindWithDoubleColonCastOperator();
     void queryOnInvalidDatabase_data() { generic_data(); }
     void queryOnInvalidDatabase();
     void createQueryOnClosedDatabase_data() { generic_data(); }
@@ -221,6 +221,9 @@ private slots:
     void QTBUG_16967(); //clean close
     void QTBUG_23895_data() { generic_data("QSQLITE"); }
     void QTBUG_23895(); //sqlite boolean type
+    void QTBUG_14904_data() { generic_data("QSQLITE"); }
+    void QTBUG_14904();
+
     void QTBUG_2192_data() { generic_data(); }
     void QTBUG_2192();
 
@@ -283,7 +286,7 @@ void tst_QSqlQuery::cleanup()
     QFETCH( QString, dbName );
     QSqlDatabase db = QSqlDatabase::database( dbName );
     CHECK_DATABASE( db );
-
+    const QSqlDriverPrivate::DBMSType dbType = tst_Databases::getDatabaseType(db);
     if ( QTest::currentTestFunction() == QLatin1String( "numRowsAffected" )
             || QTest::currentTestFunction() == QLatin1String( "transactions" )
             || QTest::currentTestFunction() == QLatin1String( "size" )
@@ -292,8 +295,7 @@ void tst_QSqlQuery::cleanup()
         populateTestTables( db );
     }
 
-    if ( QTest::currentTestFailed() && ( db.driverName().startsWith( "QOCI" )
-                                         || db.driverName().startsWith( "QODBC" ) ) ) {
+    if (QTest::currentTestFailed() && (dbType == QSqlDriverPrivate::Oracle || db.driverName().startsWith("QODBC"))) {
         //since Oracle ODBC totally craps out on error, we init again
         db.close();
         db.open();
@@ -312,91 +314,92 @@ void tst_QSqlQuery::generic_data(const QString& engine)
 
 void tst_QSqlQuery::dropTestTables( QSqlDatabase db )
 {
+    QSqlDriverPrivate::DBMSType dbType = tst_Databases::getDatabaseType(db);
     QStringList tablenames;
     // drop all the table in case a testcase failed
     tablenames <<  qtest
-               << qTableName( "qtest_null", __FILE__ )
-               << qTableName( "qtest_blob", __FILE__ )
-               << qTableName( "qtest_bittest", __FILE__ )
-               << qTableName( "qtest_nullblob", __FILE__ )
-               << qTableName( "qtest_rawtest", __FILE__ )
-               << qTableName( "qtest_precision", __FILE__ )
-               << qTableName( "qtest_prepare", __FILE__ )
-               << qTableName( "qtestj1", __FILE__ )
-               << qTableName( "qtestj2", __FILE__ )
-               << qTableName( "char1Select", __FILE__ )
-               << qTableName( "char1SU", __FILE__ )
-               << qTableName( "qxmltest", __FILE__ )
-               << qTableName( "qtest_exerr", __FILE__ )
-               << qTableName( "qtest_empty", __FILE__ )
-               << qTableName( "clobby", __FILE__ )
-               << qTableName( "bindtest", __FILE__ )
-               << qTableName( "more_results", __FILE__ )
-               << qTableName( "blobstest", __FILE__ )
-               << qTableName( "oraRowId", __FILE__ )
-               << qTableName( "qtest_batch", __FILE__ )
-               << qTableName("bug6421", __FILE__).toUpper()
-               << qTableName("bug5765", __FILE__)
-               << qTableName("bug6852", __FILE__)
-               << qTableName("bug21884", __FILE__)
-               << qTableName("bug23895", __FILE__)
-               << qTableName( "qtest_lockedtable", __FILE__ )
-               << qTableName( "Planet", __FILE__ )
-               << qTableName( "task_250026", __FILE__ )
-               << qTableName( "task_234422", __FILE__ )
-               << qTableName("test141895", __FILE__)
-               << qTableName("qtest_oraOCINumber", __FILE__)
-               << qTableName( "bug2192", __FILE__);
+               << qTableName("qtest_null", __FILE__, db)
+               << qTableName("qtest_blob", __FILE__, db)
+               << qTableName("qtest_bittest", __FILE__, db)
+               << qTableName("qtest_nullblob", __FILE__, db)
+               << qTableName("qtest_rawtest", __FILE__, db)
+               << qTableName("qtest_precision", __FILE__, db)
+               << qTableName("qtest_prepare", __FILE__, db)
+               << qTableName("qtestj1", __FILE__, db)
+               << qTableName("qtestj2", __FILE__, db)
+               << qTableName("char1Select", __FILE__, db)
+               << qTableName("char1SU", __FILE__, db)
+               << qTableName("qxmltest", __FILE__, db)
+               << qTableName("qtest_exerr", __FILE__, db)
+               << qTableName("qtest_empty", __FILE__, db)
+               << qTableName("clobby", __FILE__, db)
+               << qTableName("bindtest", __FILE__, db)
+               << qTableName("more_results", __FILE__, db)
+               << qTableName("blobstest", __FILE__, db)
+               << qTableName("oraRowId", __FILE__, db)
+               << qTableName("qtest_batch", __FILE__, db)
+               << qTableName("bug6421", __FILE__, db).toUpper()
+               << qTableName("bug5765", __FILE__, db)
+               << qTableName("bug6852", __FILE__, db)
+               << qTableName("bug21884", __FILE__, db)
+               << qTableName("bug23895", __FILE__, db)
+               << qTableName("qtest_lockedtable", __FILE__, db)
+               << qTableName("Planet", __FILE__, db)
+               << qTableName("task_250026", __FILE__, db)
+               << qTableName("task_234422", __FILE__, db)
+               << qTableName("test141895", __FILE__, db)
+               << qTableName("qtest_oraOCINumber", __FILE__, db)
+               << qTableName("bug2192", __FILE__, db);
 
-    if ( db.driverName().startsWith("QPSQL") )
-        tablenames << qTableName("task_233829", __FILE__);
+    if (dbType == QSqlDriverPrivate::PostgreSQL)
+        tablenames << qTableName("task_233829", __FILE__, db);
 
-    if ( db.driverName().startsWith("QSQLITE") )
-        tablenames << qTableName( "record_sqlite", __FILE__ );
+    if (dbType == QSqlDriverPrivate::SQLite)
+        tablenames << qTableName("record_sqlite", __FILE__, db);
 
-    if ( tst_Databases::isSqlServer( db ) || db.driverName().startsWith( "QOCI" ) )
-        tablenames << qTableName( "qtest_longstr", __FILE__ );
+    if (dbType == QSqlDriverPrivate::MSSqlServer || dbType == QSqlDriverPrivate::Oracle)
+        tablenames << qTableName("qtest_longstr", __FILE__, db);
 
-    if (tst_Databases::isSqlServer( db ))
-        db.exec("DROP PROCEDURE " + qTableName("test141895_proc", __FILE__));
+    if (dbType == QSqlDriverPrivate::MSSqlServer)
+        db.exec("DROP PROCEDURE " + qTableName("test141895_proc", __FILE__, db));
 
-    if (tst_Databases::isMySQL( db ))
-        db.exec("DROP PROCEDURE IF EXISTS "+qTableName("bug6852_proc", __FILE__));
+    if (dbType == QSqlDriverPrivate::MySqlServer)
+        db.exec("DROP PROCEDURE IF EXISTS "+ qTableName("bug6852_proc", __FILE__, db));
 
     tst_Databases::safeDropTables( db, tablenames );
 
-    if ( db.driverName().startsWith( "QOCI" ) ) {
+    if (dbType == QSqlDriverPrivate::Oracle) {
         QSqlQuery q( db );
-        q.exec( "DROP PACKAGE " + qTableName("pkg", __FILE__) );
+        q.exec("DROP PACKAGE " + qTableName("pkg", __FILE__, db));
     }
 }
 
 void tst_QSqlQuery::createTestTables( QSqlDatabase db )
 {
     QSqlQuery q( db );
-
-    if ( db.driverName().startsWith( "QMYSQL" ) )
+    QSqlDriverPrivate::DBMSType dbType = tst_Databases::getDatabaseType(db);
+    if (dbType == QSqlDriverPrivate::MySqlServer)
         // ### stupid workaround until we find a way to hardcode this
         // in the MySQL server startup script
         q.exec( "set table_type=innodb" );
-    else if(tst_Databases::isPostgreSQL(db))
+    else if (dbType == QSqlDriverPrivate::PostgreSQL)
         QVERIFY_SQL( q, exec("set client_min_messages='warning'"));
 
-    if(tst_Databases::isPostgreSQL(db))
+    if (dbType == QSqlDriverPrivate::PostgreSQL)
         QVERIFY_SQL( q, exec( "create table " + qtest + " (id serial NOT NULL, t_varchar varchar(20), t_char char(20), primary key(id)) WITH OIDS" ) );
     else
         QVERIFY_SQL( q, exec( "create table " + qtest + " (id int "+tst_Databases::autoFieldName(db) +" NOT NULL, t_varchar varchar(20), t_char char(20), primary key(id))" ) );
 
-    if ( tst_Databases::isSqlServer( db ) || db.driverName().startsWith( "QTDS" ) )
-        QVERIFY_SQL( q, exec( "create table " + qTableName( "qtest_null", __FILE__ ) + " (id int null, t_varchar varchar(20) null)" ) );
+    if (dbType == QSqlDriverPrivate::MSSqlServer || dbType == QSqlDriverPrivate::Sybase)
+        QVERIFY_SQL(q, exec("create table " + qTableName("qtest_null", __FILE__, db) + " (id int null, t_varchar varchar(20) null)"));
     else
-        QVERIFY_SQL( q, exec( "create table " + qTableName( "qtest_null", __FILE__ ) + " (id int, t_varchar varchar(20))" ) );
+        QVERIFY_SQL(q, exec("create table " + qTableName("qtest_null", __FILE__, db) + " (id int, t_varchar varchar(20))"));
 }
 
 void tst_QSqlQuery::populateTestTables( QSqlDatabase db )
 {
     QSqlQuery q( db );
-    const QString qtest_null(qTableName( "qtest_null", __FILE__ ));
+    const QString qtest_null(qTableName( "qtest_null", __FILE__, db));
     q.exec( "delete from " + qtest );
     QVERIFY_SQL( q, exec( "insert into " + qtest + " values (1, 'VarChar1', 'Char1')" ) );
     QVERIFY_SQL( q, exec( "insert into " + qtest + " values (2, 'VarChar2', 'Char2')" ) );
@@ -420,14 +423,14 @@ void tst_QSqlQuery::char1Select()
 
     {
         QSqlQuery q( db );
-        const QString tbl = qTableName("char1Select", __FILE__);
+        const QString tbl = qTableName("char1Select", __FILE__, db);
         q.exec( "drop table " + tbl);
         QVERIFY_SQL(q, exec("create table " + tbl + " (id char(1))"));
         QVERIFY_SQL(q, exec("insert into " + tbl + " values ('a')"));
         QVERIFY_SQL(q, exec("select * from " + tbl));
         QVERIFY( q.next() );
-
-        if ( db.driverName().startsWith( "QIBASE" ) )
+        QSqlDriverPrivate::DBMSType dbType = tst_Databases::getDatabaseType(db);
+        if (dbType == QSqlDriverPrivate::Interbase)
             QCOMPARE( q.value( 0 ).toString().left( 1 ), QString( "a" ) );
         else
             QCOMPARE( q.value( 0 ).toString(), QString( "a" ) );
@@ -441,8 +444,8 @@ void tst_QSqlQuery::char1SelectUnicode()
     QFETCH( QString, dbName );
     QSqlDatabase db = QSqlDatabase::database( dbName );
     CHECK_DATABASE( db );
-
-    if(db.driverName().startsWith("QDB2"))
+    QSqlDriverPrivate::DBMSType dbType = tst_Databases::getDatabaseType(db);
+    if (dbType == QSqlDriverPrivate::DB2)
         QSKIP("Needs someone with more Unicode knowledge than I have to fix");
 
     if ( db.driver()->hasFeature( QSqlDriver::Unicode ) ) {
@@ -453,18 +456,16 @@ void tst_QSqlQuery::char1SelectUnicode()
             QSKIP( "Test requires MySQL >= 5.0");
 
         QString createQuery;
-        const QString char1SelectUnicode(qTableName( "char1SU", __FILE__ ));
+        const QString char1SelectUnicode(qTableName("char1SU", __FILE__, db));
 
-        if ( tst_Databases::isSqlServer( db ) )
+        if (dbType == QSqlDriverPrivate::MSSqlServer)
             createQuery = "create table " + char1SelectUnicode + "(id nchar(1))";
-        else if ( db.driverName().startsWith( "QDB2" )
-                  || db.driverName().startsWith( "QOCI" )
-                  || db.driverName().startsWith( "QPSQL" ) )
+        else if (dbType == QSqlDriverPrivate::DB2 || dbType == QSqlDriverPrivate::Oracle || dbType == QSqlDriverPrivate::PostgreSQL)
             createQuery = "create table " + char1SelectUnicode + " (id char(3))";
-        else if ( db.driverName().startsWith( "QIBASE" ) )
+        else if (dbType == QSqlDriverPrivate::Interbase)
             createQuery = "create table " + char1SelectUnicode +
                           " (id char(1) character set unicode_fss)";
-        else if ( db.driverName().startsWith( "QMYSQL" ) )
+        else if (dbType == QSqlDriverPrivate::MySqlServer)
             createQuery = "create table " + char1SelectUnicode + " (id char(1)) "
                           "default character set 'utf8'";
         else
@@ -498,7 +499,7 @@ void tst_QSqlQuery::oraRowId()
     QFETCH( QString, dbName );
     QSqlDatabase db = QSqlDatabase::database( dbName );
     CHECK_DATABASE( db );
-    const QString oraRowId(qTableName("oraRowId", __FILE__));
+    const QString oraRowId(qTableName("oraRowId", __FILE__, db));
 
     QSqlQuery q( db );
     QVERIFY_SQL( q, exec( "select rowid from " + qtest ) );
@@ -528,17 +529,17 @@ void tst_QSqlQuery::oraRowId()
     QCOMPARE( q.value( 0 ).toString(), QString( "b" ) );
 }
 
-void tst_QSqlQuery::mysqlOutValues()
+void tst_QSqlQuery::mysql_outValues()
 {
     QFETCH( QString, dbName );
     QSqlDatabase db = QSqlDatabase::database( dbName );
     CHECK_DATABASE( db );
-    const QString hello(qTableName( "hello", __FILE__ )), qtestproc(qTableName( "qtestproc", __FILE__ ));
+    if (tst_Databases::getMySqlVersion(db).section(QChar('.'), 0, 0 ).toInt() < 5)
+        QSKIP( "Test requires MySQL >= 5.0");
+
+    const QString hello(qTableName("hello", __FILE__, db)), qtestproc(qTableName("qtestproc", __FILE__, db));
 
     QSqlQuery q( db );
-
-    if ( db.driverName().startsWith( "QMYSQL" ) && tst_Databases::getMySqlVersion( db ).section( QChar('.'), 0, 0 ).toInt()<5 )
-        QSKIP( "Test requires MySQL >= 5.0");
 
     q.exec( "drop function " + hello );
 
@@ -590,10 +591,11 @@ void tst_QSqlQuery::bindBool()
     QSqlDatabase db = QSqlDatabase::database( dbName );
     CHECK_DATABASE( db );
     QSqlQuery q(db);
+    QSqlDriverPrivate::DBMSType dbType = tst_Databases::getDatabaseType(db);
+    const QString tableName(qTableName("bindBool", __FILE__, db));
 
-    const QString tableName(qTableName( "bindBool", __FILE__ ));
     q.exec("DROP TABLE " + tableName);
-    QString colType = db.driverName().startsWith("QPSQL") ? QLatin1String("BOOLEAN") : QLatin1String("INT");
+    QString colType = dbType == QSqlDriverPrivate::PostgreSQL ? QLatin1String("BOOLEAN") : QLatin1String("INT");
     QVERIFY_SQL(q, exec("CREATE TABLE " + tableName + " (id INT, flag " + colType + " NOT NULL, PRIMARY KEY(id))"));
 
     for (int i = 0; i < 2; ++i) {
@@ -619,7 +621,7 @@ void tst_QSqlQuery::oraOutValues()
     QFETCH( QString, dbName );
     QSqlDatabase db = QSqlDatabase::database( dbName );
     CHECK_DATABASE( db );
-    const QString tst_outValues(qTableName("tst_outValues", __FILE__));
+    const QString tst_outValues(qTableName("tst_outValues", __FILE__, db));
 
     if ( !db.driver()->hasFeature( QSqlDriver::PreparedQueries ) )
         QSKIP( "Test requires prepared query support");
@@ -715,7 +717,7 @@ void tst_QSqlQuery::oraClob()
     QFETCH( QString, dbName );
     QSqlDatabase db = QSqlDatabase::database( dbName );
     CHECK_DATABASE( db );
-    const QString clobby(qTableName("clobby", __FILE__));
+    const QString clobby(qTableName("clobby", __FILE__, db));
 
     QSqlQuery q( db );
 
@@ -768,16 +770,16 @@ void tst_QSqlQuery::storedProceduresIBase()
     CHECK_DATABASE( db );
 
     QSqlQuery q( db );
-    q.exec( "drop procedure " + qTableName( "TESTPROC", __FILE__ ) );
+    q.exec("drop procedure " + qTableName("TESTPROC", __FILE__, db));
 
-    QVERIFY_SQL( q, exec( "create procedure " + qTableName( "TESTPROC", __FILE__ ) +
+    QVERIFY_SQL(q, exec("create procedure " + qTableName("TESTPROC", __FILE__, db) +
                             " RETURNS (x integer, y varchar(20)) "
                             "AS BEGIN "
                             "  x = 42; "
                             "  y = 'Hello Anders'; "
                             "END" ) );
 
-    QVERIFY_SQL( q, prepare( "execute procedure " + qTableName( "TestProc", __FILE__ ) ) );
+    QVERIFY_SQL(q, prepare("execute procedure " + qTableName("TestProc", __FILE__, db)));
     QVERIFY_SQL( q, exec() );
 
     // check for a valid result set
@@ -794,7 +796,7 @@ void tst_QSqlQuery::storedProceduresIBase()
     // the second next shall fail
     QVERIFY( !q.next() );
 
-    q.exec( "drop procedure " + qTableName( "TestProc", __FILE__ ) );
+    q.exec("drop procedure " + qTableName("TestProc", __FILE__, db));
 }
 
 void tst_QSqlQuery::outValuesDB2()
@@ -810,8 +812,8 @@ void tst_QSqlQuery::outValuesDB2()
 
     q.setForwardOnly( true );
 
-    q.exec( "drop procedure " + qTableName( "tst_outValues", __FILE__ ) ); //non-fatal
-    QVERIFY_SQL( q, exec( "CREATE PROCEDURE " + qTableName( "tst_outValues", __FILE__ ) +
+    q.exec("drop procedure " + qTableName("tst_outValues", __FILE__, db)); //non-fatal
+    QVERIFY_SQL( q, exec( "CREATE PROCEDURE " + qTableName("tst_outValues", __FILE__, db) +
                             " (OUT x int, OUT x2 double, OUT x3 char(20))\n"
                             "LANGUAGE SQL\n"
                             "P1: BEGIN\n"
@@ -820,7 +822,7 @@ void tst_QSqlQuery::outValuesDB2()
                             " SET x3 = 'Homer';\n"
                             "END P1" ) );
 
-    QVERIFY_SQL( q, prepare( "call " + qTableName( "tst_outValues", __FILE__ ) + "(?, ?, ?)" ) );
+    QVERIFY_SQL(q, prepare("call " + qTableName("tst_outValues", __FILE__, db) + "(?, ?, ?)"));
 
     q.addBindValue( 0, QSql::Out );
     q.addBindValue( 0.0, QSql::Out );
@@ -838,7 +840,7 @@ void tst_QSqlQuery::outValues()
     QFETCH( QString, dbName );
     QSqlDatabase db = QSqlDatabase::database( dbName );
     CHECK_DATABASE( db );
-    const QString tst_outValues(qTableName("tst_outValues", __FILE__));
+    const QString tst_outValues(qTableName("tst_outValues", __FILE__, db));
 
     if ( !db.driver()->hasFeature( QSqlDriver::PreparedQueries ) )
         QSKIP( "Test requires prepared query support");
@@ -846,14 +848,14 @@ void tst_QSqlQuery::outValues()
     QSqlQuery q( db );
 
     q.setForwardOnly( true );
-
-    if ( db.driverName().startsWith( "QOCI" ) ) {
+    QSqlDriverPrivate::DBMSType dbType = tst_Databases::getDatabaseType(db);
+    if (dbType == QSqlDriverPrivate::Oracle) {
         QVERIFY_SQL( q, exec( "create or replace procedure " + tst_outValues + "(x out int) is\n"
                                 "begin\n"
                                 "    x := 42;\n"
                                 "end;\n" ) );
         QVERIFY( q.prepare( "call " + tst_outValues + "(?)" ) );
-    } else if ( db.driverName().startsWith( "QDB2" ) ) {
+    } else if (dbType == QSqlDriverPrivate::DB2) {
         q.exec( "drop procedure " + tst_outValues ); //non-fatal
         QVERIFY_SQL( q, exec( "CREATE PROCEDURE " + tst_outValues + " (OUT x int)\n"
                                 "LANGUAGE SQL\n"
@@ -861,7 +863,7 @@ void tst_QSqlQuery::outValues()
                                 " SET x = 42;\n"
                                 "END P1" ) );
         QVERIFY( q.prepare( "call " + tst_outValues + "(?)" ) );
-    } else if ( tst_Databases::isSqlServer( db ) ) {
+    } else if (dbType == QSqlDriverPrivate::MSSqlServer) {
         q.exec( "drop procedure " + tst_outValues );  //non-fatal
         QVERIFY_SQL( q, exec( "create procedure " + tst_outValues + " (@x int out) as\n"
                                 "begin\n"
@@ -902,11 +904,11 @@ void tst_QSqlQuery::blob()
 
     q.setForwardOnly( true );
 
-    QString queryString = QString( "create table " + qTableName( "qtest_blob", __FILE__ ) +
+    QString queryString = QString("create table " + qTableName("qtest_blob", __FILE__, db) +
                                    " (id int not null primary key, t_blob %1)" ).arg( tst_Databases::blobTypeName( db, BLOBSIZE ) );
     QVERIFY_SQL( q, exec( queryString ) );
 
-    QVERIFY_SQL( q, prepare( "insert into " + qTableName( "qtest_blob", __FILE__ ) + " (id, t_blob) values (?, ?)" ) );
+    QVERIFY_SQL(q, prepare("insert into " + qTableName("qtest_blob", __FILE__, db) + " (id, t_blob) values (?, ?)"));
 
     for ( i = 0; i < BLOBCOUNT; ++i ) {
         q.addBindValue( i );
@@ -914,7 +916,7 @@ void tst_QSqlQuery::blob()
         QVERIFY_SQL( q, exec() );
     }
 
-    QVERIFY_SQL( q, exec( "select * from " + qTableName( "qtest_blob", __FILE__ ) ) );
+    QVERIFY_SQL(q, exec("select * from " + qTableName("qtest_blob", __FILE__, db)));
 
     for ( i = 0; i < BLOBCOUNT; ++i ) {
         QVERIFY( q.next() );
@@ -935,7 +937,7 @@ void tst_QSqlQuery::value()
     QFETCH( QString, dbName );
     QSqlDatabase db = QSqlDatabase::database( dbName );
     CHECK_DATABASE( db );
-
+    const QSqlDriverPrivate::DBMSType dbType = tst_Databases::getDatabaseType(db);
     QSqlQuery q( db );
     QVERIFY_SQL( q, exec( "select id, t_varchar, t_char from " + qtest + " order by id" ) );
     int i = 1;
@@ -944,14 +946,14 @@ void tst_QSqlQuery::value()
         QCOMPARE( q.value( 0 ).toInt(), i );
         QCOMPARE( q.value( "id" ).toInt(), i );
 
-        if ( db.driverName().startsWith( "QIBASE" ) )
+        if (dbType == QSqlDriverPrivate::Interbase)
             QVERIFY( q.value( 1 ).toString().startsWith( "VarChar" + QString::number( i ) ) );
         else if ( q.value( 1 ).toString().right( 1 ) == " " )
             QCOMPARE( q.value( 1 ).toString(), ( "VarChar" + QString::number( i ) + "            " ) );
         else
             QCOMPARE( q.value( 1 ).toString(), ( "VarChar" + QString::number( i ) ) );
 
-        if ( db.driverName().startsWith( "QIBASE" ) )
+        if (dbType == QSqlDriverPrivate::Interbase)
             QVERIFY( q.value( 2 ).toString().startsWith( "Char" + QString::number( i ) ) );
         else if ( q.value( 2 ).toString().right( 1 ) != " " )
             QCOMPARE( q.value( 2 ).toString(), ( "Char" + QString::number( i ) ) );
@@ -1021,6 +1023,10 @@ void tst_QSqlQuery::isActive()
     QVERIFY( q.isActive() );
 
     QVERIFY_SQL( q, exec( "update " + qtest + " set id = 42 where id = 41" ) );
+
+    QVERIFY( q.isActive() );
+
+    QVERIFY_SQL( q, exec( "delete from " + qtest + " where id = 42" ) );
 
     QVERIFY( q.isActive() );
 
@@ -1375,7 +1381,7 @@ void tst_QSqlQuery::isNull()
     CHECK_DATABASE( db );
 
     QSqlQuery q( db );
-    QVERIFY_SQL( q, exec( "select id, t_varchar from " + qTableName( "qtest_null", __FILE__ ) + " order by id" ) );
+    QVERIFY_SQL(q, exec("select id, t_varchar from " + qTableName("qtest_null", __FILE__, db) + " order by id"));
     QVERIFY( q.next() );
     QVERIFY( !q.isNull( 0 ) );
     QVERIFY( q.isNull( 1 ) );
@@ -1390,24 +1396,21 @@ void tst_QSqlQuery::isNull()
 }
 
 /*! TDS specific BIT field test */
-void tst_QSqlQuery::bitField()
+void tst_QSqlQuery::tds_bitField()
 {
     QFETCH( QString, dbName );
     QSqlDatabase db = QSqlDatabase::database( dbName );
     CHECK_DATABASE( db );
-
-    if ( !db.driverName().startsWith( "QTDS" ) )
-        QSKIP( "TDS specific test");
-
+    const QString tableName = qTableName("qtest_bittest", __FILE__, db);
     QSqlQuery q( db );
 
-    QVERIFY_SQL( q, exec( "create table " + qTableName( "qtest_bittest", __FILE__ ) + " (bitty bit)" ) );
+    QVERIFY_SQL(q, exec("create table " + tableName + " (bitty bit)"));
 
-    QVERIFY_SQL( q, exec( "insert into " + qTableName( "qtest_bittest", __FILE__ ) + " values (0)" ) );
+    QVERIFY_SQL(q, exec("insert into " + tableName + " values (0)"));
 
-    QVERIFY_SQL( q, exec( "insert into " + qTableName( "qtest_bittest", __FILE__ ) + " values (1)" ) );
+    QVERIFY_SQL(q, exec("insert into " + tableName + " values (1)"));
 
-    QVERIFY_SQL( q, exec( "select bitty from " + qTableName( "qtest_bittest", __FILE__ ) ) );
+    QVERIFY_SQL(q, exec("select bitty from " + tableName));
 
     QVERIFY( q.next() );
 
@@ -1420,12 +1423,12 @@ void tst_QSqlQuery::bitField()
 
 
 /*! Oracle specific NULL BLOB test */
-void tst_QSqlQuery::nullBlob()
+void tst_QSqlQuery::oci_nullBlob()
 {
     QFETCH( QString, dbName );
     QSqlDatabase db = QSqlDatabase::database( dbName );
     CHECK_DATABASE( db );
-    const QString qtest_nullblob(qTableName("qtest_nullblob", __FILE__));
+    const QString qtest_nullblob(qTableName("qtest_nullblob", __FILE__, db));
 
     QSqlQuery q( db );
     QVERIFY_SQL( q, exec( "create table " + qtest_nullblob + " (id int primary key, bb blob)" ) );
@@ -1450,12 +1453,12 @@ void tst_QSqlQuery::nullBlob()
 }
 
 /* Oracle specific RAW field test */
-void tst_QSqlQuery::rawField()
+void tst_QSqlQuery::oci_rawField()
 {
     QFETCH( QString, dbName );
     QSqlDatabase db = QSqlDatabase::database( dbName );
     CHECK_DATABASE( db );
-    const QString qtest_rawtest(qTableName("qtest_rawtest", __FILE__));
+    const QString qtest_rawtest(qTableName("qtest_rawtest", __FILE__, db));
 
     QSqlQuery q( db );
     q.setForwardOnly( true );
@@ -1480,12 +1483,12 @@ void tst_QSqlQuery::precision()
     QFETCH( QString, dbName );
     QSqlDatabase db = QSqlDatabase::database( dbName );
     CHECK_DATABASE( db );
-    const QString qtest_precision(qTableName( "qtest_precision", __FILE__ ));
+    const QSqlDriverPrivate::DBMSType dbType = tst_Databases::getDatabaseType(db);
+    if (dbType == QSqlDriverPrivate::Interbase)
+        QSKIP("DB unable to store high precision");
 
+    const QString qtest_precision(qTableName("qtest_precision", __FILE__, db));
     static const char* precStr = "1.2345678901234567891";
-
-    if ( db.driverName().startsWith( "QIBASE" ) )
-        QSKIP( "DB unable to store high precision");
 
     {
         // need a new scope for SQLITE
@@ -1511,10 +1514,10 @@ void tst_QSqlQuery::precision()
                 i++;
 
             // MySQL and TDS have crappy precisions by default
-            if ( db.driverName().startsWith( "QMYSQL" ) ) {
+            if (dbType == QSqlDriverPrivate::MySqlServer) {
                 if ( i < 17 )
                     QWARN( "MySQL didn't return the right precision" );
-            } else if ( db.driverName().startsWith( "QTDS" ) ) {
+            } else if (dbType == QSqlDriverPrivate::Sybase) {
                 if ( i < 18 )
                     QWARN( "TDS didn't return the right precision" );
             } else {
@@ -1556,14 +1559,14 @@ void tst_QSqlQuery::transaction()
     QFETCH( QString, dbName );
     QSqlDatabase db = QSqlDatabase::database( dbName );
     CHECK_DATABASE( db );
-
+    const QSqlDriverPrivate::DBMSType dbType = tst_Databases::getDatabaseType(db);
     if ( !db.driver()->hasFeature( QSqlDriver::Transactions ) )
         QSKIP( "DBMS not transaction capable");
 
     // this is the standard SQL
     QString startTransactionStr( "start transaction" );
 
-    if ( db.driverName().startsWith( "QMYSQL" ) )
+    if (dbType == QSqlDriverPrivate::MySqlServer)
         startTransactionStr = "begin work";
 
     QSqlQuery q( db );
@@ -1601,7 +1604,7 @@ void tst_QSqlQuery::transaction()
     QCOMPARE( q.value( 0 ).toInt(), 41 );
 
     if ( !q.exec( "rollback" ) ) {
-        if ( db.driverName().startsWith( "QMYSQL" ) ) {
+        if (dbType == QSqlDriverPrivate::MySqlServer) {
             qDebug( "MySQL: %s", qPrintable(tst_Databases::printError( q.lastError() ) ));
             QSKIP( "MySQL transaction failed "); //non-fatal
         } else
@@ -1639,12 +1642,11 @@ void tst_QSqlQuery::joins()
     QFETCH( QString, dbName );
     QSqlDatabase db = QSqlDatabase::database( dbName );
     CHECK_DATABASE( db );
-    const QString qtestj1(qTableName("qtestj1", __FILE__)), qtestj2(qTableName("qtestj2", __FILE__));
+    const QSqlDriverPrivate::DBMSType dbType = tst_Databases::getDatabaseType(db);
+    const QString qtestj1(qTableName("qtestj1", __FILE__, db)), qtestj2(qTableName("qtestj2", __FILE__, db));
 
-    if ( db.driverName().startsWith( "QOCI" )
-            || db.driverName().startsWith( "QTDS" )
-            || db.driverName().startsWith( "QODBC" )
-            || db.driverName().startsWith( "QIBASE" ) )
+    if (dbType == QSqlDriverPrivate::Oracle || dbType == QSqlDriverPrivate::Sybase
+         || dbType == QSqlDriverPrivate::Interbase || db.driverName().startsWith("QODBC"))
         // Oracle broken beyond recognition - cannot outer join on more than
         // one table.
         QSKIP( "DBMS cannot understand standard SQL");
@@ -1724,11 +1726,12 @@ void tst_QSqlQuery::prepare_bind_exec()
     QFETCH( QString, dbName );
     QSqlDatabase db = QSqlDatabase::database( dbName );
     CHECK_DATABASE( db );
-    const QString qtest_prepare(qTableName("qtest_prepare", __FILE__));
+    const QSqlDriverPrivate::DBMSType dbType = tst_Databases::getDatabaseType(db);
+    const QString qtest_prepare(qTableName("qtest_prepare", __FILE__, db));
 
-    if(db.driverName().startsWith("QIBASE") && (db.databaseName() == "silence.nokia.troll.no:c:\\ibase\\testdb_ascii" || db.databaseName() == "/opt/interbase/qttest.gdb"))
+    if (dbType == QSqlDriverPrivate::Interbase && (db.databaseName() == "silence.nokia.troll.no:c:\\ibase\\testdb_ascii" || db.databaseName() == "/opt/interbase/qttest.gdb"))
         QSKIP("Can't transliterate extended unicode to ascii");
-    if(db.driverName().startsWith("QDB2"))
+    if (dbType == QSqlDriverPrivate::DB2)
         QSKIP("Needs someone with more Unicode knowledge than I have to fix");
 
     {
@@ -1745,13 +1748,13 @@ void tst_QSqlQuery::prepare_bind_exec()
             useUnicode = false;
 
         QString createQuery;
-
-        if(tst_Databases::isPostgreSQL(db))
+        QSqlDriverPrivate::DBMSType dbType = tst_Databases::getDatabaseType(db);
+        if (dbType == QSqlDriverPrivate::PostgreSQL)
             QVERIFY_SQL( q, exec("set client_min_messages='warning'"));
 
-        if ( tst_Databases::isSqlServer( db ) || db.driverName().startsWith( "QTDS" ) )
+        if (dbType == QSqlDriverPrivate::MSSqlServer || dbType == QSqlDriverPrivate::Sybase)
             createQuery = "create table " + qtest_prepare + " (id int primary key, name nvarchar(200) null, name2 nvarchar(200) null)";
-        else if ( tst_Databases::isMySQL(db) && useUnicode )
+        else if (dbType == QSqlDriverPrivate::MySqlServer && useUnicode)
             createQuery = "create table " + qtest_prepare + " (id int not null primary key, name varchar(200) character set utf8, name2 varchar(200) character set utf8)";
         else
             createQuery = "create table " + qtest_prepare + " (id int not null primary key, name varchar(200), name2 varchar(200))";
@@ -2019,14 +2022,15 @@ void tst_QSqlQuery::sqlServerLongStrings()
     QSqlDatabase db = QSqlDatabase::database( dbName );
     CHECK_DATABASE( db );
 
-    if ( !tst_Databases::isSqlServer( db ) )
+    QSqlDriverPrivate::DBMSType dbType = tst_Databases::getDatabaseType(db);
+    if (dbType != QSqlDriverPrivate::MSSqlServer)
         QSKIP( "SQL Server specific test");
 
     QSqlQuery q( db );
 
-    QVERIFY_SQL( q, exec( "CREATE TABLE " + qTableName( "qtest_longstr", __FILE__ ) + " (id int primary key, longstring ntext)" ) );
+    QVERIFY_SQL(q, exec("CREATE TABLE " + qTableName("qtest_longstr", __FILE__, db) + " (id int primary key, longstring ntext)"));
 
-    QVERIFY_SQL( q, prepare( "INSERT INTO " + qTableName( "qtest_longstr", __FILE__ ) + " VALUES (?, ?)" ) );
+    QVERIFY_SQL(q, prepare("INSERT INTO " + qTableName("qtest_longstr", __FILE__, db) + " VALUES (?, ?)"));
 
     q.addBindValue( 0 );
 
@@ -2044,7 +2048,7 @@ void tst_QSqlQuery::sqlServerLongStrings()
 
     QVERIFY_SQL( q, exec() );
 
-    QVERIFY_SQL( q, exec( "select * from " + qTableName( "qtest_longstr", __FILE__ ) ) );
+    QVERIFY_SQL(q, exec("select * from " + qTableName( "qtest_longstr", __FILE__, db)));
 
     QVERIFY_SQL( q, next() );
 
@@ -2064,7 +2068,7 @@ void tst_QSqlQuery::invalidQuery()
     QFETCH( QString, dbName );
     QSqlDatabase db = QSqlDatabase::database( dbName );
     CHECK_DATABASE( db );
-
+    const QSqlDriverPrivate::DBMSType dbType = tst_Databases::getDatabaseType(db);
     QSqlQuery q( db );
 
     QVERIFY( !q.exec() );
@@ -2074,7 +2078,7 @@ void tst_QSqlQuery::invalidQuery()
     QVERIFY( !q.next() );
     QVERIFY( !q.isActive() );
 
-    if ( !db.driverName().startsWith( "QOCI" ) && !db.driverName().startsWith( "QDB2" ) && !db.driverName().startsWith( "QODBC" ) ) {
+    if (dbType != QSqlDriverPrivate::Oracle && dbType != QSqlDriverPrivate::DB2 && !db.driverName().startsWith("QODBC")) {
         // oracle and db2 just prepares everything without complaining
         if ( db.driver()->hasFeature( QSqlDriver::PreparedQueries ) )
             QVERIFY( !q.prepare( "blahfasel" ) );
@@ -2096,7 +2100,7 @@ void tst_QSqlQuery::batchExec()
         QSKIP( "Database can't do BatchOperations");
 
     QSqlQuery q( db );
-    const QString tableName = qTableName( "qtest_batch", __FILE__ );
+    const QString tableName = qTableName("qtest_batch", __FILE__, db);
 
     QVERIFY_SQL( q, exec( "create table " + tableName + " (id int, name varchar(20), dt date, num numeric(8, 4))" ) );
     QVERIFY_SQL( q, prepare( "insert into " + tableName + " (id, name, dt, num) values (?, ?, ?, ?)" ) );
@@ -2240,9 +2244,9 @@ void tst_QSqlQuery::record_sqlite()
 
     QSqlQuery q( db );
 
-    QVERIFY_SQL( q, exec( "create table "+qTableName( "record_sqlite", __FILE__ )+"(id integer primary key, name varchar, title int)" ) );
+    QVERIFY_SQL(q, exec("create table " + qTableName("record_sqlite", __FILE__, db) + "(id integer primary key, name varchar, title int)"));
 
-    QSqlRecord rec = db.record( qTableName( "record_sqlite", __FILE__ ) );
+    QSqlRecord rec = db.record(qTableName("record_sqlite", __FILE__, db));
 
     QCOMPARE( rec.count(), 3 );
     QCOMPARE( rec.field( 0 ).type(), QVariant::Int );
@@ -2250,7 +2254,7 @@ void tst_QSqlQuery::record_sqlite()
     QCOMPARE( rec.field( 2 ).type(), QVariant::Int );
 
     /* important - select from an empty table */
-    QVERIFY_SQL( q, exec( "select id, name, title from "+qTableName( "record_sqlite", __FILE__ ) ) );
+    QVERIFY_SQL(q, exec("select id, name, title from " + qTableName("record_sqlite", __FILE__, db)));
 
     rec = q.record();
     QCOMPARE( rec.count(), 3 );
@@ -2269,13 +2273,13 @@ void tst_QSqlQuery::oraLong()
 
     QString aLotOfText( 127000, QLatin1Char( 'H' ) );
 
-    QVERIFY_SQL( q, exec( "create table " + qTableName( "qtest_longstr", __FILE__ ) + " (id int primary key, astr long)" ) );
-    QVERIFY_SQL( q, prepare( "insert into " + qTableName( "qtest_longstr", __FILE__ ) + " (id, astr) values (?, ?)" ) );
+    QVERIFY_SQL(q, exec("create table " + qTableName("qtest_longstr", __FILE__, db) + " (id int primary key, astr long)"));
+    QVERIFY_SQL(q, prepare("insert into " + qTableName("qtest_longstr", __FILE__, db) + " (id, astr) values (?, ?)"));
     q.addBindValue( 1 );
     q.addBindValue( aLotOfText );
     QVERIFY_SQL( q, exec() );
 
-    QVERIFY_SQL( q, exec( "select id,astr from " + qTableName( "qtest_longstr", __FILE__ ) ) );
+    QVERIFY_SQL(q, exec("select id,astr from " + qTableName("qtest_longstr", __FILE__, db)));
 
     QVERIFY( q.next() );
     QCOMPARE( q.value( 0 ).toInt(), 1 );
@@ -2290,7 +2294,7 @@ void tst_QSqlQuery::execErrorRecovery()
 
     QSqlQuery q( db );
 
-    const QString tbl = qTableName("qtest_exerr", __FILE__);
+    const QString tbl = qTableName("qtest_exerr", __FILE__, db);
     q.exec("drop table " + tbl);
     QVERIFY_SQL(q, exec("create table " + tbl + " (id int not null primary key)"));
     QVERIFY_SQL(q, prepare("insert into " + tbl + " values (?)" ));
@@ -2336,18 +2340,13 @@ void tst_QSqlQuery::lastQuery()
     QCOMPARE( q.executedQuery(), sql );
 }
 
-void tst_QSqlQuery::bindWithDoubleColonCastOperator()
+void tst_QSqlQuery::psql_bindWithDoubleColonCastOperator()
 {
     QFETCH( QString, dbName );
     QSqlDatabase db = QSqlDatabase::database( dbName );
     CHECK_DATABASE( db );
 
-    // Only PostgreSQL support the double-colon cast operator
-
-    if ( !db.driverName().startsWith( "QPSQL" ) )
-        QSKIP( "Test requires PostgreSQL");
-
-    const QString tablename(qTableName( "bindtest", __FILE__ ));
+    const QString tablename(qTableName("bindtest", __FILE__, db));
 
     QSqlQuery q( db );
 
@@ -2406,13 +2405,11 @@ void tst_QSqlQuery::createQueryOnClosedDatabase()
     QFETCH( QString, dbName );
     QSqlDatabase db = QSqlDatabase::database( dbName );
     CHECK_DATABASE( db );
-
+    const QSqlDriverPrivate::DBMSType dbType = tst_Databases::getDatabaseType(db);
     // Only supported by these drivers
 
-    if ( !db.driverName().startsWith( "QPSQL" )
-            && !db.driverName().startsWith( "QOCI" )
-            && !db.driverName().startsWith( "QMYSQL" )
-            && !db.driverName().startsWith( "QDB2" ) )
+    if (dbType != QSqlDriverPrivate::PostgreSQL && dbType != QSqlDriverPrivate::Oracle
+            && dbType != QSqlDriverPrivate::MySqlServer && dbType != QSqlDriverPrivate::DB2)
         QSKIP( "Test is specific for PostgreSQL, Oracle, MySql and DB2");
 
     db.close();
@@ -2498,8 +2495,6 @@ void tst_QSqlQuery::sqlite_finish()
     QFETCH( QString, dbName );
     QSqlDatabase db = QSqlDatabase::database( dbName );
     CHECK_DATABASE( db );
-    if (db.driverName() != QLatin1String("QSQLITE"))
-        QSKIP("Sqlite3 specific test");
 
     if ( db.databaseName().startsWith( ':' ) )
         QSKIP( "This test requires a database on the filesystem, not in-memory");
@@ -2509,7 +2504,7 @@ void tst_QSqlQuery::sqlite_finish()
         db2.setDatabaseName( db.databaseName() );
         QVERIFY_SQL( db2, open() );
 
-        const QString tableName(qTableName( "qtest_lockedtable", __FILE__ ));
+        const QString tableName(qTableName("qtest_lockedtable", __FILE__, db));
         QSqlQuery q( db );
 
         tst_Databases::safeDropTable( db, tableName );
@@ -2542,7 +2537,7 @@ void tst_QSqlQuery::nextResult()
     QFETCH( QString, dbName );
     QSqlDatabase db = QSqlDatabase::database( dbName );
     CHECK_DATABASE( db );
-
+    const QSqlDriverPrivate::DBMSType dbType = tst_Databases::getDatabaseType(db);
     if ( !db.driver()->hasFeature( QSqlDriver::MultipleResultSets ) || !db.driver()->hasFeature( QSqlDriver::BatchOperations ) )
         QSKIP( "DBMS does not support multiple result sets or batch operations");
 
@@ -2551,15 +2546,7 @@ void tst_QSqlQuery::nextResult()
     if ( db.driverName().startsWith( "QMYSQL" ) && tst_Databases::getMySqlVersion( db ).section( QChar('.'), 0, 0 ).toInt()<5 )
         QSKIP( "Test requires MySQL >= 5.0");
 
-    enum DriverType { ODBC, MYSQL, DB2 };
-    DriverType driverType = ODBC;
-
-    if ( db.driverName().startsWith( "QMYSQL" ) )
-        driverType = MYSQL;
-    else if ( db.driverName().startsWith( "QDB2" ) )
-        driverType = DB2;
-
-    const QString tableName(qTableName( "more_results", __FILE__ ));
+    const QString tableName(qTableName("more_results", __FILE__, db));
 
     QVERIFY_SQL( q, exec( "CREATE TABLE " + tableName + " (id integer, text varchar(20), num numeric(6, 3), empty varchar(10));" ) );
 
@@ -2590,7 +2577,7 @@ void tst_QSqlQuery::nextResult()
 
     // Query that returns two result sets (batch sql)
     // When working with multiple result sets SQL Server insists on non-scrollable cursors
-    if ( driverType == ODBC )
+    if (db.driverName().startsWith("QODBC"))
         q.setForwardOnly( true );
 
     QVERIFY_SQL( q, exec( "SELECT id FROM " + tableName + "; SELECT text, num FROM " + tableName + ';' ) );
@@ -2611,7 +2598,7 @@ void tst_QSqlQuery::nextResult()
 
     QCOMPARE( q.record().field( 1 ).name().toUpper(), QString( "NUM" ) );
 
-    if ( driverType == MYSQL )
+    if (dbType == QSqlDriverPrivate::MySqlServer)
         QCOMPARE( q.record().field( 1 ).type(), QVariant::String );
     else
         QCOMPARE( q.record().field( 1 ).type(), QVariant::Double );
@@ -2663,17 +2650,17 @@ void tst_QSqlQuery::nextResult()
     }
 
     // Stored procedure with multiple result sets
-    const QString procName(qTableName( "proc_more_res", __FILE__ ));
+    const QString procName(qTableName("proc_more_res", __FILE__, db));
 
     q.exec( QString( "DROP PROCEDURE %1;" ).arg( procName ) );
 
-    if ( driverType == MYSQL )
+    if (dbType == QSqlDriverPrivate::MySqlServer)
         QVERIFY_SQL( q, exec( QString( "CREATE PROCEDURE %1()"
                                          "\nBEGIN"
                                          "\nSELECT id, text FROM %2;"
                                          "\nSELECT empty, num, text, id FROM %3;"
                                          "\nEND" ).arg( procName ).arg( tableName ).arg( tableName ) ) );
-    else if ( driverType == DB2 )
+    else if (dbType == QSqlDriverPrivate::DB2)
         QVERIFY_SQL( q, exec( QString( "CREATE PROCEDURE %1()"
                                          "\nRESULT SETS 2"
                                          "\nLANGUAGE SQL"
@@ -2689,7 +2676,7 @@ void tst_QSqlQuery::nextResult()
                                          "\nSELECT id, text FROM %2"
                                          "\nSELECT empty, num, text, id FROM %3" ).arg( procName ).arg( tableName ).arg( tableName ) ) );
 
-    if ( driverType == MYSQL || driverType == DB2 ) {
+    if (dbType == QSqlDriverPrivate::MySqlServer || dbType == QSqlDriverPrivate::DB2) {
         q.setForwardOnly( true );
         QVERIFY_SQL( q, exec( QString( "CALL %1()" ).arg( procName ) ) );
     } else {
@@ -2715,7 +2702,7 @@ void tst_QSqlQuery::nextResult()
     }
 
     // MySQL also counts the CALL itself as a result
-    if ( driverType == MYSQL ) {
+    if (dbType == QSqlDriverPrivate::MySqlServer) {
         QVERIFY( q.nextResult() );
         QVERIFY( !q.isSelect() );           // ... but it's not a select
         QCOMPARE( q.numRowsAffected(), 0 ); // ... and no rows are affected (at least not with this procedure)
@@ -2741,7 +2728,7 @@ void tst_QSqlQuery::blobsPreparedQuery()
     if ( !db.driver()->hasFeature( QSqlDriver::BLOB ) || !db.driver()->hasFeature( QSqlDriver::PreparedQueries ) )
         QSKIP( "DBMS does not support BLOBs or prepared queries");
 
-    const QString tableName(qTableName( "blobstest", __FILE__ ));
+    const QString tableName(qTableName("blobstest", __FILE__, db));
 
     QSqlQuery q( db );
     q.setForwardOnly( true ); // This is needed to make the test work with DB2.
@@ -2750,10 +2737,11 @@ void tst_QSqlQuery::blobsPreparedQuery()
 
     // In PostgreSQL a BLOB is not called a BLOB, but a BYTEA! :-)
     // ... and in SQL Server it can be called a lot, but IMAGE will do.
+    QSqlDriverPrivate::DBMSType dbType = tst_Databases::getDatabaseType(db);
     QString typeName( "BLOB" );
-    if ( db.driverName().startsWith( "QPSQL" ) )
+    if (dbType == QSqlDriverPrivate::PostgreSQL)
         typeName = "BYTEA";
-    else if ( db.driverName().startsWith( "QODBC" ) && tst_Databases::isSqlServer( db ))
+    else if (dbType == QSqlDriverPrivate::MSSqlServer)
         typeName = "IMAGE";
 
     QVERIFY_SQL( q, exec( QString( "CREATE TABLE %1(id INTEGER, data %2)" ).arg( tableName ).arg( typeName ) ) );
@@ -2796,10 +2784,10 @@ void tst_QSqlQuery::emptyTableNavigate()
 
     {
         QSqlQuery q( db );
-        const QString tbl = qTableName("qtest_empty", __FILE__);
+        const QString tbl = qTableName("qtest_empty", __FILE__, db);
         q.exec("drop table " + tbl);
         QVERIFY_SQL(q, exec("create table " + tbl + " (id char(10))"));
-        QVERIFY_SQL(q, prepare("select * from " + qTableName("qtest_empty", __FILE__ )));
+        QVERIFY_SQL(q, prepare("select * from " + tbl));
         QVERIFY_SQL( q, exec() );
         QVERIFY( !q.next() );
         QCOMPARE( q.lastError().isValid(), false );
@@ -2812,7 +2800,7 @@ void tst_QSqlQuery::task_217003()
     QSqlDatabase db = QSqlDatabase::database( dbName );
     CHECK_DATABASE( db );
     QSqlQuery q( db );
-    const QString Planet(qTableName( "Planet", __FILE__));
+    const QString Planet(qTableName( "Planet", __FILE__, db));
 
     q.exec("drop table " + Planet);
     QVERIFY_SQL( q, exec( "create table " + Planet + " (Name varchar(20))" ) );
@@ -2843,7 +2831,7 @@ void tst_QSqlQuery::task_250026()
     CHECK_DATABASE( db );
     QSqlQuery q( db );
 
-    const QString tableName(qTableName( "task_250026", __FILE__ ));
+    const QString tableName(qTableName("task_250026", __FILE__, db));
 
     if ( !q.exec( "create table " + tableName + " (longfield varchar(1100))" ) ) {
         qDebug() << "Error" << q.lastError();
@@ -2891,7 +2879,7 @@ void tst_QSqlQuery::task_229811()
 
     QSqlQuery q( db );
 
-    const QString tableName(qTableName( "task_229811", __FILE__ ));
+    const QString tableName(qTableName("task_229811", __FILE__, db));
 
     if ( !q.exec( "CREATE TABLE " + tableName + " (Word varchar(20))" ) ) {
         qDebug() << "Warning" << q.lastError();
@@ -2938,7 +2926,7 @@ void tst_QSqlQuery::task_234422()
     m_airlines << "Lufthansa" << "SAS" << "United" << "KLM" << "Aeroflot";
     m_countries << "DE" << "SE" << "US" << "NL" << "RU";
 
-    const QString tableName(qTableName( "task_234422", __FILE__ ));
+    const QString tableName(qTableName("task_234422", __FILE__, db));
 
     QVERIFY_SQL(query,exec("CREATE TABLE " + tableName + " (id int primary key, "
                 "name varchar(20), homecountry varchar(2))"));
@@ -2970,7 +2958,7 @@ void tst_QSqlQuery::task_233829()
     CHECK_DATABASE( db );
 
     QSqlQuery q( db );
-    const QString tableName(qTableName("task_233829", __FILE__));
+    const QString tableName(qTableName("task_233829", __FILE__, db));
     QVERIFY_SQL(q,exec("CREATE TABLE " + tableName  + "(dbl1 double precision,dbl2 double precision) without oids;"));
 
     QString queryString("INSERT INTO " + tableName +"(dbl1, dbl2) VALUES(?,?)");
@@ -2987,10 +2975,11 @@ void tst_QSqlQuery::sqlServerReturn0()
     QFETCH( QString, dbName );
     QSqlDatabase db = QSqlDatabase::database( dbName );
     CHECK_DATABASE( db );
-    if (!tst_Databases::isSqlServer( db ))
+    QSqlDriverPrivate::DBMSType dbType = tst_Databases::getDatabaseType(db);
+    if (dbType != QSqlDriverPrivate::MSSqlServer)
         QSKIP("SQL Server specific test");
 
-    const QString tableName(qTableName("test141895", __FILE__)), procName(qTableName("test141895_proc", __FILE__));
+    const QString tableName(qTableName("test141895", __FILE__, db)), procName(qTableName("test141895_proc", __FILE__, db));
     QSqlQuery q( db );
     q.exec("DROP TABLE " + tableName);
     q.exec("DROP PROCEDURE " + procName);
@@ -3016,7 +3005,7 @@ void tst_QSqlQuery::QTBUG_551()
     QSqlDatabase db = QSqlDatabase::database( dbName );
     CHECK_DATABASE( db );
     QSqlQuery q(db);
-    const QString pkgname(qTableName("pkg", __FILE__));
+    const QString pkgname(qTableName("pkg", __FILE__, db));
     QVERIFY_SQL(q, exec("CREATE OR REPLACE PACKAGE "+pkgname+" IS \n\
             \n\
             TYPE IntType IS TABLE OF INTEGER      INDEX BY BINARY_INTEGER;\n\
@@ -3063,7 +3052,7 @@ void tst_QSqlQuery::QTBUG_14132()
     QSqlDatabase db = QSqlDatabase::database( dbName );
     CHECK_DATABASE( db );
     QSqlQuery q(db);
-    const QString procedureName(qTableName("procedure", __FILE__));
+    const QString procedureName(qTableName("procedure", __FILE__, db));
     QVERIFY_SQL(q, exec("CREATE OR REPLACE PROCEDURE "+ procedureName + " (outStr OUT varchar2)  \n\
                         is \n\
                         begin \n\
@@ -3081,12 +3070,12 @@ void tst_QSqlQuery::QTBUG_18435()
     QFETCH(QString, dbName);
     QSqlDatabase db = QSqlDatabase::database(dbName);
     CHECK_DATABASE(db);
-
-    if (!db.driverName().startsWith("QODBC") || !tst_Databases::isSqlServer(db))
-        return;
+    QSqlDriverPrivate::DBMSType dbType = tst_Databases::getDatabaseType(db);
+    if (dbType != QSqlDriverPrivate::MSSqlServer || !db.driverName().startsWith("QODBC"))
+        QSKIP("SQL Server specific test");
 
     QSqlQuery q(db);
-    QString procName(qTableName("qtbug_18435_proc", __FILE__));
+    QString procName(qTableName("qtbug_18435_proc", __FILE__, db));
 
     q.exec("DROP PROCEDURE " + procName);
     const QString stmt =
@@ -3111,9 +3100,7 @@ void tst_QSqlQuery::QTBUG_5251()
     QFETCH( QString, dbName );
     QSqlDatabase db = QSqlDatabase::database( dbName );
     CHECK_DATABASE( db );
-    const QString timetest(qTableName("timetest", __FILE__));
-
-    if (!db.driverName().startsWith( "QPSQL" )) return;
+    const QString timetest(qTableName("timetest", __FILE__, db));
 
     QSqlQuery q(db);
     q.exec("DROP TABLE " + timetest);
@@ -3144,7 +3131,7 @@ void tst_QSqlQuery::QTBUG_6421()
     CHECK_DATABASE( db );
 
     QSqlQuery q(db);
-    const QString tableName(qTableName("bug6421", __FILE__).toUpper());
+    const QString tableName(qTableName("bug6421", __FILE__, db).toUpper());
 
     QVERIFY_SQL(q, exec("create table "+tableName+"(COL1 char(10), COL2 char(10), COL3 char(10))"));
     QVERIFY_SQL(q, exec("create index INDEX1 on "+tableName+" (COL1 desc)"));
@@ -3165,20 +3152,21 @@ void tst_QSqlQuery::QTBUG_6618()
     QFETCH( QString, dbName );
     QSqlDatabase db = QSqlDatabase::database( dbName );
     CHECK_DATABASE( db );
-    if (!tst_Databases::isSqlServer( db ))
+    QSqlDriverPrivate::DBMSType dbType = tst_Databases::getDatabaseType(db);
+    if (dbType != QSqlDriverPrivate::MSSqlServer)
         QSKIP("SQL Server specific test");
 
     QSqlQuery q(db);
-    q.exec( "drop procedure " + qTableName( "tst_raiseError", __FILE__ ) );  //non-fatal
+    q.exec("drop procedure " + qTableName("tst_raiseError", __FILE__, db));  //non-fatal
     QString errorString;
     for (int i=0;i<110;i++)
         errorString+="reallylong";
     errorString+=" error";
-    QVERIFY_SQL( q, exec("create procedure " + qTableName( "tst_raiseError", __FILE__ ) + " as\n"
+    QVERIFY_SQL(q, exec("create procedure " + qTableName("tst_raiseError", __FILE__, db) + " as\n"
                          "begin\n"
                          "    raiserror('" + errorString + "', 16, 1)\n"
                          "end\n" ));
-    q.exec( "{call " + qTableName( "tst_raiseError", __FILE__ ) + "}" );
+    q.exec("{call " + qTableName("tst_raiseError", __FILE__, db) + "}");
     QVERIFY(q.lastError().text().contains(errorString));
 }
 
@@ -3191,7 +3179,7 @@ void tst_QSqlQuery::QTBUG_6852()
         QSKIP( "Test requires MySQL >= 5.0");
 
     QSqlQuery q(db);
-    const QString tableName(qTableName("bug6852", __FILE__)), procName(qTableName("bug6852_proc", __FILE__));
+    const QString tableName(qTableName("bug6852", __FILE__, db)), procName(qTableName("bug6852_proc", __FILE__, db));
 
     QVERIFY_SQL(q, exec("DROP PROCEDURE IF EXISTS "+procName));
     QVERIFY_SQL(q, exec("CREATE TABLE "+tableName+"(\n"
@@ -3225,7 +3213,7 @@ void tst_QSqlQuery::QTBUG_5765()
         QSKIP( "Test requires MySQL >= 4.1");
 
     QSqlQuery q(db);
-    const QString tableName(qTableName("bug5765", __FILE__));
+    const QString tableName(qTableName("bug5765", __FILE__, db));
 
     QVERIFY_SQL(q, exec("CREATE TABLE "+tableName+"(testval TINYINT(1) DEFAULT 0)"));
     q.prepare("INSERT INTO "+tableName+" SET testval = :VALUE");
@@ -3268,7 +3256,7 @@ void tst_QSqlQuery::QTBUG_21884()
     QSqlQuery q(db);
 
     QStringList stList;
-    QString tableName(qTableName("bug21884", __FILE__ ));
+    QString tableName(qTableName("bug21884", __FILE__, db));
     stList << "create table " + tableName + "(id integer primary key, note string)";
     stList << "select * from " + tableName + ";";
     stList << "select * from " + tableName + ";  \t\n\r";
@@ -3363,7 +3351,7 @@ void tst_QSqlQuery::QTBUG_23895()
 
     QSqlQuery q(db);
 
-    QString tableName(qTableName("bug23895", __FILE__ ));
+    QString tableName(qTableName("bug23895", __FILE__, db));
     q.prepare("create table " + tableName + "(id integer primary key, val1 bool, val2 boolean)");
     QVERIFY_SQL(q, exec());
     q.prepare("insert into " + tableName + "(id, val1, val2) values(?, ?, ?);");
@@ -3407,26 +3395,67 @@ void tst_QSqlQuery::QTBUG_23895()
     QVERIFY(!q.next());
 }
 
+/**
+  * Test for aliases with dots
+  */
+void tst_QSqlQuery::QTBUG_14904()
+{
+    QFETCH(QString, dbName);
+    QSqlDatabase db = QSqlDatabase::database(dbName);
+    CHECK_DATABASE(db);
+
+    QSqlQuery q(db);
+
+    QString tableName(qTableName("bug14904", __FILE__, db));
+    tst_Databases::safeDropTable( db, tableName );
+
+    q.prepare("create table " + tableName + "(val1 bool)");
+    QVERIFY_SQL(q, exec());
+    q.prepare("insert into " + tableName + "(val1) values(?);");
+    q.addBindValue(true);
+    QVERIFY_SQL(q, exec());
+
+    QString sql="select val1 AS value1 from " + tableName;
+    QVERIFY_SQL(q, exec(sql));
+    QVERIFY_SQL(q, next());
+
+    QCOMPARE(q.record().indexOf("value1"), 0);
+    QCOMPARE(q.record().field(0).type(), QVariant::Bool);
+    QCOMPARE(q.value(0).toBool(), true);
+
+    sql="select val1 AS 'value.one' from " + tableName;
+    QVERIFY_SQL(q, exec(sql));
+    QVERIFY_SQL(q, next());
+    QCOMPARE(q.record().indexOf("value.one"), 0);  // was -1 before bug fix
+    QCOMPARE(q.record().field(0).type(), QVariant::Bool);
+    QCOMPARE(q.value(0).toBool(), true);
+}
+
 void tst_QSqlQuery::QTBUG_2192()
 {
     QFETCH( QString, dbName );
     QSqlDatabase db = QSqlDatabase::database( dbName );
     CHECK_DATABASE( db );
     {
-        const QString tableName(qTableName("bug2192", __FILE__));
+        const QString tableName(qTableName("bug2192", __FILE__, db));
         tst_Databases::safeDropTable( db, tableName );
 
         QSqlQuery q(db);
         QVERIFY_SQL(q, exec(QString("CREATE TABLE " + tableName + " (dt %1)").arg(tst_Databases::dateTimeTypeName(db))));
 
+        QDateTime dt = QDateTime(QDate(2012, 7, 4), QTime(23, 59, 59, 999));
         QVERIFY_SQL(q, prepare("INSERT INTO " + tableName + " (dt) VALUES (?)"));
-        q.bindValue(0, QVariant(QDateTime(QDate(2012, 7, 4), QTime(23, 59, 59, 999))));
+        q.bindValue(0, dt);
         QVERIFY_SQL(q, exec());
 
-        // Check if value was stored with at least second precision.
         QVERIFY_SQL(q, exec("SELECT dt FROM " + tableName));
         QVERIFY_SQL(q, next());
-        QVERIFY(q.value(0).toDateTime().msecsTo(QDateTime(QDate(2012, 7, 4), QTime(23, 59, 59, 999))) < 1000 );
+
+        // Check if retrieved value preserves reported precision
+        int precision = qMax(0, q.record().field("dt").precision());
+        int diff = qAbs(q.value(0).toDateTime().msecsTo(dt));
+        int keep = qMin(1000, (int)qPow(10.0, precision));
+        QVERIFY(diff <= 1000 - keep);
     }
 }
 
@@ -3435,7 +3464,7 @@ void tst_QSqlQuery::oraOCINumber()
     QFETCH( QString, dbName );
     QSqlDatabase db = QSqlDatabase::database( dbName );
     CHECK_DATABASE( db );
-    const QString qtest_oraOCINumber(qTableName("qtest_oraOCINumber", __FILE__));
+    const QString qtest_oraOCINumber(qTableName("qtest_oraOCINumber", __FILE__, db));
 
     QSqlQuery q( db );
     q.setForwardOnly( true );
@@ -3540,11 +3569,12 @@ void tst_QSqlQuery::sqlite_constraint()
     QSqlDatabase db = QSqlDatabase::database( dbName );
     CHECK_DATABASE( db );
 
-    if (db.driverName() != QLatin1String("QSQLITE"))
+    QSqlDriverPrivate::DBMSType dbType = tst_Databases::getDatabaseType(db);
+    if (dbType != QSqlDriverPrivate::SQLite)
         QSKIP("Sqlite3 specific test");
 
     QSqlQuery q(db);
-    const QString trigger(qTableName("test_constraint", __FILE__));
+    const QString trigger(qTableName("test_constraint", __FILE__, db));
 
     QVERIFY_SQL(q, exec("CREATE TEMP TRIGGER "+trigger+" BEFORE DELETE ON "+qtest+
                         "\nFOR EACH ROW "
@@ -3562,7 +3592,7 @@ void tst_QSqlQuery::sqlite_real()
     QFETCH(QString, dbName);
     QSqlDatabase db = QSqlDatabase::database(dbName);
     CHECK_DATABASE(db);
-    const QString tableName(qTableName("sqliterealtype", __FILE__));
+    const QString tableName(qTableName("sqliterealtype", __FILE__, db));
     tst_Databases::safeDropTable( db, tableName );
 
     QSqlQuery q(db);
@@ -3591,10 +3621,13 @@ void tst_QSqlQuery::aggregateFunctionTypes()
     CHECK_DATABASE(db);
     QVariant::Type intType = QVariant::Int;
     // QPSQL uses LongLong for manipulation of integers
-    if (db.driverName().startsWith("QPSQL") || db.driverName().startsWith("QMYSQL"))
+    const QSqlDriverPrivate::DBMSType dbType = tst_Databases::getDatabaseType(db);
+    if (dbType == QSqlDriverPrivate::MySqlServer || dbType == QSqlDriverPrivate::PostgreSQL)
         intType = QVariant::LongLong;
+    else if (dbType == QSqlDriverPrivate::Oracle)
+        intType = QVariant::Double;
     {
-        const QString tableName(qTableName("numericFunctionsWithIntValues", __FILE__));
+        const QString tableName(qTableName("numericFunctionsWithIntValues", __FILE__, db));
         tst_Databases::safeDropTable( db, tableName );
 
         QSqlQuery q(db);
@@ -3603,9 +3636,9 @@ void tst_QSqlQuery::aggregateFunctionTypes()
         // First test without any entries
         QVERIFY_SQL(q, exec("SELECT SUM(id) FROM " + tableName));
         QVERIFY(q.next());
-        if (db.driverName().startsWith("QSQLITE"))
+        if (dbType == QSqlDriverPrivate::SQLite)
             QCOMPARE(q.record().field(0).type(), QVariant::Invalid);
-        else if (db.driverName().startsWith("QMYSQL"))
+        else if (dbType == QSqlDriverPrivate::MySqlServer)
             QCOMPARE(q.record().field(0).type(), QVariant::Double);
         else
             QCOMPARE(q.record().field(0).type(), intType);
@@ -3616,15 +3649,15 @@ void tst_QSqlQuery::aggregateFunctionTypes()
         QVERIFY_SQL(q, exec("SELECT SUM(id) FROM " + tableName));
         QVERIFY(q.next());
         QCOMPARE(q.value(0).toInt(), 3);
-        if (db.driverName().startsWith("QMYSQL"))
+        if (dbType == QSqlDriverPrivate::MySqlServer)
             QCOMPARE(q.record().field(0).type(), QVariant::Double);
         else
             QCOMPARE(q.record().field(0).type(), intType);
 
         QVERIFY_SQL(q, exec("SELECT AVG(id) FROM " + tableName));
         QVERIFY(q.next());
-        if (db.driverName().startsWith("QSQLITE") || db.driverName().startsWith("QPSQL")
-            || (db.driverName().startsWith("QMYSQL"))) {
+        if (dbType == QSqlDriverPrivate::SQLite || dbType == QSqlDriverPrivate::PostgreSQL || dbType == QSqlDriverPrivate::MySqlServer
+            || dbType == QSqlDriverPrivate::Oracle) {
             QCOMPARE(q.value(0).toDouble(), 1.5);
             QCOMPARE(q.record().field(0).type(), QVariant::Double);
         } else {
@@ -3640,15 +3673,15 @@ void tst_QSqlQuery::aggregateFunctionTypes()
         QVERIFY_SQL(q, exec("SELECT MIN(id) FROM " + tableName));
         QVERIFY(q.next());
         QCOMPARE(q.value(0).toInt(), 1);
-        QCOMPARE(q.record().field(0).type(), QVariant::Int);
+        QCOMPARE(q.record().field(0).type(), intType);
 
         QVERIFY_SQL(q, exec("SELECT MAX(id) FROM " + tableName));
         QVERIFY(q.next());
         QCOMPARE(q.value(0).toInt(), 2);
-        QCOMPARE(q.record().field(0).type(), QVariant::Int);
+        QCOMPARE(q.record().field(0).type(), intType);
     }
     {
-        const QString tableName(qTableName("numericFunctionsWithDoubleValues", __FILE__));
+        const QString tableName(qTableName("numericFunctionsWithDoubleValues", __FILE__, db));
         tst_Databases::safeDropTable( db, tableName );
 
         QSqlQuery q(db);
@@ -3657,7 +3690,7 @@ void tst_QSqlQuery::aggregateFunctionTypes()
         // First test without any entries
         QVERIFY_SQL(q, exec("SELECT SUM(id) FROM " + tableName));
         QVERIFY(q.next());
-        if (db.driverName().startsWith("QSQLITE"))
+        if (dbType == QSqlDriverPrivate::SQLite)
             QCOMPARE(q.record().field(0).type(), QVariant::Invalid);
         else
             QCOMPARE(q.record().field(0).type(), QVariant::Double);
@@ -3691,7 +3724,7 @@ void tst_QSqlQuery::aggregateFunctionTypes()
         QCOMPARE(q.record().field(0).type(), QVariant::Double);
 
         // PSQL does not have support for the round() function
-        if (!db.driverName().startsWith("QPSQL")) {
+        if (dbType != QSqlDriverPrivate::PostgreSQL) {
             QVERIFY_SQL(q, exec("SELECT ROUND(id, 1) FROM " + tableName + " WHERE id=1.5"));
             QVERIFY(q.next());
             QCOMPARE(q.value(0).toDouble(), 1.5);
@@ -3699,7 +3732,7 @@ void tst_QSqlQuery::aggregateFunctionTypes()
 
             QVERIFY_SQL(q, exec("SELECT ROUND(id, 0) FROM " + tableName + " WHERE id=2.5"));
             QVERIFY(q.next());
-            if (db.driverName().startsWith("QMYSQL"))
+            if (dbType == QSqlDriverPrivate::MySqlServer)
                 QCOMPARE(q.value(0).toDouble(), 2.0);
             else
                 QCOMPARE(q.value(0).toDouble(), 3.0);
@@ -3707,7 +3740,7 @@ void tst_QSqlQuery::aggregateFunctionTypes()
         }
     }
     {
-        const QString tableName(qTableName("stringFunctions", __FILE__));
+        const QString tableName(qTableName("stringFunctions", __FILE__, db));
         tst_Databases::safeDropTable( db, tableName );
 
         QSqlQuery q(db);
@@ -3715,7 +3748,7 @@ void tst_QSqlQuery::aggregateFunctionTypes()
 
         QVERIFY_SQL(q, exec("SELECT MAX(txt) FROM " + tableName));
         QVERIFY(q.next());
-        if (db.driverName().startsWith("QSQLITE"))
+        if (dbType == QSqlDriverPrivate::SQLite)
             QCOMPARE(q.record().field(0).type(), QVariant::Invalid);
         else
             QCOMPARE(q.record().field(0).type(), QVariant::String);

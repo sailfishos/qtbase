@@ -68,11 +68,8 @@ Q_GUI_EXPORT  void qt_registerFont(const QString &familyName, const QString &sty
     f->fixedPitch = fixedPitch;
 
     for (int i = 0; i < QFontDatabase::WritingSystemsCount; ++i) {
-        if (writingSystems.supported(QFontDatabase::WritingSystem(i))) {
+        if (writingSystems.supported(QFontDatabase::WritingSystem(i)))
             f->writingSystems[i] = QtFontFamily::Supported;
-        } else {
-            f->writingSystems[i] = QtFontFamily::Unsupported;
-        }
     }
 
     QtFontFoundry *foundry = f->foundry(foundryname, true);
@@ -104,7 +101,7 @@ Q_GUI_EXPORT void qt_registerAliasToFontFamily(const QString &familyName, const 
     f->aliases.push_back(alias);
 }
 
-static QStringList fallbackFamilies(const QString &family, const QFont::Style &style, const QFont::StyleHint &styleHint, const QUnicodeTables::Script &script)
+static QStringList fallbackFamilies(const QString &family, QFont::Style style, QFont::StyleHint styleHint, QChar::Script script)
 {
     QStringList retList = QGuiApplicationPrivate::platformIntegration()->fontDatabase()->fallbacksForFamily(family,style,styleHint,script);
     QFontDatabasePrivate *db = privateDb();
@@ -113,8 +110,7 @@ static QStringList fallbackFamilies(const QString &family, const QFont::Style &s
     for (i = retList.begin(); i != retList.end(); ++i) {
         bool contains = false;
         for (int j = 0; j < db->count; j++) {
-            QtFontFamily *qtFamily = db->families[j];
-            if (!(i->compare(qtFamily->name,Qt::CaseInsensitive))) {
+            if (db->families[j]->matchesFamilyName(*i)) {
                 contains = true;
                 break;
             }
@@ -175,7 +171,7 @@ QFontEngine *loadSingleEngine(int script,
     QFontCache::Key key(def,script);
     QFontEngine *engine = QFontCache::instance()->findEngine(key);
     if (!engine) {
-        engine = pfdb->fontEngine(def,QUnicodeTables::Script(script),size->handle);
+        engine = pfdb->fontEngine(def, QChar::Script(script), size->handle);
         if (engine) {
             QFontCache::Key key(def,script);
             QFontCache::instance()->instance()->insertEngine(key,engine);
@@ -200,7 +196,7 @@ QFontEngine *loadEngine(int script, const QFontDef &request,
             QFont::StyleHint styleHint = QFont::StyleHint(request.styleHint);
             if (styleHint == QFont::AnyStyle && request.fixedPitch)
                 styleHint = QFont::TypeWriter;
-            family->fallbackFamilies = fallbackFamilies(family->name,fontStyle,styleHint,QUnicodeTables::Script(script));
+            family->fallbackFamilies = fallbackFamilies(family->name, fontStyle, styleHint, QChar::Script(script));
 
             family->askedForFallback = true;
         }
@@ -210,7 +206,7 @@ QFontEngine *loadEngine(int script, const QFontDef &request,
             fallbacks = family->fallbackFamilies;
 
         QPlatformFontDatabase *pfdb = QGuiApplicationPrivate::platformIntegration()->fontDatabase();
-        QFontEngineMulti *pfMultiEngine = pfdb->fontEngineMulti(engine, QUnicodeTables::Script(script));
+        QFontEngineMulti *pfMultiEngine = pfdb->fontEngineMulti(engine, QChar::Script(script));
         pfMultiEngine->setFallbackFamiliesList(fallbacks);
         engine = pfMultiEngine;
 
@@ -322,7 +318,7 @@ QFontDatabase::findFont(int script, const QFontPrivate *fp,
                                   + fallbackFamilies(request.family,
                                                      QFont::Style(request.style),
                                                      QFont::StyleHint(request.styleHint),
-                                                     QUnicodeTables::Script(script));
+                                                     QChar::Script(script));
 
             for (int i = 0; !engine && i < fallbacks.size(); i++) {
                 QFontDef def = request;
@@ -427,7 +423,7 @@ void QFontDatabase::load(const QFontPrivate *d, int script)
     }
 
     if (fe->symbol || (d->request.styleStrategy & QFont::NoFontMerging)) {
-        for (int i = 0; i < QUnicodeTables::ScriptCount; ++i) {
+        for (int i = 0; i < QChar::ScriptCount; ++i) {
             if (!d->engineData->engines[i]) {
                 d->engineData->engines[i] = fe;
                 fe->ref.ref();

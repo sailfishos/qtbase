@@ -42,6 +42,7 @@
 
 #include <QtTest/QtTest>
 #include "qprogressbar.h"
+#include <qlocale.h>
 #include <qapplication.h>
 #include <qstyleoption.h>
 #include <qdebug.h>
@@ -64,6 +65,7 @@ private slots:
     void sizeHint();
     void formatedText_data();
     void formatedText();
+    void localizedFormattedText();
 
     void task245201_testChangeStyleAndDelete_data();
     void task245201_testChangeStyleAndDelete();
@@ -113,7 +115,9 @@ void tst_QProgressBar::minMaxSameValue()
     QProgressBar bar;
     bar.setRange(10, 10);
     bar.setValue(10);
+    bar.move(300, 300);
     bar.show();
+    QVERIFY(QTest::qWaitForWindowExposed(&bar));
 }
 
 void tst_QProgressBar::destroyIndeterminate()
@@ -123,7 +127,9 @@ void tst_QProgressBar::destroyIndeterminate()
     // it's deleted.
     QPointer<QProgressBar> bar = new QProgressBar;
     bar->setMaximum(0);
+    bar->move(300, 300);
     bar->show();
+    QVERIFY(QTest::qWaitForWindowExposed(bar.data()));
 
     QEventLoop loop;
     QTimer::singleShot(500, bar, SLOT(deleteLater()));
@@ -166,7 +172,9 @@ void tst_QProgressBar::format()
     ProgressBar bar;
     bar.setRange(0, 10);
     bar.setValue(1);
+    bar.move(300, 300);
     bar.show();
+    QVERIFY(QTest::qWaitForWindowExposed(&bar));
     QVERIFY(QTest::qWaitForWindowExposed(&bar));
 
     QTest::qWait(20);
@@ -202,6 +210,7 @@ void tst_QProgressBar::setValueRepaint()
     pbar.setMinimum(0);
     pbar.setMaximum(10);
     pbar.setFormat("%v");
+    pbar.move(300, 300);
     pbar.show();
     QVERIFY(QTest::qWaitForWindowExposed(&pbar));
 
@@ -224,7 +233,9 @@ void tst_QProgressBar::setMinMaxRepaint()
     pbar.setMinimum(0);
     pbar.setMaximum(10);
     pbar.setFormat("%v");
+    pbar.move(300, 300);
     pbar.show();
+    qApp->setActiveWindow(&pbar);
     QVERIFY(QTest::qWaitForWindowActive(&pbar));
 
     // No repaint when setting minimum to the current minimum
@@ -301,6 +312,40 @@ void tst_QProgressBar::formatedText()
     QCOMPARE(bar.text(), text);
 }
 
+void tst_QProgressBar::localizedFormattedText() // QTBUG-28751
+{
+    QProgressBar bar;
+    const int value = 42;
+    bar.setValue(value);
+    const QString defaultExpectedNumber = QString::number(value);
+    const QString defaultExpectedValue = defaultExpectedNumber + QLatin1Char('%');
+    QCOMPARE(bar.text(), defaultExpectedValue);
+
+    // Temporarily switch to Egyptian, which has a different percent sign and number formatting
+    QLocale egypt(QLocale::Arabic, QLocale::Egypt);
+    bar.setLocale(egypt);
+    const QString egyptianExpectedNumber = egypt.toString(value);
+    const QString egyptianExpectedValue = egyptianExpectedNumber + egypt.percent();
+    if (egyptianExpectedValue == defaultExpectedValue)
+        QSKIP("Egyptian locale does not work on this system.");
+    QCOMPARE(bar.text(), egyptianExpectedValue);
+
+    bar.setLocale(QLocale());
+    QCOMPARE(bar.text(), defaultExpectedValue);
+
+    // Set a custom format containing only the number
+    bar.setFormat(QStringLiteral("%p"));
+    QCOMPARE(bar.text(), defaultExpectedNumber);
+    bar.setLocale(egypt);
+    QCOMPARE(bar.text(), egyptianExpectedNumber);
+
+    // Clear the format
+    bar.resetFormat();
+    QCOMPARE(bar.text(), egyptianExpectedValue);
+    bar.setLocale(QLocale());
+    QCOMPARE(bar.text(), defaultExpectedValue);
+}
+
 void tst_QProgressBar::task245201_testChangeStyleAndDelete_data()
 {
     QTest::addColumn<QString>("style1_str");
@@ -319,7 +364,9 @@ void tst_QProgressBar::task245201_testChangeStyleAndDelete()
 
     QStyle *style = QStyleFactory::create(style1_str);
     bar->setStyle(style);
+    bar->move(300, 300);
     bar->show();
+    QVERIFY(QTest::qWaitForWindowExposed(bar));
     QStyle *style2 = QStyleFactory::create(style2_str);
     bar->setStyle(style2);
     QTest::qWait(10);

@@ -220,7 +220,7 @@ private slots:
     void doLayout();
     void rect_data();
     void rect();
-    void eventFilter();
+    void testEventFilter();
     void dateTimeEditor_data();
     void dateTimeEditor();
     void dateAndTimeEditorTest2();
@@ -232,6 +232,8 @@ private slots:
     void enterKey_data();
     void enterKey();
     void comboBox();
+    void testLineEditValidation_data();
+    void testLineEditValidation();
 
     void task257859_finalizeEdit();
     void QTBUG4435_keepSelectionOnCheck();
@@ -365,7 +367,7 @@ void tst_QItemDelegate::editorKeyPress()
     view.setCurrentIndex(index); // the editor will only selectAll on the current index
     view.edit(index);
 
-    QList<QLineEdit*> lineEditors = qFindChildren<QLineEdit *>(view.viewport());
+    QList<QLineEdit*> lineEditors = view.viewport()->findChildren<QLineEdit *>();
     QCOMPARE(lineEditors.count(), 1);
 
     QLineEdit *editor = lineEditors.at(0);
@@ -394,7 +396,7 @@ void tst_QItemDelegate::doubleEditorNegativeInput()
     view.setCurrentIndex(index); // the editor will only selectAll on the current index
     view.edit(index);
 
-    QList<QDoubleSpinBox*> editors = qFindChildren<QDoubleSpinBox *>(view.viewport());
+    QList<QDoubleSpinBox*> editors = view.viewport()->findChildren<QDoubleSpinBox *>();
     QCOMPARE(editors.count(), 1);
 
     QDoubleSpinBox *editor = editors.at(0);
@@ -695,7 +697,7 @@ void tst_QItemDelegate::rect()
 
 //TODO : Add a test for the keyPress event
 //with Qt::Key_Enter and Qt::Key_Return
-void tst_QItemDelegate::eventFilter()
+void tst_QItemDelegate::testEventFilter()
 {
     TestItemDelegate delegate;
     QWidget widget;
@@ -776,7 +778,7 @@ void tst_QItemDelegate::dateTimeEditor()
 
     QTestEventLoop::instance().enterLoop(1);
 
-    QTimeEdit *timeEditor = qFindChild<QTimeEdit *>(widget.viewport());
+    QTimeEdit *timeEditor = widget.viewport()->findChild<QTimeEdit *>();
     QVERIFY(timeEditor);
     QCOMPARE(timeEditor->time(), time);
     // The data must actually be different in order for the model
@@ -790,7 +792,7 @@ void tst_QItemDelegate::dateTimeEditor()
 
     QTestEventLoop::instance().enterLoop(1);
 
-    QDateEdit *dateEditor = qFindChild<QDateEdit *>(widget.viewport());
+    QDateEdit *dateEditor = widget.viewport()->findChild<QDateEdit *>();
     QVERIFY(dateEditor);
     QCOMPARE(dateEditor->date(), date);
     dateEditor->setDate(date.addDays(60));
@@ -1312,7 +1314,7 @@ void tst_QItemDelegate::enterKey()
     view.edit(index);
     QTest::qWait(30);
 
-    QList<QWidget*> lineEditors = qFindChildren<QWidget *>(view.viewport(), QString::fromLatin1("TheEditor"));
+    QList<QWidget*> lineEditors = view.viewport()->findChildren<QWidget *>(QString::fromLatin1("TheEditor"));
     QCOMPARE(lineEditors.count(), 1);
 
     QPointer<QWidget> editor = lineEditors.at(0);
@@ -1344,7 +1346,7 @@ void tst_QItemDelegate::task257859_finalizeEdit()
     view.edit(index);
     QTest::qWait(30);
 
-    QList<QLineEdit *> lineEditors = qFindChildren<QLineEdit *>(view.viewport());
+    QList<QLineEdit *> lineEditors = view.viewport()->findChildren<QLineEdit *>();
     QCOMPARE(lineEditors.count(), 1);
 
     QPointer<QWidget> editor = lineEditors.at(0);
@@ -1397,7 +1399,7 @@ void tst_QItemDelegate::comboBox()
 
     QTestEventLoop::instance().enterLoop(1);
 
-    QComboBox *boolEditor = qFindChild<QComboBox*>(widget.viewport());
+    QComboBox *boolEditor = widget.viewport()->findChild<QComboBox*>();
     QVERIFY(boolEditor);
     QCOMPARE(boolEditor->currentIndex(), 1); // True is selected initially.
     // The data must actually be different in order for the model
@@ -1411,6 +1413,135 @@ void tst_QItemDelegate::comboBox()
     QVariant data = item1->data(Qt::EditRole);
     QCOMPARE(data.userType(), (int)QMetaType::Bool);
     QCOMPARE(data.toBool(), false);
+}
+
+void tst_QItemDelegate::testLineEditValidation_data()
+{
+    QTest::addColumn<int>("key");
+
+    QTest::newRow("enter") << int(Qt::Key_Enter);
+    QTest::newRow("return") << int(Qt::Key_Return);
+    QTest::newRow("tab") << int(Qt::Key_Tab);
+    QTest::newRow("backtab") << int(Qt::Key_Backtab);
+    QTest::newRow("escape") << int(Qt::Key_Escape);
+}
+
+void tst_QItemDelegate::testLineEditValidation()
+{
+    QFETCH(int, key);
+
+    struct TestDelegate : public QItemDelegate
+    {
+        virtual QWidget *createEditor(QWidget *parent, const QStyleOptionViewItem &option, const QModelIndex &index) const
+        {
+            Q_UNUSED(option);
+            Q_UNUSED(index);
+
+            QLineEdit *editor = new QLineEdit(parent);
+            QRegularExpression re("\\w+,\\w+"); // two words separated by a comma
+            editor->setValidator(new QRegularExpressionValidator(re, editor));
+            editor->setObjectName(QStringLiteral("TheEditor"));
+            return editor;
+        }
+    } delegate;
+
+    QStandardItemModel model;
+    // need a couple of dummy items to test tab and back tab
+    model.appendRow(new QStandardItem(QStringLiteral("dummy")));
+    QStandardItem *item = new QStandardItem(QStringLiteral("abc,def"));
+    model.appendRow(item);
+    model.appendRow(new QStandardItem(QStringLiteral("dummy")));
+
+    QListView view;
+    view.setModel(&model);
+    view.setItemDelegate(&delegate);
+    view.show();
+    view.setFocus();
+    QApplication::setActiveWindow(&view);
+    QVERIFY(QTest::qWaitForWindowActive(&view));
+
+    QList<QLineEdit *> lineEditors;
+    QPointer<QLineEdit> editor;
+    QPersistentModelIndex index = model.indexFromItem(item);
+
+    view.setCurrentIndex(index);
+    view.edit(index);
+    QTest::qWait(30);
+
+    lineEditors = view.findChildren<QLineEdit *>(QStringLiteral("TheEditor"));
+    QCOMPARE(lineEditors.count(), 1);
+    editor = lineEditors.at(0);
+    editor->clear();
+
+    // first try to set a valid text
+    QTest::keyClicks(editor, QStringLiteral("foo,bar"));
+    QTest::qWait(30);
+
+    // close the editor
+    QTest::keyClick(editor, Qt::Key(key));
+    QTest::qWait(30);
+
+    QVERIFY(editor.isNull());
+    if (key != Qt::Key_Escape)
+        QCOMPARE(item->data(Qt::DisplayRole).toString(), QStringLiteral("foo,bar"));
+    else
+        QCOMPARE(item->data(Qt::DisplayRole).toString(), QStringLiteral("abc,def"));
+
+    // now an invalid (but partially matching) text
+    view.setCurrentIndex(index);
+    view.edit(index);
+    QTest::qWait(30);
+
+    lineEditors = view.findChildren<QLineEdit *>(QStringLiteral("TheEditor"));
+    QCOMPARE(lineEditors.count(), 1);
+    editor = lineEditors.at(0);
+    editor->clear();
+
+    // edit
+    QTest::keyClicks(editor, QStringLiteral("foobar"));
+    QTest::qWait(30);
+
+    // try to close the editor
+    QTest::keyClick(editor, Qt::Key(key));
+    QTest::qWait(30);
+
+    if (key != Qt::Key_Escape) {
+        QVERIFY(!editor.isNull());
+        QCOMPARE(qApp->focusWidget(), editor.data());
+        QCOMPARE(editor->text(), QStringLiteral("foobar"));
+        QCOMPARE(item->data(Qt::DisplayRole).toString(), QStringLiteral("foo,bar"));
+    } else {
+        QVERIFY(editor.isNull());
+        QCOMPARE(item->data(Qt::DisplayRole).toString(), QStringLiteral("abc,def"));
+    }
+
+    // reset the view to forcibly close the editor
+    view.reset();
+    QTest::qWait(30);
+
+    // set a valid text again
+    view.setCurrentIndex(index);
+    view.edit(index);
+    QTest::qWait(30);
+
+    lineEditors = view.findChildren<QLineEdit *>(QStringLiteral("TheEditor"));
+    QCOMPARE(lineEditors.count(), 1);
+    editor = lineEditors.at(0);
+    editor->clear();
+
+    // set a valid text
+    QTest::keyClicks(editor, QStringLiteral("gender,bender"));
+    QTest::qWait(30);
+
+    // close the editor
+    QTest::keyClick(editor, Qt::Key(key));
+    QTest::qWait(30);
+
+    QVERIFY(editor.isNull());
+    if (key != Qt::Key_Escape)
+        QCOMPARE(item->data(Qt::DisplayRole).toString(), QStringLiteral("gender,bender"));
+    else
+        QCOMPARE(item->data(Qt::DisplayRole).toString(), QStringLiteral("abc,def"));
 }
 
 

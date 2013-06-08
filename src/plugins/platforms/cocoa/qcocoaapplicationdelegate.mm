@@ -145,8 +145,9 @@ static void cleanupCocoaApplicationDelegate()
     dockMenu = newMenu;
 }
 
-- (NSMenu *)applicationDockMenu
+- (NSMenu *)applicationDockMenu:(NSApplication *)sender
 {
+    Q_UNUSED(sender);
     return [[dockMenu retain] autorelease];
 }
 
@@ -206,7 +207,6 @@ static void cleanupCocoaApplicationDelegate()
             // events while the event loop is still running.
             const QWindowList topLevels = QGuiApplication::topLevelWindows();
             for (int i = 0; i < topLevels.size(); ++i) {
-                QWindow *window = topLevels.at(i);
                 topLevels.at(i)->close();
             }
 

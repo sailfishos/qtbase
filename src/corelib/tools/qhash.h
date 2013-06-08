@@ -48,7 +48,9 @@
 #include <QtCore/qpair.h>
 #include <QtCore/qrefcount.h>
 
-QT_BEGIN_HEADER
+#ifdef Q_COMPILER_INITIALIZER_LISTS
+#include <initializer_list>
+#endif
 
 QT_BEGIN_NAMESPACE
 
@@ -90,6 +92,7 @@ Q_CORE_EXPORT uint qHash(const QStringRef &key, uint seed = 0) Q_DECL_NOTHROW;
 Q_CORE_EXPORT uint qHash(const QBitArray &key, uint seed = 0) Q_DECL_NOTHROW;
 Q_CORE_EXPORT uint qHash(QLatin1String key, uint seed = 0) Q_DECL_NOTHROW;
 Q_CORE_EXPORT uint qt_hash(const QString &key) Q_DECL_NOTHROW;
+Q_CORE_EXPORT uint qt_hash(const QStringRef &key) Q_DECL_NOTHROW;
 
 #if defined(Q_CC_MSVC)
 #pragma warning( push )
@@ -285,6 +288,15 @@ class QHash
 
 public:
     inline QHash() : d(const_cast<QHashData *>(&QHashData::shared_null)) { }
+#ifdef Q_COMPILER_INITIALIZER_LISTS
+    inline QHash(std::initializer_list<std::pair<Key,T> > list)
+        : d(const_cast<QHashData *>(&QHashData::shared_null))
+    {
+        reserve(list.size());
+        for (typename std::initializer_list<std::pair<Key,T> >::const_iterator it = list.begin(); it != list.end(); ++it)
+            insert(it->first, it->second);
+    }
+#endif
     inline QHash(const QHash<Key, T> &other) : d(other.d) { d->ref.ref(); if (!d->sharable) detach(); }
     inline ~QHash() { if (!d->ref.deref()) freeData(d); }
 
@@ -921,6 +933,14 @@ class QMultiHash : public QHash<Key, T>
 {
 public:
     QMultiHash() {}
+#ifdef Q_COMPILER_INITIALIZER_LISTS
+    inline QMultiHash(std::initializer_list<std::pair<Key,T> > list)
+    {
+        this->reserve(list.size());
+        for (typename std::initializer_list<std::pair<Key,T> >::const_iterator it = list.begin(); it != list.end(); ++it)
+            insert(it->first, it->second);
+    }
+#endif
     QMultiHash(const QHash<Key, T> &other) : QHash<Key, T>(other) {}
     inline void swap(QMultiHash<Key, T> &other) { QHash<Key, T>::swap(other); } // prevent QMultiHash<->QHash swaps
 
@@ -1033,7 +1053,5 @@ Q_DECLARE_ASSOCIATIVE_ITERATOR(Hash)
 Q_DECLARE_MUTABLE_ASSOCIATIVE_ITERATOR(Hash)
 
 QT_END_NAMESPACE
-
-QT_END_HEADER
 
 #endif // QHASH_H

@@ -77,6 +77,7 @@
 
 #include <QtCore/private/qeventdispatcher_win_p.h>
 #include <QtCore/QDebug>
+#include <QtCore/QVariant>
 
 QT_BEGIN_NAMESPACE
 
@@ -112,8 +113,15 @@ public:
 
     Q_INVOKABLE QString registerWindowClass(const QString &classNameIn, void *eventProc) const;
 
+    Q_INVOKABLE void beep() { MessageBeep(MB_OK); } // For QApplication
+
     bool asyncExpose() const;
     void setAsyncExpose(bool value);
+
+    QVariantMap windowProperties(QPlatformWindow *window) const;
+    QVariant windowProperty(QPlatformWindow *window, const QString &name) const;
+    QVariant windowProperty(QPlatformWindow *window, const QString &name, const QVariant &defaultValue) const;
+    void setWindowProperty(QPlatformWindow *window, const QString &name, const QVariant &value);
 };
 
 void *QWindowsNativeInterface::nativeResourceForWindow(const QByteArray &resource, QWindow *window)
@@ -148,6 +156,37 @@ void *QWindowsNativeInterface::nativeResourceForBackingStore(const QByteArray &r
         return wbs->getDC();
     qWarning("%s: Invalid key '%s' requested.", __FUNCTION__, resource.constData());
     return 0;
+}
+
+static const char customMarginPropertyC[] = "WindowsCustomMargins";
+
+QVariant QWindowsNativeInterface::windowProperty(QPlatformWindow *window, const QString &name) const
+{
+    QWindowsWindow *platformWindow = static_cast<QWindowsWindow *>(window);
+    if (name == QLatin1String(customMarginPropertyC))
+        return qVariantFromValue(platformWindow->customMargins());
+    return QVariant();
+}
+
+QVariant QWindowsNativeInterface::windowProperty(QPlatformWindow *window, const QString &name, const QVariant &defaultValue) const
+{
+    const QVariant result = windowProperty(window, name);
+    return result.isValid() ? result : defaultValue;
+}
+
+void QWindowsNativeInterface::setWindowProperty(QPlatformWindow *window, const QString &name, const QVariant &value)
+{
+    QWindowsWindow *platformWindow = static_cast<QWindowsWindow *>(window);
+    if (name == QLatin1String(customMarginPropertyC))
+        platformWindow->setCustomMargins(qvariant_cast<QMargins>(value));
+}
+
+QVariantMap QWindowsNativeInterface::windowProperties(QPlatformWindow *window) const
+{
+    QVariantMap result;
+    const QString customMarginProperty = QLatin1String(customMarginPropertyC);
+    result.insert(customMarginProperty, windowProperty(window, customMarginProperty));
+    return result;
 }
 
 #ifndef QT_NO_OPENGL
@@ -372,6 +411,11 @@ QPlatformWindow *QWindowsIntegration::createPlatformWindow(QWindow *window) cons
     QWindowsWindow::WindowData requested;
     requested.flags = window->flags();
     requested.geometry = window->geometry();
+    // Apply custom margins (see  QWindowsWindow::setCustomMargins())).
+    const QVariant customMarginsV = window->property("_q_windowsCustomMargins");
+    if (customMarginsV.isValid())
+        requested.customMargins = qvariant_cast<QMargins>(customMarginsV);
+
     const QWindowsWindow::WindowData obtained
             = QWindowsWindow::WindowData::create(window, requested, window->title());
     if (QWindowsContext::verboseIntegration || QWindowsContext::verboseWindows)
@@ -499,7 +543,6 @@ QVariant QWindowsIntegration::styleHint(QPlatformIntegration::StyleHint hint) co
     case QPlatformIntegration::ShowIsFullScreen:
     case QPlatformIntegration::PasswordMaskDelay:
     case QPlatformIntegration::StartDragVelocity:
-    case QPlatformIntegration::SynthesizeMouseFromTouchEvents:
         break; // Not implemented
     case QPlatformIntegration::FontSmoothingGamma:
         return QVariant(QWindowsFontDatabase::fontSmoothingGamma());
@@ -509,6 +552,11 @@ QVariant QWindowsIntegration::styleHint(QPlatformIntegration::StyleHint hint) co
         break;
     case QPlatformIntegration::UseRtlExtensions:
         return QVariant(d->m_context.useRTLExtensions());
+    case QPlatformIntegration::SynthesizeMouseFromTouchEvents:
+        // We do not want Qt to synthesize mouse events as Windows also does that.
+        // Alternatively, Windows-generated touch mouse events can be identified and
+        // ignored by checking GetMessageExtraInfo() for MI_WP_SIGNATURE (0xFF515700).
+       return false;
     }
     return QPlatformIntegration::styleHint(hint);
 }

@@ -41,10 +41,8 @@
 #include "qcocoaaccessibility.h"
 #include "qcocoaaccessibilityelement.h"
 #include <qaccessible.h>
-#include <qaccessible2.h>
+#include <QtGui/private/qaccessible2_p.h>
 #include <private/qcore_mac_p.h>
-
-#ifndef QT_NO_COCOA_ACCESSIBILITY
 
 QCococaAccessibility::QCococaAccessibility()
 {
@@ -62,7 +60,7 @@ void QCococaAccessibility::notifyAccessibilityUpdate(QAccessibleEvent *event)
     if (!object)
         return;
 
-    QAccessibleInterface *interface = QAccessible::queryAccessibleInterface(object);
+    QAccessibleInterface *interface = event->accessibleInterface();
     if (!interface)
         return;
 
@@ -71,13 +69,11 @@ void QCococaAccessibility::notifyAccessibilityUpdate(QAccessibleEvent *event)
         case QAccessible::TextInserted :
         case QAccessible::TextRemoved :
         case QAccessible::TextUpdated : {
-            QCocoaAccessibleElement *element = [QCocoaAccessibleElement createElementWithInterface : interface parent : nil];
+            QCocoaAccessibleElement *element = [QCocoaAccessibleElement createElementWithId : QAccessible::uniqueId(interface) parent : nil];
             [element autorelease];
             NSAccessibilityPostNotification(element, NSAccessibilityValueChangedNotification);
         break; }
-
-        default:
-            delete interface;
+    default:
         break;
     }
 }
@@ -169,8 +165,11 @@ NSString *macRole(QAccessibleInterface *interface)
         return roleMap[qtRole];
     }
 
-    // MAC_ACCESSIBILTY_DEBUG() << "return NSAccessibilityUnknownRole";
-    return NSAccessibilityUnknownRole;
+    // Treat unknown Qt roles as generic group container items. Returning
+    // NSAccessibilityUnknownRole is also possible but makes the screen
+    // reader focus on the item instead of passing focus to child items.
+    // MAC_ACCESSIBILTY_DEBUG() << "return NSAccessibilityGroupRole for unknown Qt role";
+    return NSAccessibilityGroupRole;
 }
 
 /*
@@ -178,13 +177,14 @@ NSString *macRole(QAccessibleInterface *interface)
     the elements are still present in the accessibility tree but is
     not used by the screen reader.
 */
-bool shouldBeIgnrored(QAccessibleInterface *interface)
+bool shouldBeIgnored(QAccessibleInterface *interface)
 {
     // Mac accessibility does not have an attribute that corresponds to the Invisible/Offscreen
     // state. Ignore interfaces with those flags set.
     const QAccessible::State state = interface->state();
     if (state.invisible ||
-        state.offscreen)
+        state.offscreen ||
+        state.invalid)
         return true;
 
     // Some roles are not interesting. In particular, container roles should be
@@ -193,12 +193,13 @@ bool shouldBeIgnrored(QAccessibleInterface *interface)
     if (role == QAccessible::Border ||      // QFrame
         role == QAccessible::Application || // We use the system-provided application element.
         role == QAccessible::MenuItem ||    // The system also provides the menu items.
-        role == QAccessible::ToolBar)       // Access the tool buttons directly.
+        role == QAccessible::ToolBar ||     // Access the tool buttons directly.
+        role == QAccessible::Pane ||        // Scroll areas.
+        role == QAccessible::Client)        // The default for QWidget.
         return true;
 
     NSString *mac_role = macRole(interface);
     if (mac_role == NSAccessibilityWindowRole || // We use the system-provided window elements.
-        mac_role == NSAccessibilityGroupRole ||
         mac_role == NSAccessibilityUnknownRole)
         return true;
 
@@ -280,6 +281,7 @@ QString translateAction(NSString *nsAction)
 
 bool hasValueAttribute(QAccessibleInterface *interface)
 {
+    Q_ASSERT(interface);
     const QAccessible::Role qtrole = interface->role();
     if (qtrole == QAccessible::EditableText
             || interface->valueInterface()) {
@@ -318,5 +320,3 @@ id getValueAttribute(QAccessibleInterface *interface)
 }
 
 } // namespace QCocoaAccessible
-
-#endif // QT_NO_COCOA_ACCESSIBILITY

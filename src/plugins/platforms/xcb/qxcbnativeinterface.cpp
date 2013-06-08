@@ -42,6 +42,7 @@
 #include "qxcbnativeinterface.h"
 
 #include "qxcbscreen.h"
+#include "qxcbintegration.h"
 
 #include <private/qguiapplication_p.h>
 #include <QtCore/QMap>
@@ -55,6 +56,10 @@
 #include "QtPlatformSupport/private/qeglplatformcontext_p.h"
 #elif defined (XCB_USE_GLX)
 #include "qglxintegration.h"
+#endif
+
+#ifndef XCB_USE_XLIB
+#  include <stdio.h>
 #endif
 
 QT_BEGIN_NAMESPACE
@@ -73,6 +78,8 @@ public:
         insert("glxcontext",QXcbNativeInterface::GLXContext);
         insert("apptime",QXcbNativeInterface::AppTime);
         insert("appusertime",QXcbNativeInterface::AppUserTime);
+        insert("hintstyle", QXcbNativeInterface::ScreenHintStyle);
+        insert("startupid", QXcbNativeInterface::StartupId);
     }
 };
 
@@ -82,6 +89,35 @@ QXcbNativeInterface::QXcbNativeInterface() :
     m_genericEventFilterType(QByteArrayLiteral("xcb_generic_event_t"))
 
 {
+}
+
+void QXcbNativeInterface::beep() // For QApplication::beep()
+{
+#ifdef XCB_USE_XLIB
+    ::Display *display = (::Display *)nativeResourceForScreen(QByteArrayLiteral("display"), QGuiApplication::primaryScreen());
+    XBell(display, 0);
+#else
+    fputc(7, stdout);
+#endif
+}
+
+void *QXcbNativeInterface::nativeResourceForIntegration(const QByteArray &resourceString)
+{
+    QByteArray lowerCaseResource = resourceString.toLower();
+    if (!qXcbResourceMap()->contains(lowerCaseResource))
+        return 0;
+
+    ResourceType resource = qXcbResourceMap()->value(lowerCaseResource);
+    void *result = 0;
+    switch (resource) {
+    case StartupId:
+        result = startupId();
+        break;
+    default:
+        break;
+    }
+
+    return result;
 }
 
 void *QXcbNativeInterface::nativeResourceForContext(const QByteArray &resourceString, QOpenGLContext *context)
@@ -125,6 +161,8 @@ void *QXcbNativeInterface::nativeResourceForScreen(const QByteArray &resource, Q
     case AppUserTime:
         result = appUserTime(xcbScreen);
         break;
+    case ScreenHintStyle:
+        result = reinterpret_cast<void *>(xcbScreen->hintStyle() + 1);
     default:
         break;
     }
@@ -177,6 +215,15 @@ void *QXcbNativeInterface::appTime(const QXcbScreen *screen)
 void *QXcbNativeInterface::appUserTime(const QXcbScreen *screen)
 {
     return reinterpret_cast<void *>(quintptr(screen->connection()->netWmUserTime()));
+}
+
+void *QXcbNativeInterface::startupId()
+{
+    QXcbIntegration* integration = static_cast<QXcbIntegration *>(QGuiApplicationPrivate::platformIntegration());
+    QXcbConnection *defaultConnection = integration->defaultConnection();
+    if (defaultConnection)
+        return reinterpret_cast<void *>(const_cast<char *>(defaultConnection->startupId().constData()));
+    return 0;
 }
 
 void QXcbNativeInterface::setAppTime(QScreen* screen, xcb_timestamp_t time)

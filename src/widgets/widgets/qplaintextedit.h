@@ -3,7 +3,7 @@
 ** Copyright (C) 2013 Digia Plc and/or its subsidiary(-ies).
 ** Contact: http://www.qt-project.org/legal
 **
-** This file is part of the QtGui module of the Qt Toolkit.
+** This file is part of the QtWidgets module of the Qt Toolkit.
 **
 ** $QT_BEGIN_LICENSE:LGPL$
 ** Commercial License Usage
@@ -52,8 +52,6 @@
 #include <QtGui/qabstracttextdocumentlayout.h>
 
 #ifndef QT_NO_TEXTEDIT
-
-QT_BEGIN_HEADER
 
 QT_BEGIN_NAMESPACE
 
@@ -204,6 +202,9 @@ public Q_SLOTS:
 
     void centerCursor();
 
+    void zoomIn(int range = 1);
+    void zoomOut(int range = 1);
+
 Q_SIGNALS:
     void textChanged();
     void undoAvailable(bool b);
@@ -318,8 +319,6 @@ private:
 };
 
 QT_END_NAMESPACE
-
-QT_END_HEADER
 
 
 #endif // QT_NO_TEXTEDIT

@@ -38,9 +38,16 @@
 **
 ****************************************************************************/
 
-#include <QtWidgets>
-
 #include "calendar.h"
+
+#include <QComboBox>
+#include <QGridLayout>
+#include <QGroupBox>
+#include <QCalendarWidget>
+#include <QLabel>
+#include <QDateEdit>
+#include <QCheckBox>
+#include <QTextCharFormat>
 
 CalendarWidget::CalendarWidget()
 {
@@ -397,9 +404,9 @@ void CalendarWidget::createTextFormatsGroupBox()
 QComboBox *CalendarWidget::createColorComboBox()
 {
     QComboBox *comboBox = new QComboBox;
-    comboBox->addItem(tr("Red"), Qt::red);
-    comboBox->addItem(tr("Blue"), Qt::blue);
-    comboBox->addItem(tr("Black"), Qt::black);
-    comboBox->addItem(tr("Magenta"), Qt::magenta);
+    comboBox->addItem(tr("Red"), QColor(Qt::red));
+    comboBox->addItem(tr("Blue"), QColor(Qt::blue));
+    comboBox->addItem(tr("Black"), QColor(Qt::black));
+    comboBox->addItem(tr("Magenta"), QColor(Qt::magenta));
     return comboBox;
 }

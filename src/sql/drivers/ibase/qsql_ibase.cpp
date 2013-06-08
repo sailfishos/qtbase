@@ -39,7 +39,7 @@
 **
 ****************************************************************************/
 
-#include "qsql_ibase.h"
+#include "qsql_ibase_p.h"
 #include <qcoreapplication.h>
 #include <qdatetime.h>
 #include <qvariant.h>
@@ -47,6 +47,8 @@
 #include <qsqlfield.h>
 #include <qsqlindex.h>
 #include <qsqlquery.h>
+#include <QtSql/private/qsqlcachedresult_p.h>
+#include <QtSql/private/qsqldriver_p.h>
 #include <qlist.h>
 #include <qvector.h>
 #include <qtextcodec.h>
@@ -308,13 +310,15 @@ struct QIBaseEventBuffer {
     QIBaseSubscriptionState subscriptionState;
 };
 
-class QIBaseDriverPrivate
+class QIBaseDriverPrivate : public QSqlDriverPrivate
 {
+    Q_DECLARE_PUBLIC(QIBaseDriver)
 public:
-    QIBaseDriverPrivate(QIBaseDriver *d) : q(d), ibase(0), trans(0), tc(0) {}
+    QIBaseDriverPrivate() : QSqlDriverPrivate(), ibase(0), trans(0), tc(0) { dbmsType = Interbase; }
 
     bool isError(const char *msg, QSqlError::ErrorType typ = QSqlError::UnknownError)
     {
+        Q_Q(QIBaseDriver);
         QString imsg;
         ISC_LONG sqlcode;
         if (!getIBaseError(imsg, status, sqlcode, tc))
@@ -326,7 +330,6 @@ public:
     }
 
 public:
-    QIBaseDriver* q;
     isc_db_handle ibase;
     isc_tr_handle trans;
     QTextCodec *tc;
@@ -345,6 +348,31 @@ static void qFreeEventBuffer(QIBaseEventBuffer* eBuffer)
     qMutex()->unlock();
     delete eBuffer;
 }
+
+class QIBaseResultPrivate;
+
+class QIBaseResult : public QSqlCachedResult
+{
+    friend class QIBaseResultPrivate;
+
+public:
+    explicit QIBaseResult(const QIBaseDriver* db);
+    virtual ~QIBaseResult();
+
+    bool prepare(const QString& query);
+    bool exec();
+    QVariant handle() const;
+
+protected:
+    bool gotoNext(QSqlCachedResult::ValueCache& row, int rowIdx);
+    bool reset (const QString& query);
+    int size();
+    int numRowsAffected();
+    QSqlRecord record() const;
+
+private:
+    QIBaseResultPrivate* d;
+};
 
 class QIBaseResultPrivate
 {
@@ -391,9 +419,9 @@ public:
 
 
 QIBaseResultPrivate::QIBaseResultPrivate(QIBaseResult *d, const QIBaseDriver *ddb):
-    q(d), db(ddb), trans(0), stmt(0), ibase(ddb->d->ibase), sqlda(0), inda(0), queryType(-1), tc(ddb->d->tc)
+    q(d), db(ddb), trans(0), stmt(0), ibase(ddb->d_func()->ibase), sqlda(0), inda(0), queryType(-1), tc(ddb->d_func()->tc)
 {
-    localTransaction = (ddb->d->ibase == 0);
+    localTransaction = (ddb->d_func()->ibase == 0);
 }
 
 void QIBaseResultPrivate::cleanup()
@@ -834,9 +862,9 @@ bool QIBaseResultPrivate::transaction()
 {
     if (trans)
         return true;
-    if (db->d->trans) {
+    if (db->d_func()->trans) {
         localTransaction = false;
-        trans = db->d->trans;
+        trans = db->d_func()->trans;
         return true;
     }
     localTransaction = true;
@@ -1369,15 +1397,14 @@ QVariant QIBaseResult::handle() const
 /*********************************/
 
 QIBaseDriver::QIBaseDriver(QObject * parent)
-    : QSqlDriver(parent)
+    : QSqlDriver(*new QIBaseDriverPrivate, parent)
 {
-    d = new QIBaseDriverPrivate(this);
 }
 
 QIBaseDriver::QIBaseDriver(isc_db_handle connection, QObject *parent)
-    : QSqlDriver(parent)
+    : QSqlDriver(*new QIBaseDriverPrivate, parent)
 {
-    d = new QIBaseDriverPrivate(this);
+    Q_D(QIBaseDriver);
     d->ibase = connection;
     setOpen(true);
     setOpenError(false);
@@ -1385,7 +1412,6 @@ QIBaseDriver::QIBaseDriver(isc_db_handle connection, QObject *parent)
 
 QIBaseDriver::~QIBaseDriver()
 {
-    delete d;
 }
 
 bool QIBaseDriver::hasFeature(DriverFeature f) const
@@ -1418,6 +1444,7 @@ bool QIBaseDriver::open(const QString & db,
           int /*port*/,
           const QString & connOpts)
 {
+    Q_D(QIBaseDriver);
     if (isOpen())
         close();
 
@@ -1500,6 +1527,7 @@ bool QIBaseDriver::open(const QString & db,
 
 void QIBaseDriver::close()
 {
+    Q_D(QIBaseDriver);
     if (isOpen()) {
 
         if (d->eventBuffers.size()) {
@@ -1536,6 +1564,7 @@ QSqlResult *QIBaseDriver::createResult() const
 
 bool QIBaseDriver::beginTransaction()
 {
+    Q_D(QIBaseDriver);
     if (!isOpen() || isOpenError())
         return false;
     if (d->trans)
@@ -1548,6 +1577,7 @@ bool QIBaseDriver::beginTransaction()
 
 bool QIBaseDriver::commitTransaction()
 {
+    Q_D(QIBaseDriver);
     if (!isOpen() || isOpenError())
         return false;
     if (!d->trans)
@@ -1561,6 +1591,7 @@ bool QIBaseDriver::commitTransaction()
 
 bool QIBaseDriver::rollbackTransaction()
 {
+    Q_D(QIBaseDriver);
     if (!isOpen() || isOpenError())
         return false;
     if (!d->trans)
@@ -1723,6 +1754,7 @@ QString QIBaseDriver::formatValue(const QSqlField &field, bool trimStrings) cons
 
 QVariant QIBaseDriver::handle() const
 {
+    Q_D(const QIBaseDriver);
     return QVariant(qRegisterMetaType<isc_db_handle>("isc_db_handle"), &d->ibase);
 }
 
@@ -1751,6 +1783,7 @@ static isc_callback qEventCallback(char *result, short length, char *updated)
 
 bool QIBaseDriver::subscribeToNotification(const QString &name)
 {
+    Q_D(QIBaseDriver);
     if (!isOpen()) {
         qWarning("QIBaseDriver::subscribeFromNotificationImplementation: database not open.");
         return false;
@@ -1800,6 +1833,7 @@ bool QIBaseDriver::subscribeToNotification(const QString &name)
 
 bool QIBaseDriver::unsubscribeFromNotification(const QString &name)
 {
+    Q_D(QIBaseDriver);
     if (!isOpen()) {
         qWarning("QIBaseDriver::unsubscribeFromNotificationImplementation: database not open.");
         return false;
@@ -1829,11 +1863,13 @@ bool QIBaseDriver::unsubscribeFromNotification(const QString &name)
 
 QStringList QIBaseDriver::subscribedToNotifications() const
 {
+    Q_D(const QIBaseDriver);
     return QStringList(d->eventBuffers.keys());
 }
 
 void QIBaseDriver::qHandleEventNotification(void *updatedResultBuffer)
 {
+    Q_D(QIBaseDriver);
     QMap<QString, QIBaseEventBuffer *>::const_iterator i;
     for (i = d->eventBuffers.constBegin(); i != d->eventBuffers.constEnd(); ++i) {
         QIBaseEventBuffer* eBuffer = i.value();

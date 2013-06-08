@@ -45,8 +45,6 @@
 #include <QtGui/qwindowdefs.h>
 #include <QtCore/qrect.h>
 
-QT_BEGIN_HEADER
-
 QT_BEGIN_NAMESPACE
 
 
@@ -67,7 +65,8 @@ public:
         PdmDpiX,
         PdmDpiY,
         PdmPhysicalDpiX,
-        PdmPhysicalDpiY
+        PdmPhysicalDpiY,
+        PdmDevicePixelRatio
     };
 
     virtual ~QPaintDevice();
@@ -84,6 +83,7 @@ public:
     int logicalDpiY() const { return metric(PdmDpiY); }
     int physicalDpiX() const { return metric(PdmPhysicalDpiX); }
     int physicalDpiY() const { return metric(PdmPhysicalDpiY); }
+    int devicePixelRatio() const { return metric(PdmDevicePixelRatio); }
     int colorCount() const { return metric(PdmNumColors); }
     int depth() const { return metric(PdmDepth); }
 
@@ -119,7 +119,5 @@ inline bool QPaintDevice::paintingActive() const
 { return painters != 0; }
 
 QT_END_NAMESPACE
-
-QT_END_HEADER
 
 #endif // QPAINTDEVICE_H

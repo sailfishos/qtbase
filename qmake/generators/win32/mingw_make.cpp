@@ -299,16 +299,16 @@ void MingwMakefileGenerator::init()
 
 	project->values("QMAKE_RUN_CC").clear();
 	project->values("QMAKE_RUN_CC").append("$(CC) -c -include " + preCompHeader +
-                                                    " $(CFLAGS) $(INCPATH) -o $obj $src");
+                                                    " $(CFLAGS) $(INCPATH) " + var("QMAKE_CC_O_FLAG") + "$obj $src");
         project->values("QMAKE_RUN_CC_IMP").clear();
 	project->values("QMAKE_RUN_CC_IMP").append("$(CC)  -c -include " + preCompHeader +
-                                                        " $(CFLAGS) $(INCPATH) -o $@ $<");
+                                                        " $(CFLAGS) $(INCPATH) " + var("QMAKE_CC_O_FLAG") + "$@ $<");
         project->values("QMAKE_RUN_CXX").clear();
 	project->values("QMAKE_RUN_CXX").append("$(CXX) -c -include " + preCompHeader +
-                                                     " $(CXXFLAGS) $(INCPATH) -o $obj $src");
+                                                     " $(CXXFLAGS) $(INCPATH) " + var("QMAKE_CC_O_FLAG") + "$obj $src");
         project->values("QMAKE_RUN_CXX_IMP").clear();
 	project->values("QMAKE_RUN_CXX_IMP").append("$(CXX) -c -include " + preCompHeader +
-                                                         " $(CXXFLAGS) $(INCPATH) -o $@ $<");
+                                                         " $(CXXFLAGS) $(INCPATH) " + var("QMAKE_CC_O_FLAG") + "$@ $<");
     }
 
     if(project->isActiveConfig("dll")) {
@@ -405,7 +405,7 @@ void MingwMakefileGenerator::writeBuildRulesPart(QTextStream &t)
             t << "\n\t" << objectsLinkLine << " " ;
         }
     } else if (project->first("TEMPLATE") != "aux") {
-        t << "\n\t" << "$(LINKER) $(LFLAGS) -o $(DESTDIR_TARGET) " << objectsLinkLine << " " << " $(LIBS)";
+        t << "\n\t" << "$(LINKER) $(LFLAGS) " << var("QMAKE_LINK_O_FLAG") << "$(DESTDIR_TARGET) " << objectsLinkLine << " " << " $(LIBS)";
     }
     if(!project->isEmpty("QMAKE_POST_LINK"))
         t << "\n\t" <<var("QMAKE_POST_LINK");
@@ -431,7 +431,7 @@ void MingwMakefileGenerator::writeRcFilePart(QTextStream &t)
 
     if (!rc_file.isEmpty()) {
         t << escapeDependencyPath(var("RES_FILE")) << ": " << rc_file << "\n\t"
-          << var("QMAKE_RC") << " -i " << rc_file << " -o " << var("RES_FILE") 
+          << var("QMAKE_RC") << " -i " << rc_file << " -o " << var("RES_FILE")
           << incPathStr << " $(DEFINES)" << endl << endl;
     }
 }

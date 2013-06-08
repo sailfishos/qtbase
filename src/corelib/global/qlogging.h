@@ -49,7 +49,6 @@
 #pragma qt_no_master_include
 #endif
 
-QT_BEGIN_HEADER
 QT_BEGIN_NAMESPACE
 
 /*
@@ -95,22 +94,38 @@ public:
 
     void debug(const char *msg, ...) const
 #if defined(Q_CC_GNU) && !defined(__INSURE__)
+#  if defined(Q_CC_MINGW) && !defined(Q_CC_CLANG)
+    __attribute__ ((format (gnu_printf, 2, 3)))
+#  else
     __attribute__ ((format (printf, 2, 3)))
+#  endif
 #endif
     ;
     void noDebug(const char *, ...) const
 #if defined(Q_CC_GNU) && !defined(__INSURE__)
+#  if defined(Q_CC_MINGW) && !defined(Q_CC_CLANG)
+    __attribute__ ((format (gnu_printf, 2, 3)))
+#  else
     __attribute__ ((format (printf, 2, 3)))
+#  endif
 #endif
     {}
     void warning(const char *msg, ...) const
 #if defined(Q_CC_GNU) && !defined(__INSURE__)
+#  if defined(Q_CC_MINGW) && !defined(Q_CC_CLANG)
+    __attribute__ ((format (gnu_printf, 2, 3)))
+#  else
     __attribute__ ((format (printf, 2, 3)))
+#  endif
 #endif
     ;
     void critical(const char *msg, ...) const
 #if defined(Q_CC_GNU) && !defined(__INSURE__)
+#  if defined(Q_CC_MINGW) && !defined(Q_CC_CLANG)
+    __attribute__ ((format (gnu_printf, 2, 3)))
+#  else
     __attribute__ ((format (printf, 2, 3)))
+#  endif
 #endif
     ;
 
@@ -119,7 +134,11 @@ public:
 #endif
     void fatal(const char *msg, ...) const Q_DECL_NOTHROW
 #if defined(Q_CC_GNU) && !defined(__INSURE__)
+#  if defined(Q_CC_MINGW) && !defined(Q_CC_CLANG)
+    __attribute__ ((format (gnu_printf, 2, 3)))
+#  else
     __attribute__ ((format (printf, 2, 3)))
+#  endif
 #endif
     ;
 
@@ -172,6 +191,4 @@ Q_CORE_EXPORT QtMessageHandler qInstallMessageHandler(QtMessageHandler);
 Q_CORE_EXPORT void qSetMessagePattern(const QString &messagePattern);
 
 QT_END_NAMESPACE
-QT_END_HEADER
-
 #endif // QLOGGING_H

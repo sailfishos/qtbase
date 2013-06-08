@@ -3,7 +3,7 @@
 ** Copyright (C) 2013 Digia Plc and/or its subsidiary(-ies).
 ** Contact: http://www.qt-project.org/legal
 **
-** This file is part of the QtGui module of the Qt Toolkit.
+** This file is part of the QtWidgets module of the Qt Toolkit.
 **
 ** $QT_BEGIN_LICENSE:LGPL$
 ** Commercial License Usage
@@ -1113,10 +1113,15 @@ void QTableView::doItemsLayout()
 {
     Q_D(QTableView);
     QAbstractItemView::doItemsLayout();
-    if (verticalScrollMode() == QAbstractItemView::ScrollPerItem)
-        d->verticalHeader->setOffsetToSectionPosition(verticalScrollBar()->value());
-    else
+    if (verticalScrollMode() == QAbstractItemView::ScrollPerItem) {
+        const int max = verticalScrollBar()->maximum();
+        if (max > 0 && verticalScrollBar()->value() == max)
+            d->verticalHeader->setOffsetToLastSection();
+        else
+            d->verticalHeader->setOffsetToSectionPosition(verticalScrollBar()->value());
+    } else {
         d->verticalHeader->setOffset(verticalScrollBar()->value());
+    }
     if (!d->verticalHeader->updatesEnabled())
         d->verticalHeader->setUpdatesEnabled(true);
 }

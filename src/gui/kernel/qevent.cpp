@@ -947,11 +947,14 @@ QKeyEvent::~QKeyEvent()
 /*!
     \fn QString QKeyEvent::text() const
 
-    Returns the Unicode text that this key generated. The text
-    returned can be an empty string in cases
-    where modifier keys, such as Shift, Control, Alt, and Meta,
-    are being pressed or released. In such cases key() will contain
-    a valid value.
+    Returns the Unicode text that this key generated.
+
+    Return values when modifier keys such as
+    Shift, Control, Alt, and Meta are pressed
+    differ among platforms and could return an empty string.
+
+    \note \l key() will always return a valid value,
+    independent of modifier keys.
 
     \sa Qt::WA_KeyCompression
 */
@@ -966,7 +969,7 @@ QKeyEvent::~QKeyEvent()
 
     \sa QApplication::keyboardModifiers()
 */
-//###### We must check with XGetModifierMapping
+
 Qt::KeyboardModifiers QKeyEvent::modifiers() const
 {
     if (key() == Qt::Key_Shift)
@@ -977,6 +980,8 @@ Qt::KeyboardModifiers QKeyEvent::modifiers() const
         return Qt::KeyboardModifiers(QInputEvent::modifiers()^Qt::AltModifier);
     if (key() == Qt::Key_Meta)
         return Qt::KeyboardModifiers(QInputEvent::modifiers()^Qt::MetaModifier);
+    if (key() == Qt::Key_AltGr)
+        return Qt::KeyboardModifiers(QInputEvent::modifiers()^Qt::GroupSwitchModifier);
     return QInputEvent::modifiers();
 }
 
@@ -990,9 +995,9 @@ Qt::KeyboardModifiers QKeyEvent::modifiers() const
 */
 bool QKeyEvent::matches(QKeySequence::StandardKey matchKey) const
 {
-    uint searchkey = (modifiers() | key()) & ~(Qt::KeypadModifier); //The keypad modifier should not make a difference
+    //The keypad and group switch modifier should not make a difference
+    uint searchkey = (modifiers() | key()) & ~(Qt::KeypadModifier | Qt::GroupSwitchModifier);
     const uint platform = QKeySequencePrivate::currentKeyPlatforms();
-
 
     uint N = QKeySequencePrivate::numberOfKeyBindings;
     int first = 0;
@@ -3071,6 +3076,35 @@ QShortcutEvent::~QShortcutEvent()
 #endif // QT_NO_SHORTCUT
 
 #ifndef QT_NO_DEBUG_STREAM
+
+static inline void formatTouchEvent(QDebug d, const char *name, const QTouchEvent &t)
+{
+    d << "QTouchEvent(" << name << " states: " <<  t.touchPointStates();
+    const QList<QTouchEvent::TouchPoint> points = t.touchPoints();
+    const int size = points.size();
+    d << ", " << size << " points: ";
+    for (int i = 0; i < size; ++i) {
+        if (i)
+            d << ", ";
+        d << points.at(i).pos() << ' ' << points.at(i).rect();
+        switch (points.at(i).state()) {
+        case Qt::TouchPointPressed:
+            d << " pressed";
+            break;
+        case Qt::TouchPointReleased:
+            d << " released";
+            break;
+        case Qt::TouchPointMoved:
+            d << " moved";
+            break;
+        case Qt::TouchPointStationary:
+            d << " stationary";
+            break;
+        }
+    }
+    d << ')';
+}
+
 QDebug operator<<(QDebug dbg, const QEvent *e) {
     // More useful event output could be added here
     if (!e)
@@ -3337,6 +3371,14 @@ QDebug operator<<(QDebug dbg, const QEvent *e) {
     case QEvent::UngrabKeyboard:
         n = "UngrabKeyboard";
         break;
+    case QEvent::TouchBegin:
+        n = "TouchBegin";
+    case QEvent::TouchUpdate:
+        n = n ? n : "TouchUpdate";
+    case QEvent::TouchEnd:
+        n = n ? n : "TouchEnd";
+        formatTouchEvent(dbg.nospace(), n, *static_cast<const QTouchEvent*>(e));
+        return dbg.nospace();
     case QEvent::ChildAdded: n = n ? n : "ChildAdded";
     case QEvent::ChildPolished: n = n ? n : "ChildPolished";
     case QEvent::ChildRemoved: n = n ? n : "ChildRemoved";
@@ -4361,6 +4403,23 @@ QScreen *QScreenOrientationChangeEvent::screen() const
 Qt::ScreenOrientation QScreenOrientationChangeEvent::orientation() const
 {
     return m_orientation;
+}
+
+/*!
+    Creates a new QApplicationStateChangeEvent.
+    \a applicationState is the new state.
+*/
+QApplicationStateChangeEvent::QApplicationStateChangeEvent(Qt::ApplicationState applicationState)
+    : QEvent(QEvent::ApplicationStateChange), m_applicationState(applicationState)
+{
+}
+
+/*!
+    Returns the state of the application.
+*/
+Qt::ApplicationState QApplicationStateChangeEvent::applicationState() const
+{
+    return m_applicationState;
 }
 
 QT_END_NAMESPACE

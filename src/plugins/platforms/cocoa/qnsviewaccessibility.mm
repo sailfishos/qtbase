@@ -45,13 +45,12 @@
 #include "qcocoahelpers.h"
 #include "qcocoaaccessibility.h"
 #include "qcocoaaccessibilityelement.h"
+#include <qpa/qplatformintegration.h>
 
-#include "QAccessibleActionInterface"
+#include <QtGui/private/qaccessible2_p.h>
 #include <QtCore/QDebug>
 
 #import <AppKit/NSAccessibility.h>
-
-#ifndef QT_NO_COCOA_ACCESSIBILITY
 
 @implementation QNSView (QNSViewAccessibility)
 
@@ -62,22 +61,29 @@
 }
 
 - (id)accessibilityAttributeValue:(NSString *)attribute {
+
+    // activate accessibility updates
+    QGuiApplicationPrivate::platformIntegration()->accessibility()->setActive(true);
+
     if ([attribute isEqualToString:NSAccessibilityRoleAttribute]) {
-        if (m_accessibleRoot)
-            return QCocoaAccessible::macRole(m_accessibleRoot);
+        if (m_window->accessibleRoot())
+            return QCocoaAccessible::macRole(m_window->accessibleRoot());
         return NSAccessibilityUnknownRole;
     } else if ([attribute isEqualToString:NSAccessibilityRoleDescriptionAttribute]) {
         return NSAccessibilityRoleDescriptionForUIElement(self);
     } else if ([attribute isEqualToString:NSAccessibilityChildrenAttribute]) {
-        if (!m_accessibleRoot)
+        if (!m_window->accessibleRoot())
             return [super accessibilityAttributeValue:attribute];
 
         // Create QCocoaAccessibleElements for each child if the
         // root accessible interface.
-        int numKids = m_accessibleRoot->childCount();
+        int numKids = m_window->accessibleRoot()->childCount();
         NSMutableArray *kids = [NSMutableArray arrayWithCapacity:numKids];
         for (int i = 0; i < numKids; ++i) {
-            QCocoaAccessibleElement *element = [QCocoaAccessibleElement createElementWithInterface: m_accessibleRoot->child(i) parent:self ];
+            QAccessibleInterface *child = m_window->accessibleRoot()->child(i);
+            Q_ASSERT(child);
+            QAccessible::Id childAxid = QAccessible::uniqueId(child);
+            QCocoaAccessibleElement *element = [QCocoaAccessibleElement createElementWithId:childAxid parent:self];
             [kids addObject: element];
             [element release];
         }
@@ -89,22 +95,38 @@
 }
 
 - (id)accessibilityHitTest:(NSPoint)point {
-    if (!m_accessibleRoot)
+    if (!m_window->accessibleRoot())
         return [super accessibilityHitTest:point];
 
-    QAccessibleInterface *childInterface = m_accessibleRoot->childAt(point.x, qt_mac_flipYCoordinate(point.y));
+    QAccessibleInterface *childInterface = m_window->accessibleRoot()->childAt(point.x, qt_mac_flipYCoordinate(point.y));
     // No child found, meaning we hit the NSView
     if (!childInterface) {
         return [super accessibilityHitTest:point];
     }
 
     // Hit a child, forward to child accessible interface.
-
-    QCocoaAccessibleElement *accessibleElement = [QCocoaAccessibleElement createElementWithInterface: childInterface parent:self ];
+    QAccessible::Id childAxid = QAccessible::uniqueId(childInterface);
+    // FIXME: parent could be wrong
+    QCocoaAccessibleElement *accessibleElement = [QCocoaAccessibleElement createElementWithId:childAxid parent:self ];
     [accessibleElement autorelease];
     return [accessibleElement accessibilityHitTest:point];
 }
 
-@end
+- (id)accessibilityFocusedUIElement {
+    if (!m_window->accessibleRoot())
+        return [super accessibilityFocusedUIElement];
 
-#endif // QT_NO_COCOA_ACCESSIBILITY
+    QAccessibleInterface *childInterface = m_window->accessibleRoot()->focusChild();
+    if (childInterface) {
+        QAccessible::Id childAxid = QAccessible::uniqueId(childInterface);
+        // FIXME: parent could be wrong
+        QCocoaAccessibleElement *accessibleElement = [QCocoaAccessibleElement createElementWithId:childAxid parent:self];
+        [accessibleElement autorelease];
+        return accessibleElement;
+    }
+
+    // should not happen
+    return nil;
+}
+
+@end

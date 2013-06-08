@@ -41,6 +41,7 @@
 
 #include "qqnxscreen.h"
 #include "qqnxwindow.h"
+#include "qqnxcursor.h"
 
 #include <QtCore/QThread>
 #include <QtCore/QDebug>
@@ -48,7 +49,7 @@
 
 #include <errno.h>
 
-#ifdef QQNXSCREEN_DEBUG
+#if defined(QQNXSCREEN_DEBUG)
 #define qScreenDebug qDebug
 #else
 #define qScreenDebug QT_NO_QDEBUG_MACRO
@@ -110,7 +111,8 @@ QQnxScreen::QQnxScreen(screen_context_t screenContext, screen_display_t display,
       m_posted(false),
       m_keyboardHeight(0),
       m_nativeOrientation(Qt::PrimaryOrientation),
-      m_platformContext(0)
+      m_platformContext(0),
+      m_cursor(new QQnxCursor())
 {
     qScreenDebug() << Q_FUNC_INFO;
     // Cache initial orientation of this display
@@ -149,6 +151,10 @@ QQnxScreen::QQnxScreen(screen_context_t screenContext, screen_display_t display,
 QQnxScreen::~QQnxScreen()
 {
     qScreenDebug() << Q_FUNC_INFO;
+    Q_FOREACH (QQnxWindow *childWindow, m_childWindows)
+        childWindow->setScreen(0);
+
+    delete m_cursor;
 }
 
 static int defaultDepth()
@@ -492,6 +498,23 @@ void QQnxScreen::onWindowPost(QQnxWindow *window)
     }
 }
 
+void QQnxScreen::adjustOrientation()
+{
+    if (!m_primaryScreen)
+        return;
+
+    bool ok = false;
+    const int rotation = qgetenv("ORIENTATION").toInt(&ok);
+
+    if (ok)
+        setRotation(rotation);
+}
+
+QPlatformCursor * QQnxScreen::cursor() const
+{
+    return m_cursor;
+}
+
 void QQnxScreen::keyboardHeightChanged(int height)
 {
     if (height == m_keyboardHeight)
@@ -542,6 +565,21 @@ void QQnxScreen::windowClosed(void *window)
     removeOverlayWindow(windowHandle);
 }
 
+void QQnxScreen::windowGroupStateChanged(const QByteArray &id, Qt::WindowState state)
+{
+    qScreenDebug() << Q_FUNC_INFO;
+
+    if (!rootWindow() || id != rootWindow()->groupName())
+        return;
+
+    QWindow * const window = topMostChildWindow();
+
+    if (!window)
+        return;
+
+    QWindowSystemInterface::handleWindowStateChanged(window, state);
+}
+
 void QQnxScreen::activateWindowGroup(const QByteArray &id)
 {
     qScreenDebug() << Q_FUNC_INFO;
@@ -549,13 +587,12 @@ void QQnxScreen::activateWindowGroup(const QByteArray &id)
     if (!rootWindow() || id != rootWindow()->groupName())
         return;
 
-    if (!m_childWindows.isEmpty()) {
-        // We're picking up the last window of the list here
-        // because this list is ordered by stacking order.
-        // Last window is effectively the one on top.
-        QWindow * const window = m_childWindows.last()->window();
-        QWindowSystemInterface::handleWindowActivated(window);
-    }
+    QWindow * const window = topMostChildWindow();
+
+    if (!window)
+        return;
+
+    QWindowSystemInterface::handleWindowActivated(window);
 }
 
 void QQnxScreen::deactivateWindowGroup(const QByteArray &id)
@@ -575,6 +612,19 @@ QSharedPointer<QQnxRootWindow> QQnxScreen::rootWindow() const
         m_rootWindow = QSharedPointer<QQnxRootWindow>(new QQnxRootWindow(this));
 
     return m_rootWindow;
+}
+
+QWindow * QQnxScreen::topMostChildWindow() const
+{
+    if (!m_childWindows.isEmpty()) {
+
+        // We're picking up the last window of the list here
+        // because this list is ordered by stacking order.
+        // Last window is effectively the one on top.
+        return m_childWindows.last()->window();
+    }
+
+    return 0;
 }
 
 QT_END_NAMESPACE

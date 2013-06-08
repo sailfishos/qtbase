@@ -159,7 +159,7 @@ void QConnmanEngine::connectToId(const QString &id)
             QOfonoDataConnectionManagerInterface dc(modemPath,0);
             foreach (const QDBusObjectPath &dcPath,dc.getPrimaryContexts()) {
                 if(dcPath.path().contains(servicePath.section("_",-1))) {
-                    QOfonoPrimaryDataContextInterface primaryContext(dcPath.path(),0);
+                    QOfonoConnectionContextInterface primaryContext(dcPath.path(),0);
                     primaryContext.setActive(true);
                 }
             }
@@ -183,7 +183,7 @@ void QConnmanEngine::disconnectFromId(const QString &id)
             QOfonoDataConnectionManagerInterface dc(modemPath,0);
             foreach (const QDBusObjectPath &dcPath,dc.getPrimaryContexts()) {
                 if(dcPath.path().contains(servicePath.section("_",-1))) {
-                    QOfonoPrimaryDataContextInterface primaryContext(dcPath.path(),0);
+                    QOfonoConnectionContextInterface primaryContext(dcPath.path(),0);
                     primaryContext.setActive(false);
                 }
             }
@@ -574,7 +574,7 @@ void QConnmanEngine::addServiceConfiguration(const QString &servicePath)
         QNetworkConfigurationPrivatePointer ptr(cpPriv);
         accessPointConfigurations.insert(ptr->id, ptr);
         foundConfigurations.append(cpPriv);
-        configInterfaces[cpPriv->id] = serv->getInterface(); 
+        configInterfaces[cpPriv->id] = serv->getInterface();
 
         locker.unlock();
         emit configurationAdded(ptr);

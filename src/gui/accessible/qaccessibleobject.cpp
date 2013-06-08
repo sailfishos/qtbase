@@ -55,38 +55,7 @@ class QAccessibleObjectPrivate
 {
 public:
     QPointer<QObject> object;
-
-    QList<QByteArray> actionList() const;
 };
-
-QList<QByteArray> QAccessibleObjectPrivate::actionList() const
-{
-    QList<QByteArray> actionList;
-
-    if (!object)
-        return actionList;
-
-    const QMetaObject *mo = object->metaObject();
-    Q_ASSERT(mo);
-
-    QByteArray defaultAction = QMetaObject::normalizedSignature(
-        mo->classInfo(mo->indexOfClassInfo("DefaultSlot")).value());
-
-    for (int i = 0; i < mo->methodCount(); ++i) {
-        const QMetaMethod member = mo->method(i);
-        if (member.methodType() != QMetaMethod::Slot && member.access() != QMetaMethod::Public)
-            continue;
-
-        if (!qstrcmp(member.tag(), "QACCESSIBLE_SLOT")) {
-            if (member.methodSignature() == defaultAction)
-                actionList.prepend(defaultAction);
-            else
-                actionList << member.methodSignature();
-        }
-    }
-
-    return actionList;
-}
 
 /*!
     \class QAccessibleObject
@@ -131,10 +100,6 @@ QAccessibleObject::~QAccessibleObject()
 */
 QObject *QAccessibleObject::object() const
 {
-#ifndef QT_NO_DEBUG
-    if (!d->object)
-        qWarning("QAccessibleInterface is invalid. Crash pending...");
-#endif
     return d->object;
 }
 
@@ -163,11 +128,8 @@ QAccessibleInterface *QAccessibleObject::childAt(int x, int y) const
     for (int i = 0; i < childCount(); ++i) {
         QAccessibleInterface *childIface = child(i);
         Q_ASSERT(childIface);
-        if (childIface->rect().contains(x,y)) {
+        if (childIface->rect().contains(x,y))
             return childIface;
-        } else {
-            delete childIface;
-        }
     }
     return 0;
 }
@@ -207,7 +169,6 @@ static QObjectList topLevelObjects()
             if (QAccessibleInterface *root = w->accessibleRoot()) {
                 if (root->object())
                     list.append(root->object());
-                delete root;
             }
         }
     }
@@ -224,6 +185,8 @@ int QAccessibleApplication::childCount() const
 /*! \reimp */
 int QAccessibleApplication::indexOfChild(const QAccessibleInterface *child) const
 {
+    if (!child)
+        return -1;
     const QObjectList tlw(topLevelObjects());
     return tlw.indexOf(child->object());
 }

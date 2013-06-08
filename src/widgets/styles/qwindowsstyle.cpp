@@ -3,7 +3,7 @@
 ** Copyright (C) 2013 Digia Plc and/or its subsidiary(-ies).
 ** Contact: http://www.qt-project.org/legal
 **
-** This file is part of the QtGui module of the Qt Toolkit.
+** This file is part of the QtWidgets module of the Qt Toolkit.
 **
 ** $QT_BEGIN_LICENSE:LGPL$
 ** Commercial License Usage
@@ -602,21 +602,6 @@ int QWindowsStyle::styleHint(StyleHint hint, const QStyleOption *opt, const QWid
         }
         break;
 #endif // QT_NO_RUBBERBAND
-    case SH_LineEdit_PasswordCharacter:
-        {
-#ifdef Q_OS_WIN
-            if (widget && (QSysInfo::WindowsVersion >= QSysInfo::WV_XP && (QSysInfo::WindowsVersion & QSysInfo::WV_NT_based))) {
-                const QFontMetrics &fm = widget->fontMetrics();
-                if (fm.inFont(QChar(0x25CF)))
-                    ret = 0x25CF;
-                else if (fm.inFont(QChar(0x2022)))
-                    ret = 0x2022;
-            }
-#endif
-            if (!ret)
-                ret = '*';
-        }
-        break;
 #ifndef QT_NO_WIZARD
     case SH_WizardStyle:
         ret = QWizard::ModernStyle;
@@ -2358,7 +2343,6 @@ QSize QWindowsStyle::sizeFromContents(ContentsType ct, const QStyleOption *opt,
             sz += QSize(QWindowsStylePrivate::windowsItemHMargin * 4, QWindowsStylePrivate::windowsItemVMargin * 2);
         break;
 #endif
-                // Otherwise, fall through
     case CT_ToolButton:
         if (qstyleoption_cast<const QStyleOptionToolButton *>(opt))
             return sz += QSize(7, 6);

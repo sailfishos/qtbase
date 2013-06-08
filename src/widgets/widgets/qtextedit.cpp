@@ -3,7 +3,7 @@
 ** Copyright (C) 2013 Digia Plc and/or its subsidiary(-ies).
 ** Contact: http://www.qt-project.org/legal
 **
-** This file is part of the QtGui module of the Qt Toolkit.
+** This file is part of the QtWidgets module of the Qt Toolkit.
 **
 ** $QT_BEGIN_LICENSE:LGPL$
 ** Commercial License Usage
@@ -182,7 +182,7 @@ void QTextEditPrivate::init(const QString &html)
     q->setFocusPolicy(Qt::WheelFocus);
     q->setAttribute(Qt::WA_KeyCompression);
     q->setAttribute(Qt::WA_InputMethodEnabled);
-
+    q->setInputMethodHints(Qt::ImhMultiLine);
 #ifndef QT_NO_CURSOR
     viewport->setCursor(Qt::IBeamCursor);
 #endif
@@ -444,6 +444,8 @@ void QTextEditPrivate::_q_ensureVisible(const QRectF &_rect)
     The text edit may be able to provide some meta-information. For
     example, the documentTitle() function will return the text from
     within HTML \c{<title>} tags.
+
+    \note Zooming into HTML documents only works if the font-size is not set to a fixed size.
 
     \section1 Using QTextEdit as an Editor
 

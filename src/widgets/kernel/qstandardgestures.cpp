@@ -3,7 +3,7 @@
 ** Copyright (C) 2013 Digia Plc and/or its subsidiary(-ies).
 ** Contact: http://www.qt-project.org/legal
 **
-** This file is part of the QtGui module of the Qt Toolkit.
+** This file is part of the QtWidgets module of the Qt Toolkit.
 **
 ** $QT_BEGIN_LICENSE:LGPL$
 ** Commercial License Usage
@@ -59,8 +59,8 @@ QPanGestureRecognizer::QPanGestureRecognizer()
 QGesture *QPanGestureRecognizer::create(QObject *target)
 {
     if (target && target->isWidgetType()) {
-#if defined(Q_OS_WIN) && !defined(QT_NO_NATIVE_GESTURES)
-        // for scroll areas on Windows we want to use native gestures instead
+#if ((defined(Q_OS_MAC) && !defined(Q_OS_IOS)) || defined(Q_OS_WIN)) && !defined(QT_NO_NATIVE_GESTURES)
+        // for scroll areas on Windows and Mac OS X we want to use native gestures instead
         if (!qobject_cast<QAbstractScrollArea *>(target->parent()))
             static_cast<QWidget *>(target)->setAttribute(Qt::WA_AcceptTouchEvents);
 #else

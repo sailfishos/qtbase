@@ -42,11 +42,11 @@
 #ifndef Q_SPI_APPLICATION_H
 #define Q_SPI_APPLICATION_H
 
+#include <QtCore/QPointer>
 #include <QtCore/QQueue>
 #include <QtDBus/QDBusConnection>
 #include <QtGui/QAccessibleInterface>
 
-QT_BEGIN_HEADER
 QT_BEGIN_NAMESPACE
 
 /*
@@ -76,11 +76,10 @@ private Q_SLOTS:
 private:
     static QKeyEvent* copyKeyEvent(QKeyEvent*);
 
-    QQueue<QPair<QObject*, QKeyEvent*> > keyEvents;
+    QQueue<QPair<QPointer<QObject>, QKeyEvent*> > keyEvents;
     QDBusConnection dbusConnection;
 };
 
 QT_END_NAMESPACE
-QT_END_HEADER
 
 #endif

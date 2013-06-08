@@ -45,8 +45,6 @@
 #include <QtSql/qsqldatabase.h>
 #include <QtSql/qsqlquerymodel.h>
 
-QT_BEGIN_HEADER
-
 QT_BEGIN_NAMESPACE
 
 
@@ -136,10 +134,9 @@ protected:
     void setPrimaryKey(const QSqlIndex &key);
     void setQuery(const QSqlQuery &query);
     QModelIndex indexInQuery(const QModelIndex &item) const;
+    QSqlRecord primaryValues(int row) const;
 };
 
 QT_END_NAMESPACE
-
-QT_END_HEADER
 
 #endif // QSQLTABLEMODEL_H

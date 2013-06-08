@@ -48,8 +48,6 @@
 
 QT_BEGIN_NAMESPACE
 
-QT_BEGIN_HEADER
-
 #ifndef QT_NO_DRAGANDDROP
 
 class QMouseEvent;
@@ -99,7 +97,6 @@ private:
     bool m_can_drop;
     QDrag *m_drag;
     QShapedPixmapWindow *m_drag_icon_window;
-    Qt::DropAction m_cursor_drop_action;
 };
 
 class QSimpleDrag : public QBasicDrag
@@ -119,8 +116,6 @@ private:
 };
 
 #endif // QT_NO_DRAGANDDROP
-
-QT_END_HEADER
 
 QT_END_NAMESPACE
 

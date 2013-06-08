@@ -74,6 +74,10 @@ private slots:
 
     void const_shared_null();
     void twoArguments_qHash();
+    void initializerList();
+
+    void qthash_data();
+    void qthash();
 };
 
 struct Foo {
@@ -844,7 +848,7 @@ void tst_QHash::iterators()
     //STL-Style iterators
 
     QHash<int, QString>::iterator stlIt = hash.begin();
-    for(stlIt = hash.begin(), i = 1; stlIt != hash.end(), i < 100; ++stlIt, ++i) {
+    for (stlIt = hash.begin(), i = 1; stlIt != hash.end() && i < 100; ++stlIt, ++i) {
             testMap.insert(i,stlIt.value());
             //QVERIFY(stlIt.value() == hash.value(
     }
@@ -869,7 +873,7 @@ void tst_QHash::iterators()
     //STL-Style const-iterators
 
     QHash<int, QString>::const_iterator cstlIt = hash.constBegin();
-    for(cstlIt = hash.constBegin(), i = 1; cstlIt != hash.constEnd(), i < 100; ++cstlIt, ++i) {
+    for (cstlIt = hash.constBegin(), i = 1; cstlIt != hash.constEnd() && i < 100; ++cstlIt, ++i) {
             testMap.insert(i,cstlIt.value());
             //QVERIFY(stlIt.value() == hash.value(
     }
@@ -1298,6 +1302,54 @@ void tst_QHash::twoArguments_qHash()
     TwoArgumentsQHashStruct4 twoArgsObject4;
     twoArgsHash4[twoArgsObject4] = 1;
     QCOMPARE(wrongqHashOverload, 0);
+}
+
+void tst_QHash::initializerList()
+{
+#ifdef Q_COMPILER_INITIALIZER_LISTS
+    QHash<int, QString> hash{{1, "hello"}, {2, "initializer_list"}};
+    QCOMPARE(hash.count(), 2);
+    QVERIFY(hash[1] == "hello");
+    QVERIFY(hash[2] == "initializer_list");
+
+    QMultiHash<QString, int> multiHash{{"il", 1}, {"il", 2}, {"il", 3}};
+    QCOMPARE(multiHash.count(), 3);
+    QList<int> values = multiHash.values("il");
+    QCOMPARE(values.count(), 3);
+
+    QHash<int, int> emptyHash{};
+    QVERIFY(emptyHash.isEmpty());
+
+    QHash<int, char> emptyPairs{{}, {}};
+    QVERIFY(!emptyPairs.isEmpty());
+
+    QMultiHash<QString, double> emptyMultiHash{};
+    QVERIFY(emptyMultiHash.isEmpty());
+
+    QMultiHash<int, float> emptyPairs2{{}, {}};
+    QVERIFY(!emptyPairs2.isEmpty());
+#else
+    QSKIP("Compiler doesn't support initializer lists");
+#endif
+}
+
+void tst_QHash::qthash_data()
+{
+    QTest::addColumn<QString>("key");
+    QTest::addColumn<uint>("hash");
+
+    QTest::newRow("null") << QString() << 0u;
+    QTest::newRow("empty") << QStringLiteral("") << 0u;
+    QTest::newRow("abcdef") << QStringLiteral("abcdef") << 108567222u;
+    QTest::newRow("tqbfjotld") << QStringLiteral("The quick brown fox jumps over the lazy dog") << 140865879u;
+    QTest::newRow("42") << QStringLiteral("42") << 882u;
+}
+
+void tst_QHash::qthash()
+{
+    QFETCH(QString, key);
+    const uint result = qt_hash(key);
+    QTEST(result, "hash");
 }
 
 QTEST_APPLESS_MAIN(tst_QHash)

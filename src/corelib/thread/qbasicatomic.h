@@ -44,7 +44,7 @@
 #ifndef QBASICATOMIC_H
 #define QBASICATOMIC_H
 
-#if defined(QT_MOC) || defined(QT_BUILD_QMAKE) || defined(QT_RCC) || defined(QT_UIC) || defined(QT_BOOTSTRAPPED)
+#if defined(QT_BOOTSTRAPPED)
 #  include <QtCore/qatomic_bootstrap.h>
 
 // Compiler dependent implementation
@@ -101,15 +101,11 @@
 // Only include if the implementation has been ported to QAtomicOps
 #ifndef QOLDBASICATOMIC_H
 
-QT_BEGIN_HEADER
-
 QT_BEGIN_NAMESPACE
 
 #if 0
 // silence syncqt warnings
 QT_END_NAMESPACE
-QT_END_HEADER
-
 #pragma qt_no_master_include
 #pragma qt_sync_stop_processing
 #endif
@@ -117,10 +113,10 @@ QT_END_HEADER
 // New atomics
 
 #if defined(Q_COMPILER_CONSTEXPR) && defined(Q_COMPILER_DEFAULT_MEMBERS) && defined(Q_COMPILER_DELETE_MEMBERS)
-# if defined(Q_CC_CLANG) && ((((__clang_major__ * 100) + __clang_minor__) < 302) \
+# if defined(Q_CC_CLANG) && ((((__clang_major__ * 100) + __clang_minor__) < 303) \
                              || defined(__apple_build_version__) \
                             )
-   /* Do not define QT_BASIC_ATOMIC_HAS_CONSTRUCTORS for "stock" clang before version 3.2.
+   /* Do not define QT_BASIC_ATOMIC_HAS_CONSTRUCTORS for "stock" clang before version 3.3.
       Apple's version has different (higher!) version numbers, so disable it for all of them for now.
       (The only way to distinguish between them seems to be a check for __apple_build_version__ .)
 
@@ -270,8 +266,6 @@ public:
 #endif
 
 QT_END_NAMESPACE
-
-QT_END_HEADER
 
 #endif // QOLDBASICATOMIC_H
 

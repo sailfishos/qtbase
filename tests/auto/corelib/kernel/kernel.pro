@@ -21,6 +21,11 @@ SUBDIRS=\
     qvariant \
     qwineventnotifier
 
+!qtHaveModule(network): SUBDIRS -= \
+    qeventloop \
+    qobject \
+    qsocketnotifier
+
 !contains(QT_CONFIG, private_tests): SUBDIRS -= \
     qsocketnotifier \
     qsharedmemory
@@ -28,3 +33,4 @@ SUBDIRS=\
 # This test is only applicable on Windows
 !win32*:SUBDIRS -= qwineventnotifier
 
+android|qnx: SUBDIRS -= qsharedmemory qsystemsemaphore

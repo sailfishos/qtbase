@@ -84,7 +84,6 @@ public:
 void WidgetNavigator::printAll(QWidget *widget)
 {
     QAccessibleInterface * const iface = QAccessible::queryAccessibleInterface(widget);
-    deleteInDestructor(iface);
     printAll(iface);
 }
 
@@ -97,7 +96,6 @@ void WidgetNavigator::printAll(QAccessibleInterface *interface)
 QAccessibleInterface *WidgetNavigator::find(QAccessible::Text textType, const QString &text, QWidget *start)
 {
     QAccessibleInterface *const iface = QAccessible::queryAccessibleInterface(start);
-    deleteInDestructor(iface);
     return find(textType, text, iface);
 }
 
@@ -118,25 +116,19 @@ QAccessibleInterface *WidgetNavigator::recursiveSearch(TestBase *test, QAccessib
 
     while (todoInterfaces.isEmpty() == false) {
         QAccessibleInterface *testInterface = todoInterfaces.pop();
-        
+
         if ((*test)(testInterface))
             return testInterface;
-            
+
         const int numChildren = testInterface->childCount();
         for (int i = 0; i < numChildren; ++i) {
             QAccessibleInterface *childInterface = testInterface->child(i);
             if (childInterface) {
                 todoInterfaces.push(childInterface);
-                deleteInDestructor(childInterface);
             }
         }
     }
     return 0;
-}
-
-void WidgetNavigator::deleteInDestructor(QAccessibleInterface *interface)
-{
-    interfaces.insert(interface);
 }
 
 QWidget *WidgetNavigator::getWidget(QAccessibleInterface *interface)
@@ -146,9 +138,6 @@ QWidget *WidgetNavigator::getWidget(QAccessibleInterface *interface)
 
 WidgetNavigator::~WidgetNavigator()
 {
-    foreach(QAccessibleInterface *interface, interfaces) {
-        delete interface;
-    }
 }
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -160,17 +149,17 @@ namespace NativeEvents {
         CGPoint position;
         position.x = globalPos.x();
         position.y = globalPos.y();
-       
+
         const bool updateMousePosition = (updateMouse == UpdatePosition);
-        
+
         // Mouse down.
-        CGPostMouseEvent(position, updateMousePosition, 3, 
-                        (buttons & Qt::LeftButton) ? true : false, 
-                        (buttons & Qt::MidButton/* Middlebutton! */) ? true : false, 
+        CGPostMouseEvent(position, updateMousePosition, 3,
+                        (buttons & Qt::LeftButton) ? true : false,
+                        (buttons & Qt::MidButton/* Middlebutton! */) ? true : false,
                         (buttons & Qt::RightButton) ? true : false);
 
         // Mouse up.
-        CGPostMouseEvent(position, updateMousePosition, 3, false, false, false);	
+        CGPostMouseEvent(position, updateMousePosition, 3, false, false, false);
     }
 #else
 # error Oops, NativeEvents::mouseClick() is not implemented on this platform.
@@ -200,7 +189,7 @@ bool checkPixel(QColor pixel, QColor expected)
 }
 
 /*
-    Tests that the pixels inside rect in image all have the given color. 
+    Tests that the pixels inside rect in image all have the given color.
 */
 bool GuiTester::isFilled(const QImage image, const QRect &rect, const QColor &color)
 {
@@ -218,7 +207,7 @@ bool GuiTester::isFilled(const QImage image, const QRect &rect, const QColor &co
 
 /*
     Tests that stuff is painted to the pixels inside rect.
-    This test fails if any lines in the given direction have pixels 
+    This test fails if any lines in the given direction have pixels
     of only one color.
 */
 bool GuiTester::isContent(const QImage image, const QRect &rect, Directions directions)
@@ -239,7 +228,7 @@ bool GuiTester::isContent(const QImage image, const QRect &rect, Directions dire
             }
         }
         return true;
-    } 
+    }
 
     if (directions & Vertical) {
        for (int x = rect.left(); x <= rect.right(); ++x) {

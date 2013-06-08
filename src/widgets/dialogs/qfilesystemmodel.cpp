@@ -3,7 +3,7 @@
 ** Copyright (C) 2013 Digia Plc and/or its subsidiary(-ies).
 ** Contact: http://www.qt-project.org/legal
 **
-** This file is part of the QtGui module of the Qt Toolkit.
+** This file is part of the QtWidgets module of the Qt Toolkit.
 **
 ** $QT_BEGIN_LICENSE:LGPL$
 ** Commercial License Usage
@@ -800,7 +800,7 @@ QString QFileSystemModelPrivate::name(const QModelIndex &index) const
     if (!index.isValid())
         return QString();
     QFileSystemNode *dirNode = node(index);
-    if (dirNode->isSymLink() && fileInfoGatherer.resolveSymlinks()) {
+    if (fileInfoGatherer.resolveSymlinks() && !resolvedSymLinks.isEmpty() && dirNode->isSymLink()) {
         QString fullPath = QDir::fromNativeSeparators(filePath(index));
         if (resolvedSymLinks.contains(fullPath))
             return resolvedSymLinks[fullPath];
@@ -850,7 +850,7 @@ bool QFileSystemModel::setData(const QModelIndex &idx, const QVariant &value, in
         return true;
 
     if (newName.isEmpty()
-        || newName.contains(QDir::separator())
+        || QDir::toNativeSeparators(newName).contains(QDir::separator())
         || !QDir(filePath(parent(idx))).rename(oldName, newName)) {
 #ifndef QT_NO_MESSAGEBOX
         QMessageBox::information(0, QFileSystemModel::tr("Invalid filename"),
@@ -964,6 +964,8 @@ Qt::ItemFlags QFileSystemModel::flags(const QModelIndex &index) const
         flags |= Qt::ItemIsEditable;
         if (indexNode->isDir())
             flags |= Qt::ItemIsDropEnabled;
+        else
+            flags |= Qt::ItemNeverHasChildren;
     }
     return flags;
 }
@@ -1520,9 +1522,9 @@ QDir::Filters QFileSystemModel::filter() const
     \property QFileSystemModel::resolveSymlinks
     \brief Whether the directory model should resolve symbolic links
 
-    This is only relevant on operating systems that support symbolic links.
+    This is only relevant on Windows.
 
-    By default, this property is false.
+    By default, this property is true.
 */
 void QFileSystemModel::setResolveSymlinks(bool enable)
 {

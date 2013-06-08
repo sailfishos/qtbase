@@ -47,8 +47,6 @@
 #include <QtCore/qlist.h>
 #include <QtGui/qpixmap.h>
 
-QT_BEGIN_HEADER
-
 QT_BEGIN_NAMESPACE
 
 
@@ -81,8 +79,10 @@ public:
         { return pixmap(QSize(w, h), mode, state); }
     inline QPixmap pixmap(int extent, Mode mode = Normal, State state = Off) const
         { return pixmap(QSize(extent, extent), mode, state); }
+    QPixmap pixmap(QWindow *window, const QSize &size, Mode mode = Normal, State state = Off) const;
 
     QSize actualSize(const QSize &size, Mode mode = Normal, State state = Off) const;
+    QSize actualSize(QWindow *window, const QSize &size, Mode mode = Normal, State state = Off) const;
 
     QString name() const;
 
@@ -139,7 +139,5 @@ Q_GUI_EXPORT QDebug operator<<(QDebug dbg, const QIcon &);
 #endif
 
 QT_END_NAMESPACE
-
-QT_END_HEADER
 
 #endif // QICON_H

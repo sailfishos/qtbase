@@ -46,15 +46,21 @@ DEFINES +=  ANGLE_DISABLE_TRACE \
             ANGLE_COMPILE_OPTIMIZATION_LEVEL=D3DCOMPILE_OPTIMIZATION_LEVEL0 \
             ANGLE_USE_NEW_PREPROCESSOR=1
 
+angle_d3d11 {
+    DEFINES += ANGLE_ENABLE_D3D11
+    !build_pass: message("Enabling D3D11 mode for ANGLE")
+}
+
 CONFIG(debug, debug|release) {
     DEFINES += _DEBUG
 } else {
+    CONFIG += rtti_off
     DEFINES += NDEBUG
 }
 
 # c++11 is needed by MinGW to get support for unordered_map.
 CONFIG -= qt
-CONFIG += stl rtti_off exceptions c++11
+CONFIG += stl exceptions c++11
 
 contains(QT_CONFIG, debug_and_release):CONFIG += debug_and_release
 contains(QT_CONFIG, build_all):CONFIG += build_all

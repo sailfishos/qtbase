@@ -87,6 +87,7 @@ const char _CompileOnly[]                       = "CompileOnly";
 const char _ConfigurationType[]                 = "ConfigurationType";
 const char _Culture[]                           = "Culture";
 const char _DLLDataFileName[]                   = "DLLDataFileName";
+const char _DataExecutionPrevention[]           = "DataExecutionPrevention";
 const char _DebugInformationFormat[]            = "DebugInformationFormat";
 const char _DefaultCharIsUnsigned[]             = "DefaultCharIsUnsigned";
 const char _DefaultCharType[]                   = "DefaultCharType";
@@ -179,6 +180,7 @@ const char _ProgramDatabase[]                   = "ProgramDatabase";
 const char _ProgramDataBaseFileName[]           = "ProgramDataBaseFileName";
 const char _ProgramDatabaseFile[]               = "ProgramDatabaseFile";
 const char _ProxyFileName[]                     = "ProxyFileName";
+const char _RandomizedBaseAddress[]             = "RandomizedBaseAddress";
 const char _RedirectOutputAndErrors[]           = "RedirectOutputAndErrors";
 const char _RegisterOutput[]                    = "RegisterOutput";
 const char _RelativePath[]                      = "RelativePath";
@@ -777,16 +779,14 @@ bool VCCLCompilerTool::parseOption(const char* option)
         found = false; break;
     case 'R':
         if(second == 'T' && third == 'C') {
-            if(fourth == '1')
-                BasicRuntimeChecks = runtimeBasicCheckAll;
-            else if(fourth == 'c')
-                SmallerTypeCheck = _True;
-            else if(fourth == 's')
-                BasicRuntimeChecks = runtimeCheckStackFrame;
-            else if(fourth == 'u')
-                BasicRuntimeChecks = runtimeCheckUninitVariables;
-            else
-                found = false; break;
+            int rtc = BasicRuntimeChecks;
+            for (size_t i = 4; option[i]; ++i) {
+                if (!parseRuntimeCheckOption(option[i], &rtc)) {
+                    found = false;
+                    break;
+                }
+            }
+            BasicRuntimeChecks = static_cast<basicRuntimeCheckOption>(rtc);
         }
         break;
     case 'T':
@@ -1115,6 +1115,12 @@ bool VCCLCompilerTool::parseOption(const char* option)
         case 'd':
             DisableSpecificWarnings += option+3;
             break;
+        case 'e':
+            if (config->CompilerVersion <= NET2008)
+                AdditionalOptions += option;
+            else
+                TreatSpecificWarningsAsErrors += option + 3;
+            break;
         default:
             AdditionalOptions += option;
         }
@@ -1127,6 +1133,21 @@ bool VCCLCompilerTool::parseOption(const char* option)
         warn_msg(WarnLogic, "Could not parse Compiler option: %s, added as AdditionalOption", option);
         AdditionalOptions += option;
     }
+    return true;
+}
+
+bool VCCLCompilerTool::parseRuntimeCheckOption(char c, int *rtc)
+{
+    if (c == '1')
+        *rtc = runtimeBasicCheckAll;
+    else if (c == 'c')
+        SmallerTypeCheck = _True;
+    else if (c == 's')
+        *rtc |= runtimeCheckStackFrame;
+    else if (c == 'u')
+        *rtc |= runtimeCheckUninitVariables;
+    else
+        return false;
     return true;
 }
 
@@ -2560,6 +2581,7 @@ void VCProjectWriter::write(XmlOutput &xml, const VCLinkerTool &tool)
         << attrX(_AdditionalOptions, tool.AdditionalOptions, " ")
         << attrX(_AddModuleNamesToAssembly, tool.AddModuleNamesToAssembly)
         << attrS(_BaseAddress, tool.BaseAddress)
+        << attrT(_DataExecutionPrevention, tool.DataExecutionPrevention)
         << attrX(_DelayLoadDLLs, tool.DelayLoadDLLs)
         << attrE(_EnableCOMDATFolding, tool.EnableCOMDATFolding, /*ifNot*/ optFoldingDefault)
         << attrS(_EntryPointSymbol, tool.EntryPointSymbol)
@@ -2590,6 +2612,7 @@ void VCProjectWriter::write(XmlOutput &xml, const VCLinkerTool &tool)
         << attrE(_OptimizeReferences, tool.OptimizeReferences, /*ifNot*/ optReferencesDefault)
         << attrS(_OutputFile, tool.OutputFile)
         << attr(_ProgramDatabaseFile, tool.ProgramDatabaseFile)
+        << attrT(_RandomizedBaseAddress, tool.RandomizedBaseAddress)
         << attrT(_RegisterOutput, tool.RegisterOutput)
         << attrT(_ResourceOnlyDLL, tool.ResourceOnlyDLL)
         << attrT(_SetChecksum, tool.SetChecksum)

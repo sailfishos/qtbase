@@ -44,8 +44,8 @@
 
 #include "QtCore/qpointer.h"
 #include <QtGui/qaccessible.h>
-#include <QtGui/qaccessible2.h>
-#include <QtWidgets/qaccessiblewidget.h>
+#include <QtGui/private/qaccessible2_p.h>
+#include <QtWidgets/private/qaccessiblewidget_p.h>
 #include <QtWidgets/qabstractitemview.h>
 #include <QtWidgets/qheaderview.h>
 
@@ -63,8 +63,7 @@ class QAccessibleTable :public QAccessibleTableInterface, public QAccessibleObje
 {
 public:
     explicit QAccessibleTable(QWidget *w);
-
-    virtual ~QAccessibleTable();
+    bool isValid() const;
 
     QAccessible::Role role() const;
     QAccessible::State state() const;
@@ -105,9 +104,9 @@ public:
 
     QAbstractItemView *view() const;
 
-protected:
-    inline QAccessibleTableCell *cell(const QModelIndex &index) const;
+    void modelChange(QAccessibleTableModelChangeEvent *event);
 
+protected:
     inline QAccessible::Role cellRole() const {
         switch (m_role) {
         case QAccessible::List:
@@ -124,11 +123,16 @@ protected:
 
     QHeaderView *horizontalHeader() const;
     QHeaderView *verticalHeader() const;
+
+    // maybe vector
+    typedef QHash<int, QAccessible::Id> ChildCache;
+    mutable ChildCache childToId;
+
+    virtual ~QAccessibleTable();
+
 private:
     // the child index for a model index
     inline int logicalIndex(const QModelIndex &index) const;
-    // the model index from the child index
-    QAccessibleInterface *childFromLogical(int logicalIndex) const;
     QAccessible::Role m_role;
 };
 
@@ -139,7 +143,6 @@ public:
         : QAccessibleTable(w)
     {}
 
-    virtual ~QAccessibleTree() {}
 
     QAccessibleInterface *childAt(int x, int y) const;
     int childCount() const;
@@ -157,9 +160,11 @@ public:
 
 private:
     QModelIndex indexFromLogical(int row, int column = 0) const;
+
+    inline int logicalIndex(const QModelIndex &index) const;
 };
 
-class QAccessibleTableCell: public QAccessibleInterface, public QAccessibleTableCellInterface
+class QAccessibleTableCell: public QAccessibleInterface, public QAccessibleTableCellInterface, public QAccessibleActionInterface
 {
 public:
     QAccessibleTableCell(QAbstractItemView *view, const QModelIndex &m_index, QAccessible::Role role);
@@ -192,12 +197,20 @@ public:
     virtual void rowColumnExtents(int *row, int *column, int *rowExtents, int *columnExtents, bool *selected) const;
     virtual QAccessibleInterface* table() const;
 
+    //action interface
+    virtual QStringList actionNames() const;
+    virtual void doAction(const QString &actionName);
+    virtual QStringList keyBindingsForAction(const QString &actionName) const;
+
 private:
     QHeaderView *verticalHeader() const;
     QHeaderView *horizontalHeader() const;
     QPointer<QAbstractItemView > view;
     QModelIndex m_index;
     QAccessible::Role m_role;
+
+    void selectCell();
+    void unselectCell();
 
 friend class QAccessibleTable;
 friend class QAccessibleTree;
@@ -227,7 +240,7 @@ public:
     QAccessibleInterface *child(int index) const;
 
 private:
-    QAbstractItemView *view;
+    QPointer<QAbstractItemView> view;
     int index;
     Qt::Orientation orientation;
 
@@ -264,8 +277,9 @@ public:
     QAccessibleInterface *child(int) const {
         return 0;
     }
+
 private:
-    QAbstractItemView *view;
+    QPointer<QAbstractItemView> view;
 };
 
 

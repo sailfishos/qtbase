@@ -72,7 +72,7 @@ for ($j = 0; $j < $i; ++$j) {
 }
 print "0\n};\n";
 ===== PERL SCRIPT ====
- 
+
  * The input data is as follows:
 other
 org.freedesktop.DBus.Error.Failed
@@ -257,7 +257,9 @@ static inline QDBusError::ErrorType get(const char *name)
 QDBusError::QDBusError()
     : code(NoError)
 {
-
+    // ### This class has an implicit (therefore inline) destructor
+    // so the following field cannot be used.
+    Q_UNUSED(unused);
 }
 
 #ifndef QT_BOOTSTRAPPED

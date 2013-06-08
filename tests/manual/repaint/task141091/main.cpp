@@ -39,17 +39,20 @@
 **
 ****************************************************************************/
 
-#include <QtWidgets>
+#include <QApplication>
+#include <QMainWindow>
+#include <QPaintEvent>
 #include <QDebug>
 
 class MyWidget : public QWidget
 {
 public:
-    MyWidget() : QWidget() { 
-        
-        
+    MyWidget() : QWidget()
+    {
         setAttribute(Qt::WA_OpaquePaintEvent);
-        setAttribute(Qt::WA_StaticContents); }
+        setAttribute(Qt::WA_StaticContents);
+    }
+
 protected:
     void paintEvent(QPaintEvent *e) { qDebug() << e->rect(); }
 };

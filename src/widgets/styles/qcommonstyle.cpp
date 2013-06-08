@@ -3,7 +3,7 @@
 ** Copyright (C) 2013 Digia Plc and/or its subsidiary(-ies).
 ** Contact: http://www.qt-project.org/legal
 **
-** This file is part of the QtGui module of the Qt Toolkit.
+** This file is part of the QtWidgets module of the Qt Toolkit.
 **
 ** $QT_BEGIN_LICENSE:LGPL$
 ** Commercial License Usage
@@ -1115,6 +1115,8 @@ void QCommonStylePrivate::tabLayout(const QStyleOptionTabV3 *opt, const QWidget 
         QSize tabIconSize = opt->icon.actualSize(iconSize,
                         (opt->state & QStyle::State_Enabled) ? QIcon::Normal : QIcon::Disabled,
                         (opt->state & QStyle::State_Selected) ? QIcon::On : QIcon::Off  );
+        // High-dpi icons do not need adjustmet; make sure tabIconSize is not larger than iconSize
+        tabIconSize = QSize(qMin(tabIconSize.width(), iconSize.width()), qMin(tabIconSize.height(), iconSize.width()));
 
         *iconRect = QRect(tr.left(), tr.center().y() - tabIconSize.height() / 2,
                     tabIconSize.width(), tabIconSize .height());
@@ -1236,8 +1238,11 @@ void QCommonStyle::drawControl(ControlElement element, const QStyleOption *opt,
                     state = QIcon::On;
 
                 QPixmap pixmap = button->icon.pixmap(button->iconSize, mode, state);
-                int labelWidth = pixmap.width();
-                int labelHeight = pixmap.height();
+
+                int pixmapWidth = pixmap.width() / pixmap.devicePixelRatio();
+                int pixmapHeight = pixmap.height() / pixmap.devicePixelRatio();
+                int labelWidth = pixmapWidth;
+                int labelHeight = pixmapHeight;
                 int iconSpacing = 4;//### 4 is currently hardcoded in QPushButton::sizeHint()
                 int textWidth = button->fontMetrics.boundingRect(opt->rect, tf, button->text).width();
                 if (!button->text.isEmpty())
@@ -1245,7 +1250,7 @@ void QCommonStyle::drawControl(ControlElement element, const QStyleOption *opt,
 
                 iconRect = QRect(textRect.x() + (textRect.width() - labelWidth) / 2,
                                  textRect.y() + (textRect.height() - labelHeight) / 2,
-                                 pixmap.width(), pixmap.height());
+                                 pixmapWidth, pixmapHeight);
 
                 iconRect = visualRect(button->direction, textRect, iconRect);
 
@@ -1517,9 +1522,9 @@ void QCommonStyle::drawControl(ControlElement element, const QStyleOption *opt,
             if (!header->icon.isNull()) {
                 QPixmap pixmap
                     = header->icon.pixmap(proxy()->pixelMetric(PM_SmallIconSize), (header->state & State_Enabled) ? QIcon::Normal : QIcon::Disabled);
-                int pixw = pixmap.width();
+                int pixw = pixmap.width() / pixmap.devicePixelRatio();
 
-                QRect aligned = alignedRect(header->direction, QFlag(header->iconAlignment), pixmap.size(), rect);
+                QRect aligned = alignedRect(header->direction, QFlag(header->iconAlignment), pixmap.size() / pixmap.devicePixelRatio(), rect);
                 QRect inter = aligned.intersected(rect);
                 p->drawPixmap(inter.x(), inter.y(), pixmap, inter.x() - aligned.x(), inter.y() - aligned.y(), inter.width(), inter.height());
 
@@ -1574,7 +1579,7 @@ void QCommonStyle::drawControl(ControlElement element, const QStyleOption *opt,
                         mode = QIcon::Normal;
                     pm = toolbutton->icon.pixmap(toolbutton->rect.size().boundedTo(toolbutton->iconSize),
                                                  mode, state);
-                    pmSize = pm.size();
+                    pmSize = pm.size() / pm.devicePixelRatio();
                 }
 
                 if (toolbutton->toolButtonStyle != Qt::ToolButtonIconOnly) {
@@ -1800,8 +1805,8 @@ void QCommonStyle::drawControl(ControlElement element, const QStyleOption *opt,
                 tr = cr;
                 tr.adjust(4, 0, -8, 0);
             } else {
-                int iw = pm.width() + 4;
-                ih = pm.height();
+                int iw = pm.width() / pm.devicePixelRatio() + 4;
+                ih = pm.height()/ pm.devicePixelRatio();
                 ir = QRect(cr.left() + 4, cr.top(), iw + 2, ih);
                 tr = QRect(ir.right(), cr.top(), cr.width() - ir.right() - 4, cr.height());
             }
@@ -2138,9 +2143,9 @@ void QCommonStyle::drawControl(ControlElement element, const QStyleOption *opt,
             p->save();
             p->setClipRect(opt->rect);
 
-            QRect checkRect = subElementRect(SE_ItemViewItemCheckIndicator, vopt, widget);
-            QRect iconRect = subElementRect(SE_ItemViewItemDecoration, vopt, widget);
-            QRect textRect = subElementRect(SE_ItemViewItemText, vopt, widget);
+            QRect checkRect = proxy()->subElementRect(SE_ItemViewItemCheckIndicator, vopt, widget);
+            QRect iconRect = proxy()->subElementRect(SE_ItemViewItemDecoration, vopt, widget);
+            QRect textRect = proxy()->subElementRect(SE_ItemViewItemText, vopt, widget);
 
             // draw the background
             proxy()->drawPrimitive(PE_PanelItemViewItem, opt, p, widget);
@@ -2265,11 +2270,11 @@ void QCommonStyle::drawControl(ControlElement element, const QStyleOption *opt,
             case QFrame::VLine: {
                 QPoint p1, p2;
                 if (frameShape == QFrame::HLine) {
-                    p1 = QPoint(opt->rect.x(), opt->rect.height() / 2);
+                    p1 = QPoint(opt->rect.x(), opt->rect.y() + opt->rect.height() / 2);
                     p2 = QPoint(opt->rect.x() + opt->rect.width(), p1.y());
                 } else {
-                    p1 = QPoint(opt->rect.x()+opt->rect.width() / 2, 0);
-                    p2 = QPoint(p1.x(), opt->rect.height());
+                    p1 = QPoint(opt->rect.x() + opt->rect.width() / 2, opt->rect.y());
+                    p2 = QPoint(p1.x(), p1.y() + opt->rect.height());
                 }
                 if (frameShadow == QFrame::Plain) {
                     QPen oldPen = p->pen();
@@ -3003,7 +3008,7 @@ QRect QCommonStyle::subElementRect(SubElement sr, const QStyleOption *opt,
     case SE_ToolBarHandle:
         if (const QStyleOptionToolBar *tbopt = qstyleoption_cast<const QStyleOptionToolBar *>(opt)) {
             if (tbopt->features & QStyleOptionToolBar::Movable) {
-                ///we need to access the widget here because the style option doesn't 
+                ///we need to access the widget here because the style option doesn't
                 //have all the information we need (ie. the layout's margin)
                 const QToolBar *tb = qobject_cast<const QToolBar*>(widget);
                 const int margin = tb && tb->layout() ? tb->layout()->margin() : 2;
@@ -4808,6 +4813,16 @@ QSize QCommonStyle::sizeFromContents(ContentsType ct, const QStyleOption *opt,
                       }
         break;
 #endif // QT_NO_ITEMVIEWS
+#ifndef QT_NO_SPINBOX
+    case CT_SpinBox:
+        if (const QStyleOptionSpinBox *vopt = qstyleoption_cast<const QStyleOptionSpinBox *>(opt)) {
+            // Add button + frame widths
+            int buttonWidth = 20;
+            int fw = vopt->frame ? proxy()->pixelMetric(PM_SpinBoxFrameWidth, vopt, widget) : 0;
+            sz += QSize(buttonWidth + 2*fw, 2*fw);
+        }
+        break;
+#endif
     case CT_ScrollBar:
     case CT_MenuBar:
     case CT_Menu:
@@ -4890,20 +4905,12 @@ int QCommonStyle::styleHint(StyleHint sh, const QStyleOption *opt, const QWidget
             ret = -1;
         break;
     case SH_LineEdit_PasswordCharacter: {
-        const QFontMetrics &fm = opt ? opt->fontMetrics
-                                     : (widget ? widget->fontMetrics() : QFontMetrics(QFont()));
-        ret = 0;
-        if (fm.inFont(QChar(0x25CF))) {
-            ret = 0x25CF;
-        } else if (fm.inFont(QChar(0x2022))) {
-            ret = 0x2022;
-        } else {
-            ret = '*';
-        }
+        const QPlatformTheme *theme = QGuiApplicationPrivate::platformTheme();
+        const QPlatformTheme::ThemeHint hintType = QPlatformTheme::PasswordMaskCharacter;
+        const QVariant hint = theme ? theme->themeHint(hintType) : QPlatformTheme::defaultThemeHint(hintType);
+        ret = hint.toChar().unicode();
         break;
     }
-
-
     case SH_ToolBox_SelectedPageTitleBold:
         ret = 1;
         break;
@@ -5090,9 +5097,16 @@ int QCommonStyle::styleHint(StyleHint sh, const QStyleOption *opt, const QWidget
             ret = theme->themeHint(QPlatformTheme::ToolButtonStyle).toInt();
         break;
     case SH_RequestSoftwareInputPanel:
+#ifdef Q_OS_ANDROID
+        ret = RSIP_OnMouseClick;
+#else
         ret = RSIP_OnMouseClickAndAlreadyFocused;
+#endif
         break;
     case SH_ScrollBar_Transient:
+        ret = false;
+        break;
+    case SH_Menu_SupportsSections:
         ret = false;
         break;
     default:

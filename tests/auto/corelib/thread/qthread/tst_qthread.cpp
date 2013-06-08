@@ -1026,7 +1026,7 @@ void tst_QThread::exitAndExec()
     thread.sem2.acquire();
     int v = thread.value;
     QCOMPARE(v, 556);
-    
+
     //test that the thread is running by executing queued connected signal there
     Syncronizer sync1;
     sync1.moveToThread(&thread);
@@ -1221,9 +1221,9 @@ QT_END_NAMESPACE
 
 class DummyEventDispatcher : public QAbstractEventDispatcher {
 public:
-    DummyEventDispatcher() : QAbstractEventDispatcher(), visited(false) {}
+    DummyEventDispatcher() : QAbstractEventDispatcher() {}
     bool processEvents(QEventLoop::ProcessEventsFlags) {
-        visited = true;
+        visited.store(true);
         emit awake();
         QCoreApplication::sendPostedEvents();
         return false;
@@ -1247,7 +1247,7 @@ public:
     void unregisterEventNotifier(QWinEventNotifier *) { }
 #endif
 
-    bool visited;
+    QBasicAtomicInt visited; // bool
 };
 
 class ThreadObj : public QObject
@@ -1285,7 +1285,7 @@ void tst_QThread::customEventDispatcher()
     QMetaObject::invokeMethod(&obj, "visit", Qt::QueuedConnection);
     loop.exec();
     // test that the ED has really been used
-    QVERIFY(ed->visited);
+    QVERIFY(ed->visited.load());
 
     QPointer<DummyEventDispatcher> weak_ed(ed);
     QVERIFY(!weak_ed.isNull());

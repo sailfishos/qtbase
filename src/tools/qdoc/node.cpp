@@ -662,6 +662,16 @@ bool InnerNode::hasMembers() const
 }
 
 /*!
+  Appends \a node to the members list, if and only if it
+  isn't already in the members list.
+ */
+void InnerNode::addMember(Node* node)
+{
+    if (!members_.contains(node))
+        members_.append(node);
+}
+
+/*!
   Returns true if this node's members collection contains at
   least one namespace node.
  */
@@ -1069,6 +1079,16 @@ void InnerNode::deleteChildren()
  */
 
 /*!
+  Returns true if the node is a class node or a QML type node
+  that is marked as being a wrapper class or QML type, or if
+  it is a member of a wrapper class or type.
+ */
+bool Node::isWrapper() const
+{
+    return (parent_ ? parent_->isWrapper() : false);
+}
+
+/*!
  */
 const Node *InnerNode::findChildNodeByName(const QString& name) const
 {
@@ -1430,8 +1450,8 @@ NamespaceNode::NamespaceNode(InnerNode *parent, const QString& name)
 ClassNode::ClassNode(InnerNode *parent, const QString& name)
     : InnerNode(Class, parent, name)
 {
-    hidden = false;
     abstract_ = false;
+    wrapper_ = false;
     qmlelement = 0;
     setPageType(ApiPage);
 }
@@ -2096,6 +2116,7 @@ QmlClassNode::QmlClassNode(InnerNode *parent, const QString& name)
     : DocNode(parent, name, QmlClass, Node::ApiPage),
       abstract_(false),
       cnodeRequired_(false),
+      wrapper_(false),
       cnode_(0),
       baseNode_(0)
 {
@@ -2185,6 +2206,20 @@ bool Node::setQmlModuleInfo(const QString& arg)
         }
     }
     return false;
+}
+
+/*!
+  If this QML type node has a base type node,
+  return the fully qualified name of that QML
+  type, i.e. <QML-module-name>::<QML-type-name>.
+ */
+QString QmlClassNode::qmlFullBaseName() const
+{
+    QString result;
+    if (baseNode_) {
+        result = baseNode_->qmlModuleIdentifier() + "::" + baseNode_->name();
+    }
+    return result;
 }
 
 /*!

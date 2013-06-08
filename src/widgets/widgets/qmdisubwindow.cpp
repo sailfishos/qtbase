@@ -3,7 +3,7 @@
 ** Copyright (C) 2013 Digia Plc and/or its subsidiary(-ies).
 ** Contact: http://www.qt-project.org/legal
 **
-** This file is part of the QtGui module of the Qt Toolkit.
+** This file is part of the QtWidgets module of the Qt Toolkit.
 **
 ** $QT_BEGIN_LICENSE:LGPL$
 ** Commercial License Usage
@@ -164,6 +164,7 @@
 #include <private/qmacstyle_mac_p.h>
 #endif
 #include <QMdiArea>
+#include <QScopedValueRollback>
 
 QT_BEGIN_NAMESPACE
 
@@ -182,14 +183,6 @@ static const QStyle::SubControl SubControls[] =
     QStyle::SC_TitleBarContextHelpButton // 9
 };
 static const int NumSubControls = sizeof(SubControls) / sizeof(SubControls[0]);
-
-static const QStyle::StandardPixmap ButtonPixmaps[] =
-{
-    QStyle::SP_TitleBarMinButton,
-    QStyle::SP_TitleBarNormalButton,
-    QStyle::SP_TitleBarCloseButton
-};
-static const int NumButtonPixmaps = sizeof(ButtonPixmaps) / sizeof(ButtonPixmaps[0]);
 
 static const Qt::WindowFlags CustomizeWindowFlags =
       Qt::FramelessWindowHint
@@ -2797,6 +2790,10 @@ bool QMdiSubWindow::event(QEvent *event)
         bool wasShaded = isShaded();
         bool wasMinimized = isMinimized();
         bool wasMaximized = isMaximized();
+        // Don't emit subWindowActivated, the app doesn't have to know about our hacks
+        const QScopedValueRollback<bool> activationEnabledSaver(d->activationEnabled);
+        d->activationEnabled = false;
+
         ensurePolished();
         setContentsMargins(0, 0, 0, 0);
         if (wasMinimized || wasMaximized || wasShaded)
@@ -3016,7 +3013,8 @@ void QMdiSubWindow::changeEvent(QEvent *changeEvent)
 
     if (d->isActive)
         d->ensureWindowState(Qt::WindowActive);
-    emit windowStateChanged(oldState, windowState());
+    if (d->activationEnabled)
+        emit windowStateChanged(oldState, windowState());
 }
 
 /*!

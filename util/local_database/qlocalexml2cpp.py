@@ -554,7 +554,7 @@ def main():
         if to_language != 0:
             cmnt_to = cmnt_to + language_map[to_language][1]
         else:
-            cmnt_from = cmnt_from + "und"
+            cmnt_to = cmnt_to + "und"
         if to_script != 0:
             if cmnt_to:
                 cmnt_to = cmnt_to + "_"
@@ -899,6 +899,7 @@ def main():
     qlocaleh_temp_file.write("        RhaetoRomance = Romansh,\n")
     qlocaleh_temp_file.write("        Chewa = Nyanja,\n")
     qlocaleh_temp_file.write("        Frisian = WesternFrisian,\n")
+    qlocaleh_temp_file.write("        Uigur = Uighur,\n")
     qlocaleh_temp_file.write("        LastLanguage = " + language + "\n")
     qlocaleh_temp_file.write("    };\n")
 

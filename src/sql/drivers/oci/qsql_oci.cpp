@@ -39,7 +39,7 @@
 **
 ****************************************************************************/
 
-#include "qsql_oci.h"
+#include "qsql_oci_p.h"
 
 #include <qcoreapplication.h>
 #include <qvariant.h>
@@ -51,6 +51,8 @@
 #include <qsqlfield.h>
 #include <qsqlindex.h>
 #include <qsqlquery.h>
+#include <QtSql/private/qsqlcachedresult_p.h>
+#include <QtSql/private/qsqldriver_p.h>
 #include <qstringlist.h>
 #include <qvarlengtharray.h>
 #include <qvector.h>
@@ -99,7 +101,7 @@ enum { QOCIEncoding = 2000 }; // AL16UTF16
 // Always set the OCI_ATTR_CHARSET_FORM to SQLCS_NCHAR is safe
 // because Oracle server will deal with the implicit Conversion
 // Between CHAR and NCHAR.
-// see: http://download.oracle.com/docs/cd/A91202_01/901_doc/appdev.901/a89857/oci05bnd.htm#422705 
+// see: http://download.oracle.com/docs/cd/A91202_01/901_doc/appdev.901/a89857/oci05bnd.htm#422705
 static const ub1 qOraCharsetForm = SQLCS_NCHAR;
 #endif
 
@@ -162,6 +164,33 @@ Q_DECLARE_METATYPE(QOCIRowIdPointer)
 QT_END_INCLUDE_NAMESPACE
 
 class QOCICols;
+struct QOCIResultPrivate;
+
+class Q_EXPORT_SQLDRIVER_OCI QOCIResult : public QSqlCachedResult
+{
+    friend class QOCIDriver;
+    friend struct QOCIResultPrivate;
+    friend class QOCICols;
+public:
+    QOCIResult(const QOCIDriver * db, const QOCIDriverPrivate* p);
+    ~QOCIResult();
+    bool prepare(const QString& query);
+    bool exec();
+    QVariant handle() const;
+
+protected:
+    bool gotoNext(ValueCache &values, int index);
+    bool reset (const QString& query);
+    int size();
+    int numRowsAffected();
+    QSqlRecord record() const;
+    QVariant lastInsertId() const;
+    bool execBatch(bool arrayBind = false);
+    void virtual_hook(int id, void *data);
+
+private:
+    QOCIResultPrivate *d;
+};
 
 struct QOCIResultPrivate
 {
@@ -464,8 +493,9 @@ void QOCIResultPrivate::outValues(QVector<QVariant> &values, IndicatorArray &ind
 }
 
 
-struct QOCIDriverPrivate
+class QOCIDriverPrivate : public QSqlDriverPrivate
 {
+public:
     QOCIDriverPrivate();
 
     OCIEnv *env;
@@ -483,9 +513,10 @@ struct QOCIDriverPrivate
 };
 
 QOCIDriverPrivate::QOCIDriverPrivate()
-    : env(0), svc(0), srvhp(0), authp(0), err(0), transaction(false), serverVersion(-1),
-      prefetchRows(-1), prefetchMem(QOCI_PREFETCH_MEM)
+    : QSqlDriverPrivate(), env(0), svc(0), srvhp(0), authp(0), err(0), transaction(false),
+      serverVersion(-1), prefetchRows(-1), prefetchMem(QOCI_PREFETCH_MEM)
 {
+    dbmsType = Oracle;
 }
 
 void QOCIDriverPrivate::allocErrorHandle()
@@ -2057,10 +2088,9 @@ void QOCIResult::virtual_hook(int id, void *data)
 
 
 QOCIDriver::QOCIDriver(QObject* parent)
-    : QSqlDriver(parent)
+    : QSqlDriver(*new QOCIDriverPrivate, parent)
 {
-    d = new QOCIDriverPrivate();
-
+    Q_D(QOCIDriver);
 #ifdef QOCI_THREADED
     const ub4 mode = OCI_UTF16 | OCI_OBJECT | OCI_THREADED;
 #else
@@ -2085,9 +2115,9 @@ QOCIDriver::QOCIDriver(QObject* parent)
 }
 
 QOCIDriver::QOCIDriver(OCIEnv* env, OCISvcCtx* ctx, QObject* parent)
-    : QSqlDriver(parent)
+    : QSqlDriver(*new QOCIDriverPrivate, parent)
 {
-    d = new QOCIDriverPrivate();
+    Q_D(QOCIDriver);
     d->env = env;
     d->svc = ctx;
 
@@ -2101,6 +2131,7 @@ QOCIDriver::QOCIDriver(OCIEnv* env, OCISvcCtx* ctx, QObject* parent)
 
 QOCIDriver::~QOCIDriver()
 {
+    Q_D(QOCIDriver);
     if (isOpen())
         close();
     int r = OCIHandleFree(d->err, OCI_HTYPE_ERROR);
@@ -2109,12 +2140,11 @@ QOCIDriver::~QOCIDriver()
     r = OCIHandleFree(d->env, OCI_HTYPE_ENV);
     if (r != OCI_SUCCESS)
         qWarning("Unable to free Environment handle: %d", r);
-
-    delete d;
 }
 
 bool QOCIDriver::hasFeature(DriverFeature f) const
 {
+    Q_D(const QOCIDriver);
     switch (f) {
     case Transactions:
     case LastInsertId:
@@ -2173,6 +2203,7 @@ bool QOCIDriver::open(const QString & db,
                        int port,
                        const QString &opts)
 {
+    Q_D(QOCIDriver);
     int r;
 
     if (isOpen())
@@ -2183,7 +2214,7 @@ bool QOCIDriver::open(const QString & db,
     // Connect without tnsnames.ora if a hostname is given
     QString connectionString = db;
     if (!hostname.isEmpty())
-        connectionString = 
+        connectionString =
         QString::fromLatin1("(DESCRIPTION=(ADDRESS=(PROTOCOL=TCP)(Host=%1)(Port=%2))"
                 "(CONNECT_DATA=(SID=%3)))").arg(hostname).arg((port > -1 ? port : 1521)).arg(db);
 
@@ -2259,6 +2290,7 @@ bool QOCIDriver::open(const QString & db,
 
 void QOCIDriver::close()
 {
+    Q_D(QOCIDriver);
     if (!isOpen())
         return;
 
@@ -2276,11 +2308,13 @@ void QOCIDriver::close()
 
 QSqlResult *QOCIDriver::createResult() const
 {
+    Q_D(const QOCIDriver);
     return new QOCIResult(this, d);
 }
 
 bool QOCIDriver::beginTransaction()
 {
+    Q_D(QOCIDriver);
     if (!isOpen()) {
         qWarning("QOCIDriver::beginTransaction: Database not open");
         return false;
@@ -2301,6 +2335,7 @@ bool QOCIDriver::beginTransaction()
 
 bool QOCIDriver::commitTransaction()
 {
+    Q_D(QOCIDriver);
     if (!isOpen()) {
         qWarning("QOCIDriver::commitTransaction: Database not open");
         return false;
@@ -2320,6 +2355,7 @@ bool QOCIDriver::commitTransaction()
 
 bool QOCIDriver::rollbackTransaction()
 {
+    Q_D(QOCIDriver);
     if (!isOpen()) {
         qWarning("QOCIDriver::rollbackTransaction: Database not open");
         return false;
@@ -2339,6 +2375,7 @@ bool QOCIDriver::rollbackTransaction()
 
 QStringList QOCIDriver::tables(QSql::TableType type) const
 {
+    Q_D(const QOCIDriver);
     QStringList tl;
     QStringList sysUsers = QStringList() << QLatin1String("MDSYS")
                                     << QLatin1String("LBACSYS")
@@ -2444,6 +2481,7 @@ void qSplitTableAndOwner(const QString & tname, QString * tbl,
 
 QSqlRecord QOCIDriver::record(const QString& tablename) const
 {
+    Q_D(const QOCIDriver);
     QSqlRecord fil;
     if (!isOpen())
         return fil;
@@ -2517,6 +2555,7 @@ QSqlRecord QOCIDriver::record(const QString& tablename) const
 
 QSqlIndex QOCIDriver::primaryIndex(const QString& tablename) const
 {
+    Q_D(const QOCIDriver);
     QSqlIndex idx(tablename);
     if (!isOpen())
         return idx;
@@ -2637,6 +2676,7 @@ QString QOCIDriver::formatValue(const QSqlField &field, bool trimStrings) const
 
 QVariant QOCIDriver::handle() const
 {
+    Q_D(const QOCIDriver);
     return QVariant::fromValue(d->env);
 }
 

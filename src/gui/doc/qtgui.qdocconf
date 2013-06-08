@@ -21,7 +21,7 @@ qhp.QtGui.customFilters.Qt.filterAttributes = qtgui $QT_VERSION
 
 qhp.QtGui.subprojects         = classes
 qhp.QtGui.subprojects.classes.title = C++ Classes
-qhp.QtGui.subprojects.classes.indexTitle = Qt GUI C++ API
+qhp.QtGui.subprojects.classes.indexTitle = Qt GUI C++ Classes
 qhp.QtGui.subprojects.classes.selectors = class fake:headerfile
 qhp.QtGui.subprojects.classes.sortPages = true
 
@@ -46,4 +46,5 @@ exampledirs += ../../../examples/gui \
                snippets
 
 imagedirs   += images \
-               ../../../examples/gui/doc/images
+               ../../../examples/gui/doc/images \
+               ../../../doc/src/images \

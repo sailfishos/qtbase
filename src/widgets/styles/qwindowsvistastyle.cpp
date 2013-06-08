@@ -3,7 +3,7 @@
 ** Copyright (C) 2013 Digia Plc and/or its subsidiary(-ies).
 ** Contact: http://www.qt-project.org/legal
 **
-** This file is part of the QtGui module of the Qt Toolkit.
+** This file is part of the QtWidgets module of the Qt Toolkit.
 **
 ** $QT_BEGIN_LICENSE:LGPL$
 ** Commercial License Usage
@@ -273,15 +273,15 @@ void QWindowsVistaAnimation::paint(QPainter *painter, const QStyleOption *option
 
 /*!
  \internal
- 
+
   Animations are used for some state transitions on specific widgets.
- 
+
   Only one running animation can exist for a widget at any specific
   time.  Animations can be added through
   QWindowsVistaStylePrivate::startAnimation(Animation *) and any
   existing animation on a widget can be retrieved with
   QWindowsVistaStylePrivate::widgetAnimation(Widget *).
- 
+
   Once an animation has been started,
   QWindowsVistaStylePrivate::timerEvent(QTimerEvent *) will
   continuously call update() on the widget until it is stopped,
@@ -314,7 +314,7 @@ void QWindowsVistaStyle::drawPrimitive(PrimitiveElement element, const QStyleOpt
         return;
     }
 
-    if (d->transitionsEnabled() && canAnimate(option)) {
+    if ((option->state & State_Enabled) && d->transitionsEnabled() && canAnimate(option)) {
         {
             QRect oldRect;
             QRect newRect;
@@ -377,8 +377,9 @@ void QWindowsVistaStyle::drawPrimitive(PrimitiveElement element, const QStyleOpt
 
                     // The end state of the transition is simply the result we would have painted
                     // if the style was not animated.
+                    styleOption->styleObject = 0;
                     styleOption->state = option->state;
-                    drawPrimitive(element, styleOption, &endPainter, widget);
+                    proxy()->drawPrimitive(element, styleOption, &endPainter, widget);
 
 
                     t->setEndImage(endImage);
@@ -521,7 +522,8 @@ void QWindowsVistaStyle::drawPrimitive(PrimitiveElement element, const QStyleOpt
         break;
     case PE_Frame: {
 #ifndef QT_NO_ACCESSIBILITY
-        if (QStyleHelper::isInstanceOf(option->styleObject, QAccessible::EditableText)) {
+        if (QStyleHelper::isInstanceOf(option->styleObject, QAccessible::EditableText)
+                || QStyleHelper::isInstanceOf(option->styleObject, QAccessible::StaticText)) {
 #else
         if (false) {
 #endif
@@ -536,16 +538,13 @@ void QWindowsVistaStyle::drawPrimitive(PrimitiveElement element, const QStyleOpt
             XPThemeData theme(widget, painter,
                               QWindowsXPStylePrivate::EditTheme,
                               EP_EDITBORDER_HVSCROLL, stateId, option->rect);
-            uint resolve_mask = option->palette.resolve();
-            if (resolve_mask & (1 << QPalette::Base)) {
-                // Since EP_EDITBORDER_HVSCROLL does not us borderfill, theme.noContent cannot be used for clipping
-                int borderSize = 1;
-                pGetThemeInt(theme.handle(), theme.partId, theme.stateId, TMT_BORDERSIZE, &borderSize);
-                QRegion clipRegion = option->rect;
-                QRegion content = option->rect.adjusted(borderSize, borderSize, -borderSize, -borderSize);
-                clipRegion ^= content;
-                painter->setClipRegion(clipRegion);
-            }
+            // Since EP_EDITBORDER_HVSCROLL does not us borderfill, theme.noContent cannot be used for clipping
+            int borderSize = 1;
+            pGetThemeInt(theme.handle(), theme.partId, theme.stateId, TMT_BORDERSIZE, &borderSize);
+            QRegion clipRegion = option->rect;
+            QRegion content = option->rect.adjusted(borderSize, borderSize, -borderSize, -borderSize);
+            clipRegion ^= content;
+            painter->setClipRegion(clipRegion);
             d->drawBackground(theme);
             painter->restore();
         } else {
@@ -798,17 +797,17 @@ void QWindowsVistaStyle::drawPrimitive(PrimitiveElement element, const QStyleOpt
                             || vopt->viewItemPosition == QStyleOptionViewItem::Invalid)
                             painter->drawPixmap(pixmapRect.topLeft(), pixmap);
                         else if (reverse ? rightSection : leftSection){
-                            painter->drawPixmap(QRect(pixmapRect.topLeft(), 
-                                                QSize(frame, pixmapRect.height())), pixmap, 
+                            painter->drawPixmap(QRect(pixmapRect.topLeft(),
+                                                QSize(frame, pixmapRect.height())), pixmap,
                                                 QRect(QPoint(0, 0), QSize(frame, pixmapRect.height())));
-                            painter->drawPixmap(pixmapRect.adjusted(frame, 0, 0, 0), 
+                            painter->drawPixmap(pixmapRect.adjusted(frame, 0, 0, 0),
                                                 pixmap, srcRect.adjusted(frame, 0, -frame, 0));
                         } else if (reverse ? leftSection : rightSection) {
-                            painter->drawPixmap(QRect(pixmapRect.topRight() - QPoint(frame - 1, 0), 
-                                                QSize(frame, pixmapRect.height())), pixmap, 
-                                                QRect(QPoint(pixmapRect.width() - frame, 0), 
+                            painter->drawPixmap(QRect(pixmapRect.topRight() - QPoint(frame - 1, 0),
+                                                QSize(frame, pixmapRect.height())), pixmap,
+                                                QRect(QPoint(pixmapRect.width() - frame, 0),
                                                 QSize(frame, pixmapRect.height())));
-                            painter->drawPixmap(pixmapRect.adjusted(0, 0, -frame, 0), 
+                            painter->drawPixmap(pixmapRect.adjusted(0, 0, -frame, 0),
                                                 pixmap, srcRect.adjusted(frame, 0, -frame, 0));
                         } else if (vopt->viewItemPosition == QStyleOptionViewItem::Middle)
                             painter->drawPixmap(pixmapRect, pixmap,
@@ -1110,7 +1109,7 @@ void QWindowsVistaStyle::drawControl(ControlElement element, const QStyleOption 
                     } else {
                         animRect = QRect(rect.left() - glowSize + animOffset,
                                          rect.top(), glowSize, rect.height());
-                        animRect = QStyle::visualRect(reverse ? Qt::RightToLeft : Qt::LeftToRight, 
+                        animRect = QStyle::visualRect(reverse ? Qt::RightToLeft : Qt::LeftToRight,
                                                                 option->rect, animRect);
                         pixmapSize.setWidth(animRect.width());
                     }
@@ -1156,7 +1155,7 @@ void QWindowsVistaStyle::drawControl(ControlElement element, const QStyleOption 
                     double vc6_workaround = ((progress - qint64(bar->minimum)) / qMax(double(1.0), double(qint64(bar->maximum) - qint64(bar->minimum))) * maxWidth);
                     int width = isIndeterminate ? maxWidth : qMax(int(vc6_workaround), minWidth);
                     theme.rect.setWidth(width);
-                    theme.rect = QStyle::visualRect(reverse ? Qt::RightToLeft : Qt::LeftToRight, 
+                    theme.rect = QStyle::visualRect(reverse ? Qt::RightToLeft : Qt::LeftToRight,
                                                               option->rect, theme.rect);
                 }
                 d->drawBackground(theme);
@@ -1522,7 +1521,7 @@ void QWindowsVistaStyle::drawControl(ControlElement element, const QStyleOption 
                 QStyleOptionViewItem adjustedOption = *vopt;
                 adjustedOption.palette = palette;
                 // We hide the  focusrect in singleselection as it is not required
-                if ((view->selectionMode() == QAbstractItemView::SingleSelection) 
+                if ((view->selectionMode() == QAbstractItemView::SingleSelection)
                     && !(vopt->state & State_KeyboardFocusChange))
                 adjustedOption.state &= ~State_HasFocus;
                 QWindowsXPStyle::drawControl(element, &adjustedOption, painter, widget);
@@ -1585,7 +1584,7 @@ void QWindowsVistaStyle::drawComplexControl(ComplexControl control, const QStyle
             bool doTransition = ((state & State_Sunken)     != (oldState & State_Sunken)    ||
                                  (state & State_On)         != (oldState & State_On)        ||
                                  (state & State_MouseOver)  != (oldState & State_MouseOver) ||
-                                  oldActiveControls         != option->activeSubControls);
+                                  oldActiveControls         != int(option->activeSubControls));
 
             if (qstyleoption_cast<const QStyleOptionSlider *>(option)) {
                 QRect oldSliderPos = styleObject->property("_q_stylesliderpos").toRect();
@@ -1944,7 +1943,7 @@ QSize QWindowsVistaStyle::sizeFromContents(ContentsType type, const QStyleOption
             minimumHeight = qMax<qint32>(size.cy + margins.cyBottomHeight+ margins.cyTopHeight, sz.height());
             sz.rwidth() += size.cx + margins.cxLeftWidth + margins.cxRightWidth;
         }
-        
+
         if (const QStyleOptionMenuItem *menuitem = qstyleoption_cast<const QStyleOptionMenuItem *>(option)) {
             if (menuitem->menuItemType != QStyleOptionMenuItem::Separator)
                 sz.setHeight(minimumHeight);

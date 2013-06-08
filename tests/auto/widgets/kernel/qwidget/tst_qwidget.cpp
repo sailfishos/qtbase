@@ -412,6 +412,7 @@ private slots:
 
     void keyboardModifiers();
     void mouseDoubleClickBubbling_QTBUG29680();
+    void largerThanScreen_QTBUG30142();
 
 private:
     bool ensureScreenSize(int width, int height);
@@ -2088,11 +2089,14 @@ public:
 
 void tst_QWidget::resizeEvent()
 {
+    QSKIP("QTBUG-30744");
+
     {
         QWidget wParent;
         wParent.resize(200, 200);
         ResizeWidget wChild(&wParent);
         wParent.show();
+        QTest::qWaitForWindowExposed(&wParent);
         QCOMPARE (wChild.m_resizeEventCount, 1); // initial resize event before paint
         wParent.hide();
         QSize safeSize(640,480);
@@ -2108,6 +2112,7 @@ void tst_QWidget::resizeEvent()
         ResizeWidget wTopLevel;
         wTopLevel.resize(200, 200);
         wTopLevel.show();
+        QTest::qWaitForWindowExposed(&wTopLevel);
         QCOMPARE (wTopLevel.m_resizeEventCount, 1); // initial resize event before paint for toplevels
         wTopLevel.hide();
         QSize safeSize(640,480);
@@ -2116,6 +2121,7 @@ void tst_QWidget::resizeEvent()
         wTopLevel.resize(safeSize);
         QCOMPARE (wTopLevel.m_resizeEventCount, 1);
         wTopLevel.show();
+        QTest::qWaitForWindowExposed(&wTopLevel);
         QCOMPARE (wTopLevel.m_resizeEventCount, 2);
     }
 }
@@ -4239,11 +4245,11 @@ void tst_QWidget::isOpaque()
 */
 void tst_QWidget::scroll()
 {
-    if (m_platform == QStringLiteral("xcb"))
-         QSKIP("X11: Skip unstable test");
+    const int w = qMin(500, qApp->desktop()->availableGeometry().width() / 2);
+    const int h = qMin(500, qApp->desktop()->availableGeometry().height() / 2);
 
     UpdateWidget updateWidget;
-    updateWidget.resize(500, 500);
+    updateWidget.resize(w, h);
     updateWidget.reset();
     updateWidget.move(QGuiApplication::primaryScreen()->geometry().center() - QPoint(250, 250));
     updateWidget.show();
@@ -4255,8 +4261,8 @@ void tst_QWidget::scroll()
         updateWidget.reset();
         updateWidget.scroll(10, 10);
         qApp->processEvents();
-        QRegion dirty(QRect(0, 0, 500, 10));
-        dirty += QRegion(QRect(0, 10, 10, 490));
+        QRegion dirty(QRect(0, 0, w, 10));
+        dirty += QRegion(QRect(0, 10, 10, h - 10));
         QTRY_COMPARE(updateWidget.paintedRegion, dirty);
     }
 
@@ -4265,10 +4271,13 @@ void tst_QWidget::scroll()
         updateWidget.update(0, 0, 10, 10);
         updateWidget.scroll(0, 10);
         qApp->processEvents();
-        QRegion dirty(QRect(0, 0, 500, 10));
+        QRegion dirty(QRect(0, 0, w, 10));
         dirty += QRegion(QRect(0, 10, 10, 10));
         QTRY_COMPARE(updateWidget.paintedRegion, dirty);
     }
+
+    if (updateWidget.width() < 200 || updateWidget.height() < 200)
+         QSKIP("Skip this test due to too small screen geometry.");
 
     {
         updateWidget.reset();
@@ -4424,11 +4433,8 @@ void tst_QWidget::setWindowGeometry()
 
         widget.setGeometry(rect);
         widget.show();
-        QVERIFY(QTest::qWaitForWindowExposed(&widget));
-        if (m_platform == QStringLiteral("windows")) {
-            QEXPECT_FAIL("130,100 0x200, flags 0", "QTBUG-26424", Continue);
-            QEXPECT_FAIL("130,50 0x0, flags 0", "QTBUG-26424", Continue);
-        }
+        if (rect.isValid())
+            QVERIFY(QTest::qWaitForWindowExposed(&widget));
         QTRY_COMPARE(widget.geometry(), rect);
 
         // setGeometry() while shown
@@ -4458,7 +4464,8 @@ void tst_QWidget::setWindowGeometry()
 
         // show() again, geometry() should still be the same
         widget.show();
-        QVERIFY(QTest::qWaitForWindowExposed(&widget));
+        if (rect.isValid())
+            QVERIFY(QTest::qWaitForWindowExposed(&widget));
         QTRY_COMPARE(widget.geometry(), rect);
 
         // final hide(), again geometry() should be unchanged
@@ -4474,7 +4481,8 @@ void tst_QWidget::setWindowGeometry()
             widget.setWindowFlags(Qt::WindowFlags(windowFlags));
 
         widget.show();
-        QVERIFY(QTest::qWaitForWindowExposed(&widget));
+        if (rect.isValid())
+            QVERIFY(QTest::qWaitForWindowExposed(&widget));
         widget.setGeometry(rect);
         QTest::qWait(10);
         QTRY_COMPARE(widget.geometry(), rect);
@@ -4506,7 +4514,8 @@ void tst_QWidget::setWindowGeometry()
 
         // show() again, geometry() should still be the same
         widget.show();
-        QVERIFY(QTest::qWaitForWindowExposed(&widget));
+        if (rect.isValid())
+            QVERIFY(QTest::qWaitForWindowExposed(&widget));
         QTest::qWait(10);
         QTRY_COMPARE(widget.geometry(), rect);
 
@@ -4651,7 +4660,8 @@ void tst_QWidget::windowMoveResize()
 
         // show() again, pos() should be the same
         widget.show();
-        QVERIFY(QTest::qWaitForWindowExposed(&widget));
+        if (rect.isValid())
+            QVERIFY(QTest::qWaitForWindowExposed(&widget));
         QApplication::processEvents();
         QTRY_COMPARE(widget.pos(), rect.topLeft());
         QTRY_COMPARE(widget.size(), rect.size());
@@ -4670,7 +4680,8 @@ void tst_QWidget::windowMoveResize()
             widget.setWindowFlags(Qt::WindowFlags(windowFlags));
 
         widget.show();
-        QVERIFY(QTest::qWaitForWindowExposed(&widget));
+        if (rect.isValid())
+            QVERIFY(QTest::qWaitForWindowExposed(&widget));
         QApplication::processEvents();
         widget.move(rect.topLeft());
         widget.resize(rect.size());
@@ -4720,7 +4731,8 @@ void tst_QWidget::windowMoveResize()
 
         // show() again, pos() should be the same
         widget.show();
-        QVERIFY(QTest::qWaitForWindowExposed(&widget));
+        if (rect.isValid())
+            QVERIFY(QTest::qWaitForWindowExposed(&widget));
         QTest::qWait(10);
         QTRY_COMPARE(widget.pos(), rect.topLeft());
         QTRY_COMPARE(widget.size(), rect.size());
@@ -5434,7 +5446,7 @@ void tst_QWidget::setToolTip()
         QScopedPointer<QWidget> popup(new QWidget(0, Qt::Popup));
         popup->setObjectName(QString::fromLatin1("tst_qwidget setToolTip #%1").arg(pass));
         popup->setWindowTitle(popup->objectName());
-        popup->resize(150, 50);
+        popup->setGeometry(50, 50, 150, 50);
         QFrame *frame = new QFrame(popup.data());
         frame->setGeometry(0, 0, 50, 50);
         frame->setFrameStyle(QFrame::Box | QFrame::Plain);
@@ -5630,6 +5642,7 @@ void tst_QWidget::showHideShowX11()
     qApp->installNativeEventFilter(&w);
 
     w.show();
+    QVERIFY(QTest::qWaitForWindowExposed(&w));
     w.hide();
 
     QEventLoop eventLoop;
@@ -6125,7 +6138,7 @@ static void workaroundPaletteIssue(QWidget *widget)
     if (!widget)
         return;
 
-    QWidget *navigationBar = qFindChild<QWidget *>(widget, QLatin1String("qt_calendar_navigationbar"));
+    QWidget *navigationBar = widget->findChild<QWidget *>(QLatin1String("qt_calendar_navigationbar"));
     QVERIFY(navigationBar);
 
     QPalette palette = navigationBar->palette();
@@ -6224,7 +6237,7 @@ void tst_QWidget::renderInvisible()
     }
 
     // Get navigation bar and explicitly hide it.
-    QWidget *navigationBar = qFindChild<QWidget *>(calendar.data(), QLatin1String("qt_calendar_navigationbar"));
+    QWidget *navigationBar = calendar.data()->findChild<QWidget *>(QLatin1String("qt_calendar_navigationbar"));
     QVERIFY(navigationBar);
     navigationBar->hide();
 
@@ -6247,7 +6260,7 @@ void tst_QWidget::renderInvisible()
     }
 
     // Get next month button.
-    QWidget *nextMonthButton = qFindChild<QWidget *>(navigationBar, QLatin1String("qt_calendar_nextmonth"));
+    QWidget *nextMonthButton = navigationBar->findChild<QWidget *>(QLatin1String("qt_calendar_nextmonth"));
     QVERIFY(nextMonthButton);
 
     { // Render next month button.
@@ -7014,7 +7027,7 @@ void tst_QWidget::moveWindowInShowEvent()
 
     // show it
     widget.show();
-    QVERIFY(QTest::qWaitForWindowShown(&widget));
+    QVERIFY(QTest::qWaitForWindowExposed(&widget));
     QTest::qWait(100);
     // it should have moved
     QCOMPARE(widget.pos(), position);
@@ -10075,6 +10088,21 @@ void tst_QWidget::mouseDoubleClickBubbling_QTBUG29680()
     QTest::mouseDClick(&child, Qt::LeftButton);
 
     QTRY_VERIFY(parent.triggered);
+}
+
+void tst_QWidget::largerThanScreen_QTBUG30142()
+{
+    QWidget widget;
+    widget.resize(200, 4000);
+    widget.show();
+    QVERIFY(QTest::qWaitForWindowExposed(&widget));
+    QVERIFY(widget.frameGeometry().y() >= 0);
+
+    QWidget widget2;
+    widget2.resize(10000, 400);
+    widget2.show();
+    QVERIFY(QTest::qWaitForWindowExposed(&widget2));
+    QVERIFY(widget2.frameGeometry().x() >= 0);
 }
 
 QTEST_MAIN(tst_QWidget)

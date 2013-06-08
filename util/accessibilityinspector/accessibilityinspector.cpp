@@ -62,7 +62,7 @@ void MouseInterceptingGraphicsScene::mouseDoubleClickEvent(QGraphicsSceneMouseEv
 AccessibilitySceneManager *sceneManager = 0;
 QAccessible::UpdateHandler previousUpdateHandler = 0;
 bool updateHandlerRecursion = false;
-void accessibilityUpdateHandler(QObject *object, int who, QAccessible::Event reason)
+void accessibilityUpdateHandler(QAccessibleEvent *event)
 {
     if (updateHandlerRecursion)
         return;
@@ -70,13 +70,13 @@ void accessibilityUpdateHandler(QObject *object, int who, QAccessible::Event rea
     updateHandlerRecursion = true;
 
     if (sceneManager) {
-        sceneManager->handleUpdate(object, reason);
+        sceneManager->handleUpdate(event);
 
         //qDebug() << "update";
     }
 
     if (previousUpdateHandler) // call prev just to be sure.
-        previousUpdateHandler(object, who, reason);
+        previousUpdateHandler(event);
 
     updateHandlerRecursion = false;
 }
@@ -99,6 +99,8 @@ AccessibilityInspector::~AccessibilityInspector()
 void AccessibilityInspector::inspectWindow(QWindow *window)
 {
     qDebug() << "AccessibilityInspector::inspectWindow()" << window;
+    if (window->parent() || window->transientParent())
+        return;
 
     optionsWidget = new OptionsWidget();
 
@@ -164,23 +166,6 @@ void AccessibilityInspector::saveWindowGeometry()
 
 QString translateRole(QAccessible::Role role)
 {
-    if (role == 0x2B)
-        return "PushButton";
-    if (role == 0x2C)
-        return "CheckBox";
-    if (role == 0x2D)
-        return "RadioButton";
-    if (role == 0xA)
-        return "Client";
-    if (role == 0x29)
-        return "Static Text";
-    if (role == 0x33)
-        return "Slider";
-    if (role == 0x33)
-        return "Slider";
-    if (role == 0x10)
-        return "Pane";
-
-    return QString::number(role, 16);
+    return qAccessibleRoleString(role);
 }
 

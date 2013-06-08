@@ -56,6 +56,7 @@
 #include <qglframebufferobject.h>
 #include <private/qglpaintdevice_p.h>
 #include <private/qgl_p.h>
+#include <private/qopenglextensions_p.h>
 
 QT_BEGIN_NAMESPACE
 
@@ -119,7 +120,6 @@ public:
 private:
     QGLFramebufferObject* fbo;
     QGLFormat fboFormat;
-    bool wasBound;
     bool reqAlpha;
 };
 
@@ -148,6 +148,7 @@ public:
     QGLFramebufferObject::Attachment fbo_attachment;
     mutable QPaintEngine *engine;
     QGLFBOGLPaintDevice glDevice;
+    QOpenGLExtensions funcs;
 
     inline GLuint fbo() const { return fbo_guard ? fbo_guard->id() : 0; }
 };

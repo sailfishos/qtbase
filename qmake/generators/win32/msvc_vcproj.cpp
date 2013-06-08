@@ -622,8 +622,6 @@ void VcprojGenerator::writeSubDirs(QTextStream &t)
     QHash<QString, VcsolutionDepend*> solution_depends;
     QList<VcsolutionDepend*> solution_cleanup;
 
-    QString oldpwd = qmake_getpwd();
-
     // Make sure that all temp projects are configured
     // for release so that the depends are created
     // without the debug <lib>dxxx.lib name mangling
@@ -981,12 +979,8 @@ void VcprojGenerator::initConfiguration()
         initDeploymentTool();
     initPreLinkEventTools();
 
-    // Set definite values in both configurations
-    if (isDebug) {
-        conf.compiler.PreprocessorDefinitions.removeAll("NDEBUG");
-    } else {
+    if (!isDebug)
         conf.compiler.PreprocessorDefinitions += "NDEBUG";
-    }
 }
 
 void VcprojGenerator::initCompilerTool()
@@ -1001,7 +995,6 @@ void VcprojGenerator::initCompilerTool()
         conf.compiler.Optimization = optimizeDisabled;
     }
     conf.compiler.AssemblerListingLocation = placement ;
-    conf.compiler.ProgramDataBaseFileName = ".\\" ;
     conf.compiler.ObjectFile = placement ;
     conf.compiler.ExceptionHandling = ehNone;
     // PCH
@@ -1061,10 +1054,6 @@ void VcprojGenerator::initLinkerTool()
 
     conf.linker.OutputFile = "$(OutDir)\\";
     conf.linker.OutputFile += project->first("MSVCPROJ_TARGET").toQString();
-
-    if(project->isActiveConfig("dll")){
-        conf.linker.parseOptions(project->values("QMAKE_LFLAGS_QT_DLL"));
-    }
 }
 
 void VcprojGenerator::initResourceTool()

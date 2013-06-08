@@ -70,13 +70,12 @@ public:
 
     void printAll(QWidget *widget);
     void printAll(QAccessibleInterface *interface);
-    
+
     QAccessibleInterface *find(QAccessible::Text textType, const QString &text, QWidget *start);
     QAccessibleInterface *find(QAccessible::Text textType, const QString &text, QAccessibleInterface *start);
 
     QAccessibleInterface *recursiveSearch(TestBase *test, QAccessibleInterface *iface);
-    
-    void deleteInDestructor(QAccessibleInterface * interface);
+
     static QWidget *getWidget(QAccessibleInterface *interface);
 private:
     QSet<QAccessibleInterface *> interfaces;
@@ -99,7 +98,7 @@ class ColorWidget : public QWidget
 public:
     ColorWidget(QWidget *parent = 0, QColor color = QColor(Qt::red))
        : QWidget(parent), color(color) {}
-    
+
     QColor color;
 
 protected:
@@ -139,7 +138,7 @@ private:
 };
 
 /*
-    
+
 */
 class GuiTester : public QObject
 {

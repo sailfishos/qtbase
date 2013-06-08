@@ -971,7 +971,7 @@ Q_CORE_EXPORT void QVariantPrivate::registerHandler(const int /* Modules::Names 
     QVariant to convert between types given suitable data; it is still
     possible to supply data which cannot actually be converted.
 
-    For example, canConvert() would return true when called on a variant
+    For example, canConvert(Int) would return true when called on a variant
     containing a string because, in principle, QVariant is able to convert
     strings of numbers to integers.
     However, if the string contains non-numeric characters, it cannot be
@@ -1529,10 +1529,13 @@ QVariant::QVariant(const QLocale &l)
 QVariant::QVariant(const QRegExp &regExp)
     : d(RegExp)
 { v_construct<QRegExp>(&d, regExp); }
+#endif // QT_NO_REGEXP
 #ifndef QT_BOOTSTRAPPED
+#ifndef QT_NO_REGULAREXPRESSION
 QVariant::QVariant(const QRegularExpression &re)
     : d(RegularExpression)
 { v_construct<QRegularExpression>(&d, re); }
+#endif
 QVariant::QVariant(const QUuid &uuid)
     : d(Uuid)
 { v_construct<QUuid>(&d, uuid); }
@@ -1552,7 +1555,6 @@ QVariant::QVariant(const QJsonDocument &jsonDocument)
     : d(QMetaType::QJsonDocument)
 { v_construct<QJsonDocument>(&d, jsonDocument); }
 #endif // QT_BOOTSTRAPPED
-#endif // QT_NO_REGEXP
 
 /*!
     Returns the storage type of the value stored in the variant.
@@ -2222,6 +2224,7 @@ QRegExp QVariant::toRegExp() const
 }
 #endif
 
+#ifndef QT_BOOTSTRAPPED
 /*!
     \fn QRegularExpression QVariant::toRegularExpression() const
     \since 5.0
@@ -2231,13 +2234,12 @@ QRegExp QVariant::toRegExp() const
 
     \sa canConvert(), convert()
 */
-#ifndef QT_BOOTSTRAPPED
-#ifndef QT_NO_REGEXP
+#ifndef QT_NO_REGULAREXPRESSION
 QRegularExpression QVariant::toRegularExpression() const
 {
     return qVariantToHelper<QRegularExpression>(d, handlerManager);
 }
-#endif
+#endif // QT_NO_REGULAREXPRESSION
 
 /*!
     \since 5.0

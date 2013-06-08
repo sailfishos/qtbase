@@ -505,11 +505,12 @@ class QMoveCursorListView : public QListView
 public:
     QMoveCursorListView() : QListView() {}
 
+    // enum CursorAction and moveCursor() are protected in QListView.
     enum CursorAction { MoveUp, MoveDown, MoveLeft, MoveRight,
         MoveHome, MoveEnd, MovePageUp, MovePageDown,
         MoveNext, MovePrevious };
 
-    QModelIndex moveCursor(QMoveCursorListView::CursorAction action, Qt::KeyboardModifiers modifiers)
+    QModelIndex doMoveCursor(QMoveCursorListView::CursorAction action, Qt::KeyboardModifiers modifiers)
     {
         return QListView::moveCursor((QListView::CursorAction)action, modifiers);
     }
@@ -540,9 +541,9 @@ void tst_QListView::moveCursor2()
     vu.selectionModel()->setCurrentIndex(model.index(0,0), QItemSelectionModel::SelectCurrent);
     QCoreApplication::processEvents();
 
-    QModelIndex idx = vu.moveCursor(QMoveCursorListView::MoveHome, Qt::NoModifier);
+    QModelIndex idx = vu.doMoveCursor(QMoveCursorListView::MoveHome, Qt::NoModifier);
     QCOMPARE(idx, model.index(0,0));
-    idx = vu.moveCursor(QMoveCursorListView::MoveDown, Qt::NoModifier);
+    idx = vu.doMoveCursor(QMoveCursorListView::MoveDown, Qt::NoModifier);
     QCOMPARE(idx, model.index(8,0));
 }
 
@@ -1628,7 +1629,7 @@ void tst_QListView::task196118_visualRegionForSelection()
     class MyListView : public QListView
     {
     public:
-        QRegion visualRegionForSelection() const
+        QRegion getVisualRegionForSelection() const
         { return QListView::visualRegionForSelection( selectionModel()->selection()); }
     } view;
 
@@ -1643,7 +1644,7 @@ void tst_QListView::task196118_visualRegionForSelection()
     view.selectionModel()->select(top1.index(), QItemSelectionModel::Select);
 
     QCOMPARE(view.selectionModel()->selectedIndexes().count(), 1);
-    QVERIFY(view.visualRegionForSelection().isEmpty());
+    QVERIFY(view.getVisualRegionForSelection().isEmpty());
 }
 
 void tst_QListView::task254449_draggingItemToNegativeCoordinates()
@@ -1977,11 +1978,11 @@ void tst_QListView::taskQTBUG_5877_skippingItemInPageDownUp()
         vu.selectionModel()->setCurrentIndex(model.index(currentItemIndexes[i], 0),
                                              QItemSelectionModel::SelectCurrent);
 
-        QModelIndex idx = vu.moveCursor(QMoveCursorListView::MovePageDown, Qt::NoModifier);
+        QModelIndex idx = vu.doMoveCursor(QMoveCursorListView::MovePageDown, Qt::NoModifier);
         int newCurrent = qMin(currentItemIndexes[i] + scrolledRowCount, 99);
         QCOMPARE(idx, model.index(newCurrent, 0));
 
-        idx = vu.moveCursor(QMoveCursorListView::MovePageUp, Qt::NoModifier);
+        idx = vu.doMoveCursor(QMoveCursorListView::MovePageUp, Qt::NoModifier);
         newCurrent = qMax(currentItemIndexes[i] - scrolledRowCount, 0);
         QCOMPARE(idx, model.index(newCurrent, 0));
     }
@@ -2206,7 +2207,7 @@ void tst_QListView::taskQTBUG_21804_hiddenItemsAndScrollingWithKeys()
     lv.setSpacing(spacing);
     lv.setModel(&model);
     lv.show();
-    QTest::qWaitForWindowShown(&lv);
+    QTest::qWaitForWindowExposed(&lv);
 
     // hide every odd number row
     for (int i = 1; i < model.rowCount(); i+=2)
@@ -2282,7 +2283,7 @@ void tst_QListView::spacing()
     lv.setModel(&model);
     lv.setSpacing(spacing);
     lv.show();
-    QTest::qWaitForWindowShown(&lv);
+    QTest::qWaitForWindowExposed(&lv);
 
     // check size and position of first two items
     QRect item1 = lv.visualRect(lv.model()->index(0, 0));
