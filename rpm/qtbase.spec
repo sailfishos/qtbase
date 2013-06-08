@@ -190,6 +190,23 @@ Requires:   %{name}-qtcore = %{version}-%{release}
 %description plugin-platform-minimal
 This package contains the minimal platform plugin
 
+%package plugin-platform-offscreen
+Summary:    Offscreen platform plugin
+Group:      Qt/Qt
+Requires:   %{name}-qtcore = %{version}-%{release}
+
+%description plugin-platform-offscreen
+This package contains the offscreen platform plugin
+
+
+%package plugin-platform-inputcontext-compose
+Summary:    compose input context platform plugin
+Group:      Qt/Qt
+Requires:   %{name}-qtcore = %{version}-%{release}
+
+%description plugin-platform-inputcontext-compose
+This package contains compose platform inputcontext plugin
+
 
 %package plugin-platform-inputcontext-maliit
 Summary:    MALIIT input context platform plugin
@@ -778,10 +795,17 @@ ln -s %{_sysconfdir}/xdg/qtchooser/5.conf %{buildroot}%{_sysconfdir}/xdg/qtchoos
 %files qtopengl-devel
 %defattr(-,root,root,-)
 %{_includedir}/qt5/QtOpenGL/
+%{_includedir}/qt5/QtOpenGLExtensions/
 %{_libdir}/libQt5OpenGL.prl
+%{_libdir}/libQt5OpenGLExtensions.prl
 %{_libdir}/libQt5OpenGL.so
+%{_libdir}/libQt5OpenGLExtensions.a
 %{_libdir}/pkgconfig/Qt5OpenGL.pc
+%{_libdir}/pkgconfig/Qt5OpenGLExtensions.pc
 %{_datadir}/qt5/mkspecs/modules/qt_lib_opengl.pri
+%{_datadir}/qt5/mkspecs/android-g++/qmake.conf
+%{_datadir}/qt5/mkspecs/android-g++/qplatformdefs.h
+%{_datadir}/qt5/mkspecs/modules/qt_lib_openglextensions.pri
 
 
 %files qtsql
@@ -909,6 +933,14 @@ ln -s %{_sysconfdir}/xdg/qtchooser/5.conf %{buildroot}%{_sysconfdir}/xdg/qtchoos
 %files plugin-platform-minimal
 %defattr(-,root,root,-)
 %{_libdir}/qt5/plugins/platforms/libqminimal.so
+
+%files plugin-platform-offscreen
+%defattr(-,root,root,-)
+%{_libdir}/qt5/plugins/platforms/libqoffscreen.so
+
+%files plugin-platform-inputcontext-compose
+%defattr(-,root,root,-)
+%{_libdir}/qt5/plugins/platforminputcontexts/libcomposeplatforminputcontextplugin.so
 
 %files plugin-platform-inputcontext-maliit
 %defattr(-,root,root,-)
