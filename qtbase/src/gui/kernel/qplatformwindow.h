@@ -59,8 +59,6 @@
 #include <qpa/qplatformopenglcontext.h>
 #include <qpa/qplatformsurface.h>
 
-QT_BEGIN_HEADER
-
 QT_BEGIN_NAMESPACE
 
 
@@ -130,6 +128,12 @@ public:
     virtual void setFrameStrutEventsEnabled(bool enabled);
     virtual bool frameStrutEventsEnabled() const;
 
+    virtual void setAlertState(bool enabled);
+    virtual bool isAlertState() const;
+
+    static QRect initialGeometry(const QWindow *w,
+        const QRect &initialGeometry, int defaultWidth, int defaultHeight);
+
 protected:
     static QString formatWindowTitle(const QString &title, const QString &separator);
 
@@ -140,5 +144,4 @@ private:
 
 QT_END_NAMESPACE
 
-QT_END_HEADER
 #endif //QPLATFORMWINDOW_H

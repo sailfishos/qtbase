@@ -128,7 +128,7 @@ void QFSFileEnginePrivate::init()
 #ifdef Q_OS_WIN
     fileAttrib = INVALID_FILE_ATTRIBUTES;
     fileHandle = INVALID_HANDLE_VALUE;
-    mapHandle = INVALID_HANDLE_VALUE;
+    mapHandle = NULL;
 #ifndef Q_OS_WINCE
     cachedFd = -1;
 #endif
@@ -416,6 +416,17 @@ bool QFSFileEngine::flush()
         return true;
     }
     return d->nativeFlush();
+}
+
+/*!
+    \reimp
+*/
+bool QFSFileEngine::syncToDisk()
+{
+    Q_D(QFSFileEngine);
+    if ((d->openMode & QIODevice::WriteOnly) == 0)
+        return true;
+    return d->nativeSyncToDisk();
 }
 
 /*!
@@ -905,6 +916,11 @@ bool QFSFileEngine::supportsExtension(Extension extension) const
 */
 
 /*! \fn bool QFSFileEngine::rename(const QString &newName)
+  \reimp
+*/
+
+
+/*! \fn bool QFSFileEngine::renameOverwrite(const QString &newName)
   \reimp
 */
 

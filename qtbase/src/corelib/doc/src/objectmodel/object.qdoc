@@ -66,16 +66,12 @@
     by Qt's own \l{moc}{Meta-Object Compiler (moc)}.
 
     The meta-object system is a C++ extension that makes the language
-    better suited to true component GUI programming. Although
-    templates can be used to extend C++, the meta-object system
-    provides benefits using standard C++ that cannot be achieved with
-    templates; see \l{Why Doesn't Qt Use Templates for Signals and
-    Slots?}
+    better suited to true component GUI programming.
 
     \section1 Important Classes
 
     These classes form the basis of the Qt Object Model.
-    
+
     \annotatedlist objectmodel
 
     \target Identity vs Value
@@ -112,7 +108,7 @@
     at runtime that are not declared in the C++ class. If we copy a Qt
     Object, should the copy include the properties that were added to
     the original?
-    
+
     \endlist
 
     For these reasons, Qt Objects should be treated as identities, not

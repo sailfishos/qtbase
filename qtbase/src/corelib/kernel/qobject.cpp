@@ -216,8 +216,8 @@ QObjectPrivate::~QObjectPrivate()
 {
     if (extraData && !extraData->runningTimers.isEmpty()) {
         // unregister pending timers
-        if (threadData->eventDispatcher)
-            threadData->eventDispatcher->unregisterTimers(q_ptr);
+        if (threadData->eventDispatcher.load())
+            threadData->eventDispatcher.load()->unregisterTimers(q_ptr);
 
         // release the timer ids back to the pool
         for (int i = 0; i < extraData->runningTimers.size(); ++i)
@@ -927,7 +927,7 @@ QObjectPrivate::Connection::~Connection()
     \relates QObject
 
     Returns the given \a object cast to type T if the object is of type
-    T (or of a subclass); otherwise returns 0.  If \a object is 0 then 
+    T (or of a subclass); otherwise returns 0.  If \a object is 0 then
     it will also return 0.
 
     The class T must inherit (directly or indirectly) QObject and be
@@ -1074,7 +1074,7 @@ bool QObject::event(QEvent *e)
     case QEvent::ThreadChange: {
         Q_D(QObject);
         QThreadData *threadData = d->threadData;
-        QAbstractEventDispatcher *eventDispatcher = threadData->eventDispatcher;
+        QAbstractEventDispatcher *eventDispatcher = threadData->eventDispatcher.load();
         if (eventDispatcher) {
             QList<QAbstractEventDispatcher::TimerInfo> timers = eventDispatcher->registeredTimers(this);
             if (!timers.isEmpty()) {
@@ -1354,9 +1354,9 @@ void QObjectPrivate::setThreadData_helper(QThreadData *currentData, QThreadData 
             ++eventsMoved;
         }
     }
-    if (eventsMoved > 0 && targetData->eventDispatcher) {
+    if (eventsMoved > 0 && targetData->eventDispatcher.load()) {
         targetData->canWait = false;
-        targetData->eventDispatcher->wakeUp();
+        targetData->eventDispatcher.load()->wakeUp();
     }
 
     // the current emitting thread shouldn't restore currentSender after calling moveToThread()
@@ -1379,7 +1379,7 @@ void QObjectPrivate::_q_reregisterTimers(void *pointer)
 {
     Q_Q(QObject);
     QList<QAbstractEventDispatcher::TimerInfo> *timerList = reinterpret_cast<QList<QAbstractEventDispatcher::TimerInfo> *>(pointer);
-    QAbstractEventDispatcher *eventDispatcher = threadData->eventDispatcher;
+    QAbstractEventDispatcher *eventDispatcher = threadData->eventDispatcher.load();
     for (int i = 0; i < timerList->size(); ++i) {
         const QAbstractEventDispatcher::TimerInfo &ti = timerList->at(i);
         eventDispatcher->registerTimer(ti.timerId, ti.interval, ti.timerType, q);
@@ -1438,11 +1438,11 @@ int QObject::startTimer(int interval, Qt::TimerType timerType)
         return 0;
     }
 
-    if (!d->threadData->eventDispatcher) {
+    if (!d->threadData->eventDispatcher.load()) {
         qWarning("QObject::startTimer: QTimer can only be used with threads started with QThread");
         return 0;
     }
-    int timerId = d->threadData->eventDispatcher->registerTimer(interval, timerType, this);
+    int timerId = d->threadData->eventDispatcher.load()->registerTimer(interval, timerType, this);
     if (!d->extraData)
         d->extraData = new QObjectPrivate::ExtraData;
     d->extraData->runningTimers.append(timerId);
@@ -1472,8 +1472,8 @@ void QObject::killTimer(int id)
             return;
         }
 
-        if (d->threadData->eventDispatcher)
-            d->threadData->eventDispatcher->unregisterTimer(id);
+        if (d->threadData->eventDispatcher.load())
+            d->threadData->eventDispatcher.load()->unregisterTimer(id);
 
         d->extraData->runningTimers.remove(at);
         QAbstractEventDispatcherPrivate::releaseTimerId(id);
@@ -1690,7 +1690,7 @@ void qt_qFindChildren_helper(const QObject *parent, const QRegExp &re,
 }
 #endif // QT_NO_REGEXP
 
-#ifndef QT_NO_REGEXP
+#ifndef QT_NO_REGULAREXPRESSION
 /*!
     \internal
 */
@@ -1712,7 +1712,7 @@ void qt_qFindChildren_helper(const QObject *parent, const QRegularExpression &re
             qt_qFindChildren_helper(obj, re, mo, list, options);
     }
 }
-#endif // QT_NO_REGEXP
+#endif // QT_NO_REGULAREXPRESSION
 
 /*!
     \internal
@@ -3089,8 +3089,8 @@ bool QMetaObject::disconnect(const QObject *sender, int signal_index,
 /*!
     \internal
 
-Disconnect a single signal connection.  If QMetaObject::connect() has been called 
-multiple times for the same sender, signal_index, receiver and method_index only 
+Disconnect a single signal connection.  If QMetaObject::connect() has been called
+multiple times for the same sender, signal_index, receiver and method_index only
 one of these connections will be removed.
  */
 bool QMetaObject::disconnectOne(const QObject *sender, int signal_index,
@@ -3219,6 +3219,9 @@ bool QMetaObjectPrivate::disconnect(const QObject *sender,
 
     \snippet code/src_corelib_kernel_qobject.cpp 34
 
+    If \a object itself has a properly set object name, its own signals are also
+    connected to its respective slots.
+
     \sa QObject::setObjectName()
  */
 void QMetaObject::connectSlotsByName(QObject *o)
@@ -3227,39 +3230,66 @@ void QMetaObject::connectSlotsByName(QObject *o)
         return;
     const QMetaObject *mo = o->metaObject();
     Q_ASSERT(mo);
-    const QObjectList list = o->findChildren<QObject *>(QString());
+    const QObjectList list = // list of all objects to look for matching signals including...
+            o->findChildren<QObject *>(QString()) // all children of 'o'...
+            << o; // and the object 'o' itself
+
+    // for each method/slot of o ...
     for (int i = 0; i < mo->methodCount(); ++i) {
-        QByteArray slotSignature = mo->method(i).methodSignature();
+        const QByteArray slotSignature = mo->method(i).methodSignature();
         const char *slot = slotSignature.constData();
         Q_ASSERT(slot);
+
+        // ...that starts with "on_", ...
         if (slot[0] != 'o' || slot[1] != 'n' || slot[2] != '_')
             continue;
+
+        // ...we check each object in our list, ...
         bool foundIt = false;
         for(int j = 0; j < list.count(); ++j) {
             const QObject *co = list.at(j);
-            QByteArray objName = co->objectName().toLatin1();
-            int len = objName.length();
-            if (!len || qstrncmp(slot + 3, objName.data(), len) || slot[len+3] != '_')
+            const QByteArray coName = co->objectName().toLatin1();
+
+            // ...discarding those whose objectName is not fitting the pattern "on_<objectName>_...", ...
+            if (coName.isEmpty() || qstrncmp(slot + 3, coName.constData(), coName.size()) || slot[coName.size()+3] != '_')
                 continue;
+
+            const char *signal = slot + coName.size() + 4; // the 'signal' part of the slot name
+
+            // ...for the presence of a matching signal "on_<objectName>_<signal>".
             const QMetaObject *smeta;
-            int sigIndex = co->d_func()->signalIndex(slot + len + 4, &smeta);
-            if (sigIndex < 0) { // search for compatible signals
+            int sigIndex = co->d_func()->signalIndex(signal, &smeta);
+            if (sigIndex < 0) {
+                // if no exactly fitting signal (name + complete parameter type list) could be found
+                // look for just any signal with the correct name and at least the slot's parameter list.
+                // Note: if more than one of thoses signals exist, the one that gets connected is
+                // chosen 'at random' (order of declaration in source file)
+                QList<QByteArray> compatibleSignals;
                 const QMetaObject *smo = co->metaObject();
-                int slotlen = qstrlen(slot + len + 4) - 1;
-                for (int k = 0; k < QMetaObjectPrivate::absoluteSignalCount(smo); ++k) {
-                    QMetaMethod method = QMetaObjectPrivate::signal(smo, k);
-                    if (!qstrncmp(method.methodSignature().constData(), slot + len + 4, slotlen)) {
+                int sigLen = qstrlen(signal) - 1; // ignore the trailing ')'
+                for (int k = QMetaObjectPrivate::absoluteSignalCount(smo)-1; k >= 0; --k) {
+                    const QMetaMethod method = QMetaObjectPrivate::signal(smo, k);
+                    if (!qstrncmp(method.methodSignature().constData(), signal, sigLen)) {
                         smeta = method.enclosingMetaObject();
                         sigIndex = k;
-                        break;
+                        compatibleSignals.prepend(method.methodSignature());
                     }
                 }
+                if (compatibleSignals.size() > 1)
+                    qWarning() << "QMetaObject::connectSlotsByName: Connecting slot" << slot
+                               << "with the first of the following compatible signals:" << compatibleSignals;
             }
+
             if (sigIndex < 0)
                 continue;
 
+            // we connect it...
             if (Connection(QMetaObjectPrivate::connect(co, sigIndex, smeta, o, i))) {
                 foundIt = true;
+                // ...and stop looking for further objects with the same name.
+                // Note: the Designer will make sure each object name is unique in the above
+                // 'list' but other code may create two child objects with the same name. In
+                // this case one is chosen 'at random'.
                 break;
             }
         }
@@ -3268,7 +3298,11 @@ void QMetaObject::connectSlotsByName(QObject *o)
             while (mo->method(i + 1).attributes() & QMetaMethod::Cloned)
                   ++i;
         } else if (!(mo->method(i).attributes() & QMetaMethod::Cloned)) {
-            qWarning("QMetaObject::connectSlotsByName: No matching signal for %s", slot);
+            // check if the slot has the following signature: "on_..._...(..."
+            int iParen = slotSignature.indexOf('(');
+            int iLastUnderscore = slotSignature.lastIndexOf('_', iParen-1);
+            if (iLastUnderscore > 3)
+                qWarning("QMetaObject::connectSlotsByName: No matching signal for %s", slot);
         }
     }
 }
@@ -3334,7 +3368,7 @@ void QMetaObject::activate(QObject *sender, int signalOffset, int local_signal_i
         return;
 
     if (sender->d_func()->declarativeData && QAbstractDeclarativeData::signalEmitted)
-        QAbstractDeclarativeData::signalEmitted(sender->d_func()->declarativeData, sender, 
+        QAbstractDeclarativeData::signalEmitted(sender->d_func()->declarativeData, sender,
                                                 signal_index, argv);
 
     void *empty_argv[] = { 0 };
@@ -4069,6 +4103,37 @@ QDebug operator<<(QDebug dbg, const QObject *o) {
 */
 
 /*!
+    \macro Q_REVISION
+    \relates QObject
+
+    Apply this macro to definitions of member functions to tag them with a
+    revision number in the meta-object system. The macro is written before
+    the return type, as shown in the following example:
+
+    \snippet qmetaobject-revision/window.h Window class with revision
+
+    This is useful when using the meta-object system to dynamically expose
+    objects to another API, as you can match the version expected by multiple
+    versions of the other API. Consider the following simplified example:
+
+    \snippet qmetaobject-revision/main.cpp Window class using revision
+
+    Using the same Window class as the previous example, the newProperty and
+    newMethod would only be exposed in this code when the expected version is
+    1 or greater.
+
+    Since all methods are considered to be in revision 0 if untagged, a tag
+    of Q_REVISION(0) is invalid and ignored.
+
+    This tag is not used by the meta-object system itself. Currently this is only
+    used by the QtQml module.
+
+    For a more generic string tag, see \l QMetaMethod::tag()
+
+    \sa QMetaMethod::revision()
+*/
+
+/*!
     \macro Q_SET_OBJECT_NAME(Object)
     \relates QObject
     \since 5.0
@@ -4151,6 +4216,9 @@ void qDeleteInEventHandler(QObject *o)
     \snippet code/src_corelib_kernel_qobject.cpp 25
 
     make sure to declare the argument type with Q_DECLARE_METATYPE
+
+    \note The number of arguments in the signal or slot are limited to 6 if
+    the compiler does not support C++11 variadic templates.
  */
 
 
@@ -4181,6 +4249,10 @@ void qDeleteInEventHandler(QObject *o)
     \snippet code/src_corelib_kernel_qobject.cpp 46
 
     The connection will automatically disconnect if the sender is destroyed.
+
+    \note If the compiler does not support C++11 variadic templates, the number
+    of arguments in the signal or slot are limited to 6, and the functor object
+    must not have an overloaded or templated operator().
  */
 
 /**
@@ -4194,7 +4266,7 @@ void qDeleteInEventHandler(QObject *o)
                 connecting to a static function or a functor
     \a slot a pointer only used when using Qt::UniqueConnection
     \a type the Qt::ConnctionType passed as argument to connect
-    \a types an array of integer with the metatype id of the parametter of the signal
+    \a types an array of integer with the metatype id of the parameter of the signal
              to be used with queued connection
              must stay valid at least for the whole time of the connection, this function
              do not take ownership. typically static data.
@@ -4209,7 +4281,7 @@ QMetaObject::Connection QObject::connectImpl(const QObject *sender, void **signa
                                              const int *types, const QMetaObject *senderMetaObject)
 {
     if (!sender || !signal || !slotObj || !senderMetaObject) {
-        qWarning("QObject::connect: invalid null parametter");
+        qWarning("QObject::connect: invalid null parameter");
         if (slotObj)
             slotObj->destroyIfLastRef();
         return QMetaObject::Connection();

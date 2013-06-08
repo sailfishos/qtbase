@@ -50,7 +50,7 @@
 #include <errno.h>
 #include <sys/keycodes.h>
 
-#ifdef QQNXSCREENEVENT_DEBUG
+#if defined(QQNXSCREENEVENT_DEBUG)
 #define qScreenEventDebug qDebug
 #else
 #define qScreenEventDebug QT_NO_QDEBUG_MACRO
@@ -346,6 +346,8 @@ void QQnxScreenEventHandler::handleTouchEvent(screen_event_t event, int qnxType)
     if (result) {
         qFatal("QQNX: failed to query event position, errno=%d", errno);
     }
+
+    QCursor::setPos(pos[0], pos[1]);
 
     // get window coordinates of touch
     errno = 0;

@@ -43,6 +43,7 @@
 #define QEGLFSHOOKS_H
 
 #include <qpa/qplatformintegration.h>
+#include <qpa/qplatformscreen.h>
 #include <QtGui/QSurfaceFormat>
 #include <QtGui/QImage>
 #include <EGL/egl.h>
@@ -55,11 +56,13 @@ class QEglFSScreen;
 class QEglFSHooks
 {
 public:
-    virtual ~QEglFSHooks() {};
+    virtual ~QEglFSHooks() {}
     virtual void platformInit();
     virtual void platformDestroy();
     virtual EGLNativeDisplayType platformDisplay() const;
+    virtual QSizeF physicalScreenSize() const;
     virtual QSize screenSize() const;
+    virtual QDpi logicalDpi() const;
     virtual int screenDepth() const;
     virtual QImage::Format screenFormat() const;
     virtual QSurfaceFormat surfaceFormatFor(const QSurfaceFormat &inputFormat) const;
@@ -67,15 +70,22 @@ public:
     virtual void destroyNativeWindow(EGLNativeWindowType window);
     virtual bool hasCapability(QPlatformIntegration::Capability cap) const;
     virtual QEglFSCursor *createCursor(QEglFSScreen *screen) const;
-};
+    virtual bool filterConfig(EGLDisplay display, EGLConfig config) const;
+    virtual void waitForVSync() const;
 
+    virtual const char *fbDeviceName() const;
+
+    static QEglFSHooks *hooks()
+    {
 #ifdef EGLFS_PLATFORM_HOOKS
-extern QEglFSHooks *platformHooks;
-static QEglFSHooks *hooks = platformHooks;
+        extern QEglFSHooks *platformHooks;
+        return platformHooks;
 #else
-extern QEglFSHooks stubHooks;
-static QEglFSHooks *hooks = &stubHooks;
+        extern QEglFSHooks stubHooks;
+        return &stubHooks;
 #endif
+    }
+};
 
 QT_END_NAMESPACE
 

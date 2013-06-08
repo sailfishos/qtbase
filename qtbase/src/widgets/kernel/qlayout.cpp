@@ -3,7 +3,7 @@
 ** Copyright (C) 2013 Digia Plc and/or its subsidiary(-ies).
 ** Contact: http://www.qt-project.org/legal
 **
-** This file is part of the QtGui module of the Qt Toolkit.
+** This file is part of the QtWidgets module of the Qt Toolkit.
 **
 ** $QT_BEGIN_LICENSE:LGPL$
 ** Commercial License Usage
@@ -806,6 +806,16 @@ void QLayout::addChildLayout(QLayout *l)
 
 }
 
+/*!
+   \internal
+ */
+bool QLayout::adoptLayout(QLayout *layout)
+{
+    const bool ok = !layout->parent();
+    addChildLayout(layout);
+    return ok;
+}
+
 #ifdef QT_DEBUG
 static bool layoutDebug()
 {
@@ -1270,7 +1280,7 @@ QRect QLayout::alignmentRect(const QRect &r) const
     Removes the widget \a widget from the layout. After this call, it
     is the caller's responsibility to give the widget a reasonable
     geometry or to put the widget back into a layout.
-    
+
     \b{Note:} The ownership of \a widget remains the same as
     when it was added.
 

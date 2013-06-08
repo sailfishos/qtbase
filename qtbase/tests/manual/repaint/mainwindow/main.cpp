@@ -39,7 +39,14 @@
 **
 ****************************************************************************/
 
-#include <QtWidgets>
+#include <QApplication>
+#include <QMainWindow>
+#include <QToolBar>
+#include <QDockWidget>
+#include <QStatusBar>
+#include <QSpinBox>
+#include <QAction>
+
 #include "../shared/shared.h"
 
 int main(int argc, char **argv)
@@ -47,16 +54,16 @@ int main(int argc, char **argv)
     QApplication app(argc, argv);
 
     QMainWindow mainWindow;
-    
+
     mainWindow.setCentralWidget(new StaticWidget());
     mainWindow.setStatusBar(new QStatusBar());
-    
+
     QDockWidget *dockWidget = new QDockWidget();
     dockWidget->setWidget(new StaticWidget());
     mainWindow.addDockWidget(Qt::LeftDockWidgetArea, dockWidget);
-    
+
     QToolBar *toolBar = new QToolBar();
-    
+
     toolBar->addWidget(new StaticWidget())->setVisible(true);;
 
     toolBar->addWidget(new QSpinBox())->setVisible(true);;
@@ -64,6 +71,6 @@ int main(int argc, char **argv)
 
     mainWindow.resize(600, 400);
     mainWindow.show();
-    
+
     return app.exec();
 }

@@ -42,7 +42,7 @@
 #ifndef INPUTMETHODHINTS_H
 #define INPUTMETHODHINTS_H
 
-#include <QtWidgets/QMainWindow>
+#include <QMainWindow>
 #include "ui_inputmethodhints.h"
 
 class inputmethodhints : public QMainWindow
@@ -52,7 +52,7 @@ class inputmethodhints : public QMainWindow
 public:
     inputmethodhints(QWidget *parent = 0);
     ~inputmethodhints();
-    
+
 public slots:
     void checkboxChanged(int);
 

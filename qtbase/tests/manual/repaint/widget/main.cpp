@@ -39,8 +39,10 @@
 **
 ****************************************************************************/
 
-#include <QtWidgets>
 #include "../shared/shared.h"
+
+#include <QApplication>
+#include <QPushButton>
 
 class Child : public StaticWidget
 {
@@ -108,24 +110,24 @@ protected:
     QPushButton * resizeButton;
     QPushButton * movebutton;
     QPushButton * moveResizebutton;
-    QPushButton * scrollbutton;    
+    QPushButton * scrollbutton;
 };
 
 int main(int argc, char **argv)
 {
     QApplication app(argc, argv);
-    
+
     TopLevel bc;
     bc.resize(500, 500);
 
     c = new Child(&bc);
     c->move(100, 100);
     c->resize(100, 100);
-    
+
     QWidget *gc  = new StaticWidget(c);
     gc->move(20, 20);
     gc->resize(50,50);
-    
+
 
     bc.show();
     return app.exec();

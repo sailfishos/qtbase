@@ -52,6 +52,7 @@ class QWidget;
 class QPlatformPrinterSupport;
 class QPrintEngine;
 class QPlatformMenu;
+class QPlatformMenuBar;
 
 class QCocoaNativeInterface : public QPlatformNativeInterface
 {
@@ -63,6 +64,8 @@ public:
     void *nativeResourceForWindow(const QByteArray &resourceString, QWindow *window);
 
     NativeResourceForIntegrationFunction nativeResourceFunctionForIntegration(const QByteArray &resource) Q_DECL_OVERRIDE;
+
+    Q_INVOKABLE void beep();
 
     static void *cglContextForContext(QOpenGLContext *context);
     static void *nsOpenGLContextForContext(QOpenGLContext* context);
@@ -99,9 +102,30 @@ private:
     // Dock menu support
     static void setDockMenu(QPlatformMenu *platformMenu);
 
+    // Function to return NSMenu * from QPlatformMenu
+    static void *qMenuToNSMenu(QPlatformMenu *platformMenu);
+
+    // Function to return NSMenu * from QPlatformMenuBar
+    static void *qMenuBarToNSMenu(QPlatformMenuBar *platformMenuBar);
+
     // QImage <-> CGImage conversion functions
     static CGImageRef qImageToCGImage(const QImage &image);
     static QImage cgImageToQImage(CGImageRef image);
+
+    // Embedding NSViews as child QWindows
+    static void setWindowContentView(QPlatformWindow *window, void *nsViewContentView);
+
+    // Set a QWindow as a "guest" (subwindow) of a non-QWindow
+    static void setEmbeddedInForeignView(QPlatformWindow *window, bool embedded);
+
+    // Register if a window should deliver touch events. Enabling
+    // touch events has implications for delivery of other events,
+    // for example by causing scrolling event lag.
+    //
+    // The registration is ref-counted: multiple widgets can enable
+    // touch events, which then will be delivered until the widget
+    // deregisters.
+    static void registerTouchWindow(QWindow *window,  bool enable);
 };
 
 #endif // QCOCOANATIVEINTERFACE_H

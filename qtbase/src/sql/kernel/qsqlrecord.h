@@ -45,8 +45,6 @@
 #include <QtCore/qstring.h>
 #include <QtSql/qsql.h>
 
-QT_BEGIN_HEADER
-
 QT_BEGIN_NAMESPACE
 
 
@@ -97,6 +95,7 @@ public:
     void clear();
     void clearValues();
     int count() const;
+    QSqlRecord keyValues(const QSqlRecord &keyFields) const;
 
 private:
     void detach();
@@ -108,7 +107,5 @@ Q_SQL_EXPORT QDebug operator<<(QDebug, const QSqlRecord &);
 #endif
 
 QT_END_NAMESPACE
-
-QT_END_HEADER
 
 #endif // QSQLRECORD_H

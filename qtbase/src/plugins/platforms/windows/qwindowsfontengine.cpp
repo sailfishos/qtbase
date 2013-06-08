@@ -66,7 +66,6 @@
 #include <QtCore/QThreadStorage>
 #include <QtCore/private/qsystemlibrary_p.h>
 
-#include <QtCore/private/qunicodetables_p.h>
 #include <QtCore/QDebug>
 
 #include <limits.h>
@@ -155,9 +154,20 @@ static OUTLINETEXTMETRIC *getOutlineTextMetric(HDC hdc)
     return otm;
 }
 
+bool QWindowsFontEngine::hasCFFTable() const
+{
+    HDC hdc = m_fontEngineData->hdc;
+    SelectObject(hdc, hfont);
+    return GetFontData(hdc, MAKE_TAG('C', 'F', 'F', ' '), 0, 0, 0) != GDI_ERROR;
+}
+
 void QWindowsFontEngine::getCMap()
 {
     ttf = (bool)(tm.tmPitchAndFamily & TMPF_TRUETYPE);
+
+    // TMPF_TRUETYPE is not set for fonts with CFF tables
+    cffTable = !ttf && hasCFFTable();
+
     HDC hdc = m_fontEngineData->hdc;
     SelectObject(hdc, hfont);
     bool symb = false;
@@ -180,7 +190,7 @@ void QWindowsFontEngine::getCMap()
         unitsPerEm = otm->otmEMSquare;
         x_height = (int)otm->otmsXHeight;
         loadKerningPairs(designToDevice);
-        _faceId.filename = QString::fromWCharArray((wchar_t *)((char *)otm + (quintptr)otm->otmpFullName)).toLatin1();
+        _faceId.filename = QFile::encodeName(QString::fromWCharArray((wchar_t *)((char *)otm + (quintptr)otm->otmpFullName)));
         lineWidth = otm->otmsUnderscoreSize;
         fsType = otm->otmfsType;
         free(otm);
@@ -1041,7 +1051,7 @@ void QWindowsFontEngine::getUnscaledGlyph(glyph_t glyph, QPainterPath *path, gly
 
 bool QWindowsFontEngine::getSfntTableData(uint tag, uchar *buffer, uint *length) const
 {
-    if (!ttf)
+    if (!ttf && !cffTable)
         return false;
     HDC hdc = m_fontEngineData->hdc;
     SelectObject(hdc, hfont);
@@ -1216,13 +1226,13 @@ QImage QWindowsFontEngine::alphaRGBMapForGlyph(glyph_t glyph, QFixed, const QTra
 {
     HFONT font = hfont;
 
-    int contrast;
+    UINT contrast;
     SystemParametersInfo(SPI_GETFONTSMOOTHINGCONTRAST, 0, &contrast, 0);
     SystemParametersInfo(SPI_SETFONTSMOOTHINGCONTRAST, 0, (void *) 1000, 0);
 
     int margin = glyphMargin(QFontEngineGlyphCache::Raster_RGBMask);
     QWindowsNativeImage *mask = drawGDIGlyph(font, glyph, margin, t, QImage::Format_RGB32);
-    SystemParametersInfo(SPI_SETFONTSMOOTHINGCONTRAST, 0, (void *) contrast, 0);
+    SystemParametersInfo(SPI_SETFONTSMOOTHINGCONTRAST, 0, (void *) quintptr(contrast), 0);
 
     if (mask == 0)
         return QImage();
@@ -1258,7 +1268,7 @@ QFontEngine *QWindowsFontEngine::cloneWithSize(qreal pixelSize) const
     request.styleStrategy |= QFont::NoFontMerging;
 
     QFontEngine *fontEngine =
-        QWindowsFontDatabase::createEngine(QUnicodeTables::Common, request, 0,
+        QWindowsFontDatabase::createEngine(QChar::Script_Common, request, 0,
                                            QWindowsContext::instance()->defaultDPI(),
                                            false,
                                            QStringList(), m_fontEngineData);

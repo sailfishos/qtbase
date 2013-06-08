@@ -53,6 +53,14 @@
 #include <QVarLengthArray>
 #include <qpa/qwindowsysteminterface.h>
 
+// This is needed to make Qt compile together with XKB. xkb.h is using a variable
+// which is called 'explicit', this is a reserved keyword in c++ */
+#ifndef QT_NO_XKB
+#define explicit dont_use_cxx_explicit
+#include <xcb/xkb.h>
+#undef explicit
+#endif
+
 #ifndef QT_NO_TABLETEVENT
 #include <QTabletEvent>
 #endif
@@ -79,8 +87,6 @@ class QXcbKeyboard;
 class QXcbClipboard;
 class QXcbWMSupport;
 class QXcbNativeInterface;
-
-typedef QHash<xcb_window_t, QXcbWindow *> WindowMapper;
 
 namespace QXcbAtom {
     enum Atom {
@@ -301,12 +307,36 @@ private:
     XcbPollForQueuedEventFunctionPointer m_xcb_poll_for_queued_event;
 };
 
+class QXcbWindowEventListener
+{
+public:
+    virtual bool handleGenericEvent(xcb_generic_event_t *, long *) { return false; }
+
+    virtual void handleExposeEvent(const xcb_expose_event_t *) {}
+    virtual void handleClientMessageEvent(const xcb_client_message_event_t *) {}
+    virtual void handleConfigureNotifyEvent(const xcb_configure_notify_event_t *) {}
+    virtual void handleMapNotifyEvent(const xcb_map_notify_event_t *) {}
+    virtual void handleUnmapNotifyEvent(const xcb_unmap_notify_event_t *) {}
+    virtual void handleButtonPressEvent(const xcb_button_press_event_t *) {}
+    virtual void handleButtonReleaseEvent(const xcb_button_release_event_t *) {}
+    virtual void handleMotionNotifyEvent(const xcb_motion_notify_event_t *) {}
+    virtual void handleEnterNotifyEvent(const xcb_enter_notify_event_t *) {}
+    virtual void handleLeaveNotifyEvent(const xcb_leave_notify_event_t *) {}
+    virtual void handleFocusInEvent(const xcb_focus_in_event_t *) {}
+    virtual void handleFocusOutEvent(const xcb_focus_out_event_t *) {}
+    virtual void handlePropertyNotifyEvent(const xcb_property_notify_event_t *) {}
+
+    virtual QXcbWindow *toWindow() { return 0; }
+};
+
+typedef QHash<xcb_window_t, QXcbWindowEventListener *> WindowMapper;
+
 class QAbstractEventDispatcher;
 class QXcbConnection : public QObject
 {
     Q_OBJECT
 public:
-    QXcbConnection(QXcbNativeInterface *nativeInterface, const char *displayName = 0);
+    QXcbConnection(QXcbNativeInterface *nativeInterface, bool canGrabServer, const char *displayName = 0);
     ~QXcbConnection();
 
     QXcbConnection *connection() const { return const_cast<QXcbConnection *>(this); }
@@ -333,7 +363,7 @@ public:
 #endif
 
     QXcbWMSupport *wmSupport() const { return m_wmSupport.data(); }
-
+    xcb_window_t rootWindow();
 #ifdef XCB_USE_XLIB
     void *xlib_display() const { return m_xlib_display; }
 #endif
@@ -356,15 +386,16 @@ public:
     void handleXcbError(xcb_generic_error_t *error);
     void handleXcbEvent(xcb_generic_event_t *event);
 
-    void addWindow(xcb_window_t id, QXcbWindow *window);
-    void removeWindow(xcb_window_t id);
+    void addWindowEventListener(xcb_window_t id, QXcbWindowEventListener *eventListener);
+    void removeWindowEventListener(xcb_window_t id);
+    QXcbWindowEventListener *windowEventListenerFromId(xcb_window_t id);
     QXcbWindow *platformWindowFromId(xcb_window_t id);
 
     xcb_generic_event_t *checkEvent(int type);
     template<typename T>
     inline xcb_generic_event_t *checkEvent(T &checker);
 
-    typedef bool (*PeekFunc)(xcb_generic_event_t *);
+    typedef bool (*PeekFunc)(QXcbConnection *, xcb_generic_event_t *);
     void addPeekFunc(PeekFunc f);
 
     inline xcb_timestamp_t time() const { return m_time; }
@@ -378,6 +409,8 @@ public:
     bool hasXShape() const { return has_shape_extension; }
     bool hasXRandr() const { return has_randr_extension; }
     bool hasInputShape() const { return has_input_shape; }
+    bool hasTouchWithoutMouseEmulation() const { return has_touch_without_mouse_emulation; }
+    bool hasXKB() const { return has_xkb; }
 
     bool supportsThreadedRendering() const { return m_reader->isRunning(); }
 
@@ -388,6 +421,13 @@ public:
     QXcbWindow *focusWindow() const { return m_focusWindow; }
     void setFocusWindow(QXcbWindow *);
 
+    QByteArray startupId() const { return m_startupId; }
+    void clearStartupId() { m_startupId.clear(); }
+
+    void grabServer();
+    void ungrabServer();
+
+    QXcbNativeInterface *nativeInterface() const { return m_nativeInterface; }
 private slots:
     void processXcbEvents();
 
@@ -399,6 +439,7 @@ private:
     void initializeXRender();
     void initializeXRandr();
     void initializeXShape();
+    void initializeXKB();
 #ifdef XCB_USE_XINPUT2_MAEMO
     void initializeXInput2Maemo();
     void finalizeXInput2Maemo();
@@ -451,6 +492,7 @@ private:
 
     xcb_connection_t *m_connection;
     const xcb_setup_t *m_setup;
+    bool m_canGrabServer;
 
     QList<QXcbScreen *> m_screens;
     int m_primaryScreen;
@@ -507,15 +549,20 @@ private:
 
     uint32_t xfixes_first_event;
     uint32_t xrandr_first_event;
+    uint32_t xkb_first_event;
 
     bool has_glx_extension;
     bool has_shape_extension;
     bool has_randr_extension;
     bool has_input_shape;
+    bool has_touch_without_mouse_emulation;
+    bool has_xkb;
 
     Qt::MouseButtons m_buttons;
 
     QXcbWindow *m_focusWindow;
+
+    QByteArray m_startupId;
 };
 
 #define DISPLAY_FROM_XCB(object) ((Display *)(object->connection()->xlib_display()))

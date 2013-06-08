@@ -92,13 +92,17 @@ public:
     void updateHierarchy();
 
     void onWindowPost(QQnxWindow *window);
+    void adjustOrientation();
 
     QSharedPointer<QQnxRootWindow> rootWindow() const;
+
+    QPlatformCursor *cursor() const;
 
 public Q_SLOTS:
     void setRotation(int rotation);
     void newWindowCreated(void *window);
     void windowClosed(void *window);
+    void windowGroupStateChanged(const QByteArray &id, Qt::WindowState state);
     void activateWindowGroup(const QByteArray &id);
     void deactivateWindowGroup(const QByteArray &id);
 
@@ -111,6 +115,8 @@ private:
     void resizeWindows(const QRect &previousScreenGeometry);
     void addOverlayWindow(screen_window_t window);
     void removeOverlayWindow(screen_window_t window);
+
+    QWindow *topMostChildWindow() const;
 
     screen_context_t m_screenContext;
     screen_display_t m_display;
@@ -130,6 +136,8 @@ private:
 
     QList<QQnxWindow *> m_childWindows;
     QList<screen_window_t> m_overlays;
+
+    QPlatformCursor *m_cursor;
 };
 
 QT_END_NAMESPACE

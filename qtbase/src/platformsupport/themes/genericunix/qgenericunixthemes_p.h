@@ -47,8 +47,6 @@
 #include <QtCore/QStringList>
 #include <QtGui/QFont>
 
-QT_BEGIN_HEADER
-
 QT_BEGIN_NAMESPACE
 
 class ResourceHelper
@@ -63,8 +61,11 @@ public:
     QFont *fonts[QPlatformTheme::NFonts];
 };
 
+class QGenericUnixThemePrivate;
+
 class QGenericUnixTheme : public QPlatformTheme
 {
+    Q_DECLARE_PRIVATE(QGenericUnixTheme)
 public:
     QGenericUnixTheme();
 
@@ -77,61 +78,43 @@ public:
     static QStringList xdgIconThemePaths();
 
     static const char *name;
-
-private:
-    const QFont m_systemFont;
 };
 
 #ifndef QT_NO_SETTINGS
+class QKdeThemePrivate;
+
 class QKdeTheme : public QPlatformTheme
 {
+    Q_DECLARE_PRIVATE(QKdeTheme)
     QKdeTheme(const QString &kdeHome, int kdeVersion);
 public:
 
     static QPlatformTheme *createKdeTheme();
     virtual QVariant themeHint(ThemeHint hint) const;
 
-    virtual const QPalette *palette(Palette type = SystemPalette) const
-        { return m_resources.palettes[type]; }
+    virtual const QPalette *palette(Palette type = SystemPalette) const;
 
-    virtual const QFont *font(Font type) const
-        { return m_resources.fonts[type]; }
+    virtual const QFont *font(Font type) const;
 
     static const char *name;
-
-private:
-    QString globalSettingsFile() const;
-    void refresh();
-
-    const QString m_kdeHome;
-    const int m_kdeVersion;
-
-    ResourceHelper m_resources;
-    QString m_iconThemeName;
-    QString m_iconFallbackThemeName;
-    QStringList m_styleNames;
-    int m_toolButtonStyle;
-    int m_toolBarIconSize;
 };
 #endif // QT_NO_SETTINGS
 
+class QGnomeThemePrivate;
+
 class QGnomeTheme : public QPlatformTheme
 {
+    Q_DECLARE_PRIVATE(QGnomeTheme)
 public:
     QGnomeTheme();
     virtual QVariant themeHint(ThemeHint hint) const;
     virtual const QFont *font(Font type) const;
 
     static const char *name;
-
-private:
-    const QFont m_systemFont;
 };
 
 QPlatformTheme *qt_createUnixTheme();
 
 QT_END_NAMESPACE
-
-QT_END_HEADER
 
 #endif // QGENERICUNIXTHEMES_H

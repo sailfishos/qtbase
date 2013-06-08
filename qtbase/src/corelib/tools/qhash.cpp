@@ -235,17 +235,16 @@ static void qt_initialize_qhash_seed()
     \internal
 
     Private copy of the implementation of the Qt 4 qHash algorithm for strings,
+    (that is, QChar-based arrays, so all QString-like classes),
     to be used wherever the result is somehow stored or reused across multiple
     Qt versions. The public qHash implementation can change at any time,
     therefore one must not rely on the fact that it will always give the same
     results.
 
-    This function must *never* change its results.
+    The qt_hash functions must *never* change their results.
 */
-uint qt_hash(const QString &key) Q_DECL_NOTHROW
+static uint qt_hash(const QChar *p, int n) Q_DECL_NOTHROW
 {
-    const QChar *p = key.unicode();
-    int n = key.size();
     uint h = 0;
 
     while (n--) {
@@ -254,6 +253,24 @@ uint qt_hash(const QString &key) Q_DECL_NOTHROW
         h &= 0x0fffffff;
     }
     return h;
+}
+
+/*!
+    \internal
+    \overload
+*/
+uint qt_hash(const QString &key) Q_DECL_NOTHROW
+{
+    return qt_hash(key.unicode(), key.size());
+}
+
+/*!
+    \internal
+    \overload
+*/
+uint qt_hash(const QStringRef &key) Q_DECL_NOTHROW
+{
+    return qt_hash(key.unicode(), key.size());
 }
 
 /*
@@ -574,7 +591,7 @@ void QHashData::checkSanity()
     \fn uint qHash(const QPair<T1, T2> &key, uint seed = 0)
     \since 5.0
     \relates QHash
-    
+
     Returns the hash value for the \a key, using \a seed to seed the calculation.
 
     Types \c T1 and \c T2 must be supported by qHash().
@@ -922,6 +939,16 @@ void QHashData::checkSanity()
     Constructs an empty hash.
 
     \sa clear()
+*/
+
+/*! \fn QHash::QHash(std::initializer_list<std::pair<Key,T> > list)
+    \since 5.1
+
+    Constructs a hash with a copy of each of the elements in the
+    initializer list \a list.
+
+    This function is only available if the program is being
+    compiled in C++11 mode.
 */
 
 /*! \fn QHash::QHash(const QHash<Key, T> &other)
@@ -1979,6 +2006,16 @@ void QHashData::checkSanity()
 /*! \fn QMultiHash::QMultiHash()
 
     Constructs an empty hash.
+*/
+
+/*! \fn QMultiHash::QMultiHash(std::initializer_list<std::pair<Key,T> > list)
+    \since 5.1
+
+    Constructs a multi hash with a copy of each of the elements in the
+    initializer list \a list.
+
+    This function is only available if the program is being
+    compiled in C++11 mode.
 */
 
 /*! \fn QMultiHash::QMultiHash(const QHash<Key, T> &other)

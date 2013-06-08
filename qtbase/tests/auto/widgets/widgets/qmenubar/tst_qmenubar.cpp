@@ -294,7 +294,6 @@ void tst_QMenuBar::initSimpleMenubar()
     connect(pm2, SIGNAL(triggered(QAction*)), this, SLOT(onActivated(QAction*)));
 
     mb->show();
-    qApp->syncX();
     qApp->processEvents();
 }
 
@@ -1122,7 +1121,6 @@ void tst_QMenuBar::check_menuPosition()
 
 void tst_QMenuBar::task223138_triggered()
 {
-    qRegisterMetaType<QAction *>("QAction *");
     //we create a window with submenus and we check that both menubar and menus get the triggered signal
     QMainWindow win;
     QMenu *menu = win.menuBar()->addMenu("test");
@@ -1186,7 +1184,12 @@ void tst_QMenuBar::task256322_highlight()
     QTest::mouseMove(win.menuBar(), nothingCenter);
     QTRY_VERIFY(!menu2.isVisible());
     QVERIFY(!menu.isVisible());
-    QCOMPARE(win.menuBar()->activeAction(), nothing);
+    QAction *activeAction = win.menuBar()->activeAction();
+#ifdef Q_OS_MAC
+    if ((QSysInfo::MacintoshVersion >= QSysInfo::MV_10_7) && (activeAction != nothing))
+        QEXPECT_FAIL("", "QTBUG-30565: Unstable test", Continue);
+#endif
+    QCOMPARE(activeAction, nothing);
     QTest::mouseRelease(win.menuBar(), Qt::LeftButton, 0, nothingCenter);
 }
 

@@ -44,8 +44,6 @@
 
 #include <QtCore/qobject.h>
 
-QT_BEGIN_HEADER
-
 QT_BEGIN_NAMESPACE
 
 
@@ -64,6 +62,7 @@ public:
     int cursorFlashTime() const;
     bool showIsFullScreen() const;
     int passwordMaskDelay() const;
+    QChar passwordMaskCharacter() const;
     qreal fontSmoothingGamma() const;
     bool useRtlExtensions() const;
 
@@ -73,7 +72,5 @@ private:
 };
 
 QT_END_NAMESPACE
-
-QT_END_HEADER
 
 #endif

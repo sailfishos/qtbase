@@ -42,8 +42,8 @@
 #ifndef QACCESSIBLEWIDGETS_H
 #define QACCESSIBLEWIDGETS_H
 
-#include <QtGui/qaccessible2.h>
-#include <QtWidgets/qaccessiblewidget.h>
+#include <QtGui/private/qaccessible2_p.h>
+#include <QtWidgets/private/qaccessiblewidget_p.h>
 
 #ifndef QT_NO_ACCESSIBILITY
 
@@ -92,11 +92,11 @@ public:
 
     // text
     QString text(int startOffset, int endOffset) const;
-    QString textBeforeOffset(int offset, QAccessible2::BoundaryType boundaryType,
+    QString textBeforeOffset(int offset, QAccessible::TextBoundaryType boundaryType,
                              int *startOffset, int *endOffset) const;
-    QString textAfterOffset(int offset, QAccessible2::BoundaryType boundaryType,
+    QString textAfterOffset(int offset, QAccessible::TextBoundaryType boundaryType,
                             int *startOffset, int *endOffset) const;
-    QString textAtOffset(int offset, QAccessible2::BoundaryType boundaryType,
+    QString textAtOffset(int offset, QAccessible::TextBoundaryType boundaryType,
                          int *startOffset, int *endOffset) const;
     int characterCount() const;
 
@@ -115,8 +115,8 @@ public:
 
 protected:
     QTextCursor textCursorForRange(int startOffset, int endOffset) const;
-    QPair<int, int> getBoundaries(int offset, QAccessible2::BoundaryType boundaryType) const;
     virtual QPoint scrollBarPosition() const;
+    // return the current text cursor at the caret position including a potential selection
     virtual QTextCursor textCursor() const = 0;
     virtual void setTextCursor(const QTextCursor &) = 0;
     virtual QTextDocument *textDocument() const = 0;

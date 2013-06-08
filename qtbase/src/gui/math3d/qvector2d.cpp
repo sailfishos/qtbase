@@ -68,7 +68,7 @@ QT_BEGIN_NAMESPACE
 /*!
     \fn QVector2D::QVector2D()
 
-    Constructs a null vector, i.e. with coordinates (0, 0, 0).
+    Constructs a null vector, i.e. with coordinates (0, 0).
 */
 
 /*!
@@ -226,6 +226,39 @@ void QVector2D::normalize()
 
     xp = float(double(xp) / len);
     yp = float(double(yp) / len);
+}
+
+/*!
+    \since 5.1
+
+    Returns the distance from this vertex to a point defined by
+    the vertex \a point.
+
+    \sa distanceToLine()
+*/
+float QVector2D::distanceToPoint(const QVector2D& point) const
+{
+    return (*this - point).length();
+}
+
+/*!
+    \since 5.1
+
+    Returns the distance that this vertex is from a line defined
+    by \a point and the unit vector \a direction.
+
+    If \a direction is a null vector, then it does not define a line.
+    In that case, the distance from \a point to this vertex is returned.
+
+    \sa distanceToPoint()
+*/
+float QVector2D::distanceToLine
+        (const QVector2D& point, const QVector2D& direction) const
+{
+    if (direction.isNull())
+        return (*this - point).length();
+    QVector2D p = point + dotProduct(*this - point, direction) * direction;
+    return (*this - p).length();
 }
 
 /*!

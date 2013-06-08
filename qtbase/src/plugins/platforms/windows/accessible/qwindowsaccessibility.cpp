@@ -51,8 +51,10 @@
 #include <QtCore/qpointer.h>
 #include <QtCore/qsettings.h>
 #include <QtGui/qaccessible.h>
-#include <QtGui/qaccessible2.h>
+#include <QtGui/private/qaccessible2_p.h>
+#include <QtGui/private/qguiapplication_p.h>
 #include <qpa/qplatformnativeinterface.h>
+#include <qpa/qplatformintegration.h>
 #include <QtGui/qwindow.h>
 #include <QtGui/qguiapplication.h>
 
@@ -86,13 +88,7 @@
 
 #include "../qtwindows_additional.h"
 
-
-// This stuff is used for widgets/items with no window handle:
-typedef QMap<int, QPair<QPointer<QObject>,int> > NotifyMap;
-Q_GLOBAL_STATIC(NotifyMap, qAccessibleRecentSentEvents)
-
 QT_BEGIN_NAMESPACE
-
 
 /*!
     \!internal
@@ -162,26 +158,16 @@ void QWindowsAccessibility::notifyAccessibilityUpdate(QAccessibleEvent *event)
         }
     }
 
-    typedef void (WINAPI *PtrNotifyWinEvent)(DWORD, HWND, LONG, LONG);
-
 #if defined(Q_OS_WINCE) // ### TODO: check for NotifyWinEvent in CE 6.0
     // There is no user32.lib nor NotifyWinEvent for CE
     return;
 #else
-    static PtrNotifyWinEvent ptrNotifyWinEvent = 0;
-    static bool resolvedNWE = false;
-    if (!resolvedNWE) {
-        resolvedNWE = true;
-        ptrNotifyWinEvent = (PtrNotifyWinEvent)QSystemLibrary::resolve(QLatin1String("user32"), "NotifyWinEvent");
-    }
-    if (!ptrNotifyWinEvent)
-        return;
-
     // An event has to be associated with a window,
     // so find the first parent that is a widget and that has a WId
     QAccessibleInterface *iface = event->accessibleInterface();
-    QWindow *window = iface ? QWindowsAccessibility::windowHelper(iface) : 0;
-    delete iface;
+    if (!iface) // ### This should not happen, maybe make it an assert.
+        return;
+    QWindow *window = QWindowsAccessibility::windowHelper(iface);
 
     if (!window) {
         window = QGuiApplication::focusWindow();
@@ -194,27 +180,9 @@ void QWindowsAccessibility::notifyAccessibilityUpdate(QAccessibleEvent *event)
         return;
     HWND hWnd = (HWND)platform->nativeResourceForWindow("handle", window);
 
-    static int eventNum = 0;
     if (event->type() != QAccessible::MenuCommand && // MenuCommand is faked
         event->type() != QAccessible::ObjectDestroyed) {
-        /* In some rare occasions, the server (Qt) might get a ::get_accChild call with a
-           childId that references an entry in the cache where there was a dangling
-           QObject-pointer. Previously we crashed on this.
-
-           There is no point in actually notifying the AT client that the object got destroyed,
-           because the AT client won't query for get_accChild if the event is ObjectDestroyed
-           anyway, and we have no other way of mapping the eventId argument to the actual
-           child/descendant object. (Firefox seems to simply completely ignore
-           EVENT_OBJECT_DESTROY).
-
-           We therefore guard each QObject in the cache with a QPointer, and only notify the AT
-           client if the type is not ObjectDestroyed.
-        */
-        eventNum %= 50;              //[0..49]
-        int eventId = - (eventNum - 1);
-        qAccessibleRecentSentEvents()->insert(eventId, qMakePair(QPointer<QObject>(event->object()), event->child()));
-        ptrNotifyWinEvent(event->type(), hWnd, OBJID_CLIENT, eventId);
-        ++eventNum;
+        ::NotifyWinEvent(event->type(), hWnd, OBJID_CLIENT, QAccessible::uniqueId(iface));
     }
 #endif // Q_OS_WINCE
 }
@@ -224,10 +192,9 @@ QWindow *QWindowsAccessibility::windowHelper(const QAccessibleInterface *iface)
     QWindow *window = iface->window();
     if (!window) {
         QAccessibleInterface *acc = iface->parent();
-        while (acc && !window) {
+        while (acc && acc->isValid() && !window) {
             window = acc->window();
             QAccessibleInterface *par = acc->parent();
-            delete acc;
             acc = par;
         }
     }
@@ -242,6 +209,11 @@ IAccessible *QWindowsAccessibility::wrap(QAccessibleInterface *acc)
 {
     if (!acc)
         return 0;
+
+    // ### FIXME: maybe we should accept double insertions into the cache
+    if (!QAccessible::uniqueId(acc))
+        QAccessible::registerAccessibleInterface(acc);
+
 #ifdef Q_CC_MINGW
     QWindowsMsaaAccessible *wacc = new QWindowsMsaaAccessible(acc);
 #else
@@ -250,15 +222,6 @@ IAccessible *QWindowsAccessibility::wrap(QAccessibleInterface *acc)
     IAccessible *iacc = 0;
     wacc->QueryInterface(IID_IAccessible, (void**)&iacc);
     return iacc;
-}
-
-/*!
-  \internal
-*/
-QPair<QObject*, int> QWindowsAccessibility::getCachedObject(int entryId)
-{
-    QPair<QPointer<QObject>, int> pair = qAccessibleRecentSentEvents()->value(entryId);
-    return qMakePair(pair.first.data(), pair.second);
 }
 
 /*
@@ -283,7 +246,9 @@ bool QWindowsAccessibility::handleAccessibleObjectFromWindowRequest(HWND hwnd, W
 {
     if (static_cast<long>(lParam) == static_cast<long>(UiaRootObjectId)) {
         /* For UI Automation */
-    } else if ((DWORD)lParam == OBJID_CLIENT) {
+    } else if ((DWORD)lParam == DWORD(OBJID_CLIENT)) {
+        // Start handling accessibility internally
+        QGuiApplicationPrivate::platformIntegration()->accessibility()->setActive(true);
 #if 1
         // Ignoring all requests while starting up
         // ### Maybe QPA takes care of this???
@@ -313,8 +278,6 @@ bool QWindowsAccessibility::handleAccessibleObjectFromWindowRequest(HWND hwnd, W
                             iface->Release(); // the client will release the object again, and then it will destroy itself
                         }
                         return true;
-                    } else {
-                        delete acc;
                     }
                 }
             }

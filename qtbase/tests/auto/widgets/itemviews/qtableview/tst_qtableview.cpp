@@ -199,6 +199,7 @@ private slots:
     void taskQTBUG_7774_RtoLVisualRegionForSelection();
     void taskQTBUG_8777_scrollToSpans();
     void taskQTBUG_10169_sizeHintForRow();
+    void taskQTBUG_30653_doItemsLayout();
 
     void mouseWheel_data();
     void mouseWheel();
@@ -437,6 +438,7 @@ public:
                      this, SLOT(itemSelectionChanged(QItemSelection,QItemSelection)));
     }
 
+    // enum CursorAction and moveCursor() are protected in QTableView.
     enum CursorAction {
         MoveUp       = QAbstractItemView::MoveUp,
         MoveDown     = QAbstractItemView::MoveDown,
@@ -450,7 +452,7 @@ public:
         MovePrevious = QAbstractItemView::MovePrevious
     };
 
-    QModelIndex moveCursor(QtTestTableView::CursorAction cursorAction,
+    QModelIndex doMoveCursor(QtTestTableView::CursorAction cursorAction,
                            Qt::KeyboardModifiers modifiers)
     {
         return QTableView::moveCursor((QAbstractItemView::CursorAction)cursorAction, modifiers);
@@ -1192,7 +1194,7 @@ void tst_QTableView::moveCursor()
     QModelIndex index = model.index(startRow, startColumn);
     view.setCurrentIndex(index);
 
-    QModelIndex newIndex = view.moveCursor((QtTestTableView::CursorAction)cursorMoveAction,
+    QModelIndex newIndex = view.doMoveCursor((QtTestTableView::CursorAction)cursorMoveAction,
                                            (Qt::KeyboardModifiers)modifier);
     // expected fails, task 119433
     if(newIndex.row() == -1)
@@ -1339,7 +1341,7 @@ void tst_QTableView::moveCursorStrikesBack()
     int newRow = -1;
     int newColumn = -1;
     foreach (int cursorMoveAction, cursorMoveActions) {
-        QModelIndex newIndex = view.moveCursor((QtTestTableView::CursorAction)cursorMoveAction, 0);
+        QModelIndex newIndex = view.doMoveCursor((QtTestTableView::CursorAction)cursorMoveAction, 0);
         view.setCurrentIndex(newIndex);
         newRow = newIndex.row();
         newColumn = newIndex.column();
@@ -3726,7 +3728,7 @@ void tst_QTableView::addColumnWhileEditing()
     //let's see if the editor is moved to the right location
     //after adding a column
     model.setColumnCount(model.columnCount() + 1);
-    QPointer<QLineEdit> editor = qFindChild<QLineEdit*>(&view);
+    QPointer<QLineEdit> editor = view.findChild<QLineEdit*>();
     QVERIFY(editor);
     QCOMPARE(editor->geometry(), view.visualRect(last));
 
@@ -4093,6 +4095,39 @@ void tst_QTableView::viewOptions()
     QtTestTableView view;
     QStyleOptionViewItem options = view.viewOptions();
     QVERIFY(options.showDecorationSelected);
+}
+
+void tst_QTableView::taskQTBUG_30653_doItemsLayout()
+{
+    QWidget topLevel;
+    QtTestTableView view(&topLevel);
+
+    QtTestTableModel model(5, 5);
+    view.setModel(&model);
+
+    QtTestItemDelegate delegate;
+    delegate.hint = QSize(50, 50);
+    view.setItemDelegate(&delegate);
+
+    view.resizeRowsToContents();
+    view.resizeColumnsToContents();
+
+    // show two and half rows/cols
+    int extraWidth = view.verticalHeader()->sizeHint().width() + view.verticalScrollBar()->sizeHint().width();
+    int extraHeight = view.horizontalHeader()->sizeHint().height() + view.horizontalScrollBar()->sizeHint().height();
+    view.resize(125 + extraWidth, 125 + extraHeight);
+
+    topLevel.show();
+    QVERIFY(QTest::qWaitForWindowExposed(&topLevel));
+
+    // the offset after scrollToBottom() and doItemsLayout() should not differ
+    // as the view content should stay aligned to the last section
+    view.scrollToBottom();
+    int scrollToBottomOffset = view.verticalHeader()->offset();
+    view.doItemsLayout();
+    int doItemsLayoutOffset = view.verticalHeader()->offset();
+
+    QCOMPARE(scrollToBottomOffset, doItemsLayoutOffset);
 }
 
 QTEST_MAIN(tst_QTableView)

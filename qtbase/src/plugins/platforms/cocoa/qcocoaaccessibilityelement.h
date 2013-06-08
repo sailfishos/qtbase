@@ -41,26 +41,25 @@
 #ifndef QCOCOAACCESIBILITYELEMENT_H
 #define QCOCOAACCESIBILITYELEMENT_H
 
+#include <QtCore/qglobal.h>
 
 #import <Cocoa/Cocoa.h>
 #import <AppKit/NSAccessibility.h>
 
-#ifndef QT_NO_COCOA_ACCESSIBILITY
+#import <qaccessible.h>
 
 @class QCocoaAccessibleElement;
 
 @interface QCocoaAccessibleElement : NSObject {
     NSString *role;
-    NSObject * parent;
-    void *accessibleInterface;
+    NSObject *parent;
+    QAccessible::Id axid;
 }
 
-- (id)initWithInterface:(void *)anQAccessibleInterface parent:(id)aParent;
-+ (QCocoaAccessibleElement *)createElementWithInterface:(void *)anQAccessibleInterface parent:(id)aParent;
+- (id)initWithId:(QAccessible::Id)anId parent:(id)aParent;
++ (QCocoaAccessibleElement *)createElementWithId:(QAccessible::Id)anId parent:(id)aParent;
 
 @end
-
-#endif // QT_NO_COCOA_ACCESSIBILITY
 
 #endif
 

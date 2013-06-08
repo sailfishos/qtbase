@@ -63,6 +63,7 @@ QT_BEGIN_NAMESPACE
 #define COMMAND_PAGEKEYWORDS            Doc::alias("pagekeywords")
 #define COMMAND_PRELIMINARY             Doc::alias("preliminary")
 #define COMMAND_SINCE                   Doc::alias("since")
+#define COMMAND_WRAPPER                 Doc::alias("wrapper")
 
 #define COMMAND_QMLABSTRACT             Doc::alias("qmlabstract")
 #define COMMAND_QMLCLASS                Doc::alias("qmlclass")
@@ -86,6 +87,8 @@ QT_BEGIN_NAMESPACE
   Constructs the QML code parser.
  */
 QmlCodeParser::QmlCodeParser()
+    : lexer( 0 ),
+      parser( 0 )
 {
 }
 
@@ -226,8 +229,8 @@ QSet<QString> QmlCodeParser::otherMetaCommands()
                                 << COMMAND_PRELIMINARY
                                 << COMMAND_SINCE
                                 << COMMAND_QMLABSTRACT
-                                << COMMAND_INQMLMODULE;
-
+                                << COMMAND_INQMLMODULE
+                                << COMMAND_WRAPPER;
 }
 
 /*!

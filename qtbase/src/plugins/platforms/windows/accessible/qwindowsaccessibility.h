@@ -48,7 +48,6 @@
 
 #include <oleacc.h>
 
-QT_BEGIN_HEADER
 QT_BEGIN_NAMESPACE
 
 class QWindowsAccessibility : public QPlatformAccessibility
@@ -64,11 +63,8 @@ public:
     */
     static IAccessible *wrap(QAccessibleInterface *acc);
     static QWindow *windowHelper(const QAccessibleInterface *iface);
-
-    static QPair<QObject*, int> getCachedObject(int entryId);
 };
 
 QT_END_NAMESPACE
-QT_END_HEADER
 
 #endif // QWINDOWSACCESSIBILITY_H

@@ -19,6 +19,29 @@ if (CMAKE_TOOLCHAIN_FILE)
   list(APPEND BUILD_OPTIONS_LIST "-DCMAKE_TOOLCHAIN_FILE=${CMAKE_TOOLCHAIN_FILE}")
 endif()
 
+if (CMAKE_VERBOSE_MAKEFILE)
+  list(APPEND BUILD_OPTIONS_LIST "-DCMAKE_VERBOSE_MAKEFILE=1")
+endif()
+
+if (NO_WIDGETS)
+  list(APPEND BUILD_OPTIONS_LIST "-DNO_WIDGETS=True")
+endif()
+if (NO_DBUS)
+  list(APPEND BUILD_OPTIONS_LIST "-DNO_DBUS=True")
+endif()
+
+foreach(module ${CMAKE_MODULES_UNDER_TEST})
+    list(APPEND BUILD_OPTIONS_LIST
+        "-DCMAKE_${module}_MODULE_MAJOR_VERSION=${CMAKE_${module}_MODULE_MAJOR_VERSION}"
+        "-DCMAKE_${module}_MODULE_MINOR_VERSION=${CMAKE_${module}_MODULE_MINOR_VERSION}"
+        "-DCMAKE_${module}_MODULE_PATCH_VERSION=${CMAKE_${module}_MODULE_PATCH_VERSION}"
+    )
+endforeach()
+
+if(CMAKE_CROSSCOMPILING AND CMAKE_FIND_ROOT_PATH)
+   list(APPEND BUILD_OPTIONS_LIST "-DCMAKE_CXX_LINK_FLAGS=--sysroot=\"${CMAKE_FIND_ROOT_PATH}\"")
+endif()
+
 macro(expect_pass _dir)
   string(REPLACE "(" "_" testname "${_dir}")
   string(REPLACE ")" "_" testname "${testname}")
@@ -80,7 +103,7 @@ function(test_module_includes)
     set(packages_string
       "
       ${packages_string}
-      find_package(Qt5${_package} REQUIRED)
+      find_package(Qt5${_package} 5.0.0 REQUIRED)
       "
     )
   endforeach()
@@ -88,24 +111,36 @@ function(test_module_includes)
   while(all_args)
     list(GET all_args 0 qtmodule)
     list(REMOVE_AT all_args 0 1)
+
+    set(CMAKE_MODULE_VERSION ${CMAKE_${qtmodule}_MODULE_MAJOR_VERSION}.${CMAKE_${qtmodule}_MODULE_MINOR_VERSION}.${CMAKE_${qtmodule}_MODULE_PATCH_VERSION} )
+
     set(packages_string
       "${packages_string}
-      find_package(Qt5${qtmodule} REQUIRED)
+      find_package(Qt5${qtmodule} 5.0.0 REQUIRED)
       include_directories(\${Qt5${qtmodule}_INCLUDE_DIRS})
-      add_definitions(\${Qt5${qtmodule}_DEFINITIONS})\n"
-    )
+      add_definitions(\${Qt5${qtmodule}_DEFINITIONS})\n")
 
-    # Because the CI system tests built packages before installation,
-    # the include dir allowing module-includes for the new module is not
-    # the same as the dir for QtCore (because that is at the installation
-    # location). The CI system is untypical here in that it attempts to use
-    # packages while they are in an intermediate state, so we work around
-    # that in the test system.
-    set(packages_string
-      "${packages_string}
-      include_directories(\"\${Qt5${qtmodule}_DIR}/../../../include\")\n"
-    )
-
+    list(FIND CMAKE_MODULES_UNDER_TEST ${qtmodule} _findIndex)
+    if (NOT _findIndex STREQUAL -1)
+        set(packages_string
+          "${packages_string}
+          if(NOT \"\${Qt5${qtmodule}_VERSION}\" VERSION_EQUAL ${CMAKE_MODULE_VERSION})
+            message(SEND_ERROR \"Qt5${qtmodule}_VERSION variable was not ${CMAKE_MODULE_VERSION}. Got \${Qt5${qtmodule}_VERSION} instead.\")
+          endif()
+          if(NOT \"\${Qt5${qtmodule}_VERSION_MAJOR}\" VERSION_EQUAL ${CMAKE_${qtmodule}_MODULE_MAJOR_VERSION})
+            message(SEND_ERROR \"Qt5${qtmodule}_VERSION_MAJOR variable was not ${CMAKE_${qtmodule}_MODULE_MAJOR_VERSION}. Got \${Qt5${qtmodule}_VERSION_MAJOR} instead.\")
+          endif()
+          if(NOT \"\${Qt5${qtmodule}_VERSION_MINOR}\" VERSION_EQUAL ${CMAKE_${qtmodule}_MODULE_MINOR_VERSION})
+            message(SEND_ERROR \"Qt5${qtmodule}_VERSION_MINOR variable was not ${CMAKE_${qtmodule}_MODULE_MINOR_VERSION}. Got \${Qt5${qtmodule}_VERSION_MINOR} instead.\")
+          endif()
+          if(NOT \"\${Qt5${qtmodule}_VERSION_PATCH}\" VERSION_EQUAL ${CMAKE_${qtmodule}_MODULE_PATCH_VERSION})
+            message(SEND_ERROR \"Qt5${qtmodule}_VERSION_PATCH variable was not ${CMAKE_${qtmodule}_MODULE_PATCH_VERSION}. Got \${Qt5${qtmodule}_VERSION_PATCH} instead.\")
+          endif()
+          if(NOT \"\${Qt5${qtmodule}_VERSION_STRING}\" VERSION_EQUAL ${CMAKE_MODULE_VERSION})
+            message(SEND_ERROR \"Qt5${qtmodule}_VERSION_STRING variable was not ${CMAKE_MODULE_VERSION}. Got \${Qt5${qtmodule}_VERSION_STRING} instead.\")
+          endif()\n"
+        )
+    endif()
     set(libraries_string "${libraries_string} Qt5::${qtmodule}")
   endwhile()
 
@@ -127,18 +162,23 @@ function(test_module_includes)
   set(instances_string "")
   while(all_args)
     list(GET all_args 0 qtmodule)
-    list(GET all_args 1 qtinclude)
+    list(GET all_args 1 qtclass)
+    if (${qtclass}_NAMESPACE)
+      set(qtinstancetype ${${qtclass}_NAMESPACE}::${qtclass})
+    else()
+      set(qtinstancetype ${qtclass})
+    endif()
     list(REMOVE_AT all_args 0 1)
     set(includes_string
       "${includes_string}
-      #include <${qtinclude}>
-      #include <Qt${qtmodule}/${qtinclude}>
+      #include <${qtclass}>
+      #include <Qt${qtmodule}/${qtclass}>
       #include <Qt${qtmodule}>
       #include <Qt${qtmodule}/Qt${qtmodule}>"
     )
     set(instances_string
     "${instances_string}
-    ${qtinclude} local${qtinclude};
+    ${qtinstancetype} local${qtclass};
     ")
   endwhile()
 

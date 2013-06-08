@@ -103,7 +103,7 @@ QEventLoop::QEventLoop(QObject *parent)
     Q_D(QEventLoop);
     if (!QCoreApplication::instance()) {
         qWarning("QEventLoop: Cannot be used without QApplication");
-    } else if (!d->threadData->eventDispatcher) {
+    } else if (!d->threadData->eventDispatcher.load()) {
         QThreadPrivate::createEventDispatcher(d->threadData);
     }
 }
@@ -131,9 +131,9 @@ QEventLoop::~QEventLoop()
 bool QEventLoop::processEvents(ProcessEventsFlags flags)
 {
     Q_D(QEventLoop);
-    if (!d->threadData->eventDispatcher)
+    if (!d->threadData->eventDispatcher.load())
         return false;
-    return d->threadData->eventDispatcher->processEvents(flags);
+    return d->threadData->eventDispatcher.load()->processEvents(flags);
 }
 
 /*!
@@ -180,7 +180,7 @@ int QEventLoop::exec(ProcessEventsFlags flags)
         LoopReference(QEventLoopPrivate *d, QMutexLocker &locker) : d(d), locker(locker), exceptionCaught(true)
         {
             d->inExec = true;
-            d->exit = false;
+            d->exit.storeRelease(false);
             ++d->threadData->loopLevel;
             d->threadData->eventLoops.push(d->q_func());
             locker.unlock();
@@ -208,11 +208,11 @@ int QEventLoop::exec(ProcessEventsFlags flags)
     if (app && app->thread() == thread())
         QCoreApplication::removePostedEvents(app, QEvent::Quit);
 
-    while (!d->exit)
+    while (!d->exit.loadAcquire())
         processEvents(flags | WaitForMoreEvents | EventLoopExec);
 
     ref.exceptionCaught = false;
-    return d->returnCode;
+    return d->returnCode.load();
 }
 
 /*!
@@ -234,7 +234,7 @@ int QEventLoop::exec(ProcessEventsFlags flags)
 void QEventLoop::processEvents(ProcessEventsFlags flags, int maxTime)
 {
     Q_D(QEventLoop);
-    if (!d->threadData->eventDispatcher)
+    if (!d->threadData->eventDispatcher.load())
         return;
 
     QElapsedTimer start;
@@ -263,12 +263,12 @@ void QEventLoop::processEvents(ProcessEventsFlags flags, int maxTime)
 void QEventLoop::exit(int returnCode)
 {
     Q_D(QEventLoop);
-    if (!d->threadData->eventDispatcher)
+    if (!d->threadData->eventDispatcher.load())
         return;
 
-    d->returnCode = returnCode;
-    d->exit = true;
-    d->threadData->eventDispatcher->interrupt();
+    d->returnCode.store(returnCode);
+    d->exit.storeRelease(true);
+    d->threadData->eventDispatcher.load()->interrupt();
 }
 
 /*!
@@ -281,7 +281,7 @@ void QEventLoop::exit(int returnCode)
 bool QEventLoop::isRunning() const
 {
     Q_D(const QEventLoop);
-    return !d->exit;
+    return !d->exit.loadAcquire();
 }
 
 /*!
@@ -292,9 +292,9 @@ bool QEventLoop::isRunning() const
 void QEventLoop::wakeUp()
 {
     Q_D(QEventLoop);
-    if (!d->threadData->eventDispatcher)
+    if (!d->threadData->eventDispatcher.load())
         return;
-    d->threadData->eventDispatcher->wakeUp();
+    d->threadData->eventDispatcher.load()->wakeUp();
 }
 
 

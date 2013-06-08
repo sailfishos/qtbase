@@ -48,7 +48,6 @@
 
 class DeviceEventControllerAdaptor;
 
-QT_BEGIN_HEADER
 QT_BEGIN_NAMESPACE
 
 class DBusConnection;
@@ -77,10 +76,8 @@ private:
     DeviceEventControllerAdaptor *dec;
     AtSpiAdaptor *dbusAdaptor;
     DBusConnection* dbusConnection;
-    bool m_enabled;
 };
 
 QT_END_NAMESPACE
-QT_END_HEADER
 
 #endif

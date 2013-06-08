@@ -3,7 +3,7 @@
 ** Copyright (C) 2013 Digia Plc and/or its subsidiary(-ies).
 ** Contact: http://www.qt-project.org/legal
 **
-** This file is part of the QtGui module of the Qt Toolkit.
+** This file is part of the QtWidgets module of the Qt Toolkit.
 **
 ** $QT_BEGIN_LICENSE:LGPL$
 ** Commercial License Usage
@@ -39,7 +39,7 @@
 **
 ****************************************************************************/
 
-#include "qaccessiblewidget.h"
+#include "qaccessiblewidget_p.h"
 
 #ifndef QT_NO_ACCESSIBILITY
 
@@ -55,6 +55,7 @@
 #include <QRubberBand>
 #include <QFocusFrame>
 #include <QMenu>
+#include <QtWidgets/private/qwidget_p.h>
 
 QT_BEGIN_NAMESPACE
 
@@ -64,7 +65,7 @@ static QList<QWidget*> childWidgets(const QWidget *widget)
     QList<QWidget*> widgets;
     for (int i = 0; i < list.size(); ++i) {
         QWidget *w = qobject_cast<QWidget *>(list.at(i));
-        if (w && !w->isWindow() 
+        if (w && !w->isWindow()
             && !qobject_cast<QFocusFrame*>(w)
 #if !defined(QT_NO_MENU)
             && !qobject_cast<QMenu*>(w)
@@ -152,6 +153,7 @@ QString Q_WIDGETS_EXPORT qt_accHotKey(const QString &text)
     return QString();
 }
 
+// ### inherit QAccessibleObjectPrivate
 class QAccessibleWidgetPrivate
 {
 public:
@@ -202,9 +204,17 @@ QAccessibleWidget::QAccessibleWidget(QWidget *w, QAccessible::Role role, const Q
     d->name = name;
 }
 
+bool QAccessibleWidget::isValid() const
+{
+    if (!object() || static_cast<QWidget *>(object())->d_func()->data.in_destructor)
+        return false;
+    return QAccessibleObject::isValid();
+}
+
 /*! \reimp */
 QWindow *QAccessibleWidget::window() const
 {
+    Q_ASSERT(widget());
     return widget()->windowHandle();
 }
 
@@ -343,6 +353,7 @@ QAccessibleWidget::relations(QAccessible::Relation match /*= QAccessible::AllRel
 /*! \reimp */
 QAccessibleInterface *QAccessibleWidget::parent() const
 {
+    Q_ASSERT(widget());
     QObject *parentWidget= widget()->parentWidget();
     if (!parentWidget)
         parentWidget = qApp;
@@ -352,6 +363,7 @@ QAccessibleInterface *QAccessibleWidget::parent() const
 /*! \reimp */
 QAccessibleInterface *QAccessibleWidget::child(int index) const
 {
+    Q_ASSERT(widget());
     QWidgetList childList = childWidgets(widget());
     if (index >= 0 && index < childList.size())
         return QAccessible::queryAccessibleInterface(childList.at(index));
@@ -383,6 +395,8 @@ int QAccessibleWidget::childCount() const
 /*! \reimp */
 int QAccessibleWidget::indexOfChild(const QAccessibleInterface *child) const
 {
+    if (!child)
+        return -1;
     QWidgetList cl = childWidgets(widget());
     return cl.indexOf(qobject_cast<QWidget *>(child->object()));
 }

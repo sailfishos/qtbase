@@ -56,6 +56,10 @@
 #include <stdio.h>
 #include <stdlib.h>
 
+#ifndef QT_NO_EVENTFD
+#  include <sys/eventfd.h>
+#endif
+
 // VxWorks doesn't correctly set the _POSIX_... options
 #if defined(Q_OS_VXWORKS)
 #  if defined(_POSIX_MONOTONIC_CLOCK) && (_POSIX_MONOTONIC_CLOCK <= 0)
@@ -109,7 +113,7 @@ QEventDispatcherUNIXPrivate::QEventDispatcherUNIXPrivate()
     }
 #elif defined(Q_OS_VXWORKS)
     char name[20];
-    qsnprintf(name, sizeof(name), "/pipe/qt_%08x", int(taskIdCurrent));
+    qsnprintf(name, sizeof(name), "/pipe/qt_%08x", int(taskIdSelf()));
 
     // make sure there is no pipe with this name
     pipeDevDelete(name, true);
@@ -127,6 +131,12 @@ QEventDispatcherUNIXPrivate::QEventDispatcherUNIXPrivate()
         }
     }
 #else
+#  ifndef QT_NO_EVENTFD
+    thread_pipe[0] = eventfd(0, EFD_NONBLOCK | EFD_CLOEXEC);
+    if (thread_pipe[0] != -1)
+        thread_pipe[1] = -1;
+    else // fall through the next "if"
+#  endif
     if (qt_safe_pipe(thread_pipe, O_NONBLOCK) == -1) {
         perror("QEventDispatcherUNIXPrivate(): Unable to create thread pipe");
         pipefail = true;
@@ -137,8 +147,6 @@ QEventDispatcherUNIXPrivate::QEventDispatcherUNIXPrivate()
         qFatal("QEventDispatcherUNIXPrivate(): Can not continue without a thread pipe");
 
     sn_highest = -1;
-
-    interrupt = false;
 }
 
 QEventDispatcherUNIXPrivate::~QEventDispatcherUNIXPrivate()
@@ -149,20 +157,21 @@ QEventDispatcherUNIXPrivate::~QEventDispatcherUNIXPrivate()
     close(thread_pipe[0]);
 
     char name[20];
-    qsnprintf(name, sizeof(name), "/pipe/qt_%08x", int(taskIdCurrent));
+    qsnprintf(name, sizeof(name), "/pipe/qt_%08x", int(taskIdSelf()));
 
     pipeDevDelete(name, true);
 #else
     // cleanup the common parts of the event loop
     close(thread_pipe[0]);
-    close(thread_pipe[1]);
+    if (thread_pipe[1] != -1)
+        close(thread_pipe[1]);
 #endif
 
     // cleanup timers
     qDeleteAll(timerList);
 }
 
-int QEventDispatcherUNIXPrivate::doSelect(QEventLoop::ProcessEventsFlags flags, timeval *timeout)
+int QEventDispatcherUNIXPrivate::doSelect(QEventLoop::ProcessEventsFlags flags, timespec *timeout)
 {
     Q_Q(QEventDispatcherUNIX);
 
@@ -279,9 +288,18 @@ int QEventDispatcherUNIXPrivate::processThreadWakeUp(int nsel)
         ::read(thread_pipe[0], c, sizeof(c));
         ::ioctl(thread_pipe[0], FIOFLUSH, 0);
 #else
-        char c[16];
-        while (::read(thread_pipe[0], c, sizeof(c)) > 0)
-            ;
+#  ifndef QT_NO_EVENTFD
+        if (thread_pipe[1] == -1) {
+            // eventfd
+            eventfd_t value;
+            eventfd_read(thread_pipe[0], &value);
+        } else
+#  endif
+        {
+            char c[16];
+            while (::read(thread_pipe[0], c, sizeof(c)) > 0) {
+            }
+        }
 #endif
         if (!wakeUps.testAndSetRelease(1, 0)) {
             // hopefully, this is dead code
@@ -302,12 +320,10 @@ QEventDispatcherUNIX::QEventDispatcherUNIX(QEventDispatcherUNIXPrivate &dd, QObj
 
 QEventDispatcherUNIX::~QEventDispatcherUNIX()
 {
-    Q_D(QEventDispatcherUNIX);
-    d->threadData->eventDispatcher = 0;
 }
 
 int QEventDispatcherUNIX::select(int nfds, fd_set *readfds, fd_set *writefds, fd_set *exceptfds,
-                                 timeval *timeout)
+                                 timespec *timeout)
 {
     return qt_safe_select(nfds, readfds, writefds, exceptfds, timeout);
 }
@@ -564,24 +580,24 @@ int QEventDispatcherUNIX::activateSocketNotifiers()
 bool QEventDispatcherUNIX::processEvents(QEventLoop::ProcessEventsFlags flags)
 {
     Q_D(QEventDispatcherUNIX);
-    d->interrupt = false;
+    d->interrupt.store(0);
 
     // we are awake, broadcast it
     emit awake();
     QCoreApplicationPrivate::sendPostedEvents(0, 0, d->threadData);
 
     int nevents = 0;
-    const bool canWait = (d->threadData->canWait
-                          && !d->interrupt
+    const bool canWait = (d->threadData->canWaitLocked()
+                          && !d->interrupt.load()
                           && (flags & QEventLoop::WaitForMoreEvents));
 
     if (canWait)
         emit aboutToBlock();
 
-    if (!d->interrupt) {
+    if (!d->interrupt.load()) {
         // return the maximum time we can wait for an event.
-        timeval *tm = 0;
-        timeval wait_tm = { 0l, 0l };
+        timespec *tm = 0;
+        timespec wait_tm = { 0l, 0l };
         if (!(flags & QEventLoop::X11ExcludeTimers)) {
             if (d->timerList.timerWait(wait_tm))
                 tm = &wait_tm;
@@ -593,7 +609,7 @@ bool QEventDispatcherUNIX::processEvents(QEventLoop::ProcessEventsFlags flags)
 
             // no time to wait
             tm->tv_sec  = 0l;
-            tm->tv_usec = 0l;
+            tm->tv_nsec = 0l;
         }
 
         nevents = d->doSelect(flags, tm);
@@ -630,6 +646,15 @@ void QEventDispatcherUNIX::wakeUp()
 {
     Q_D(QEventDispatcherUNIX);
     if (d->wakeUps.testAndSetAcquire(0, 1)) {
+#ifndef QT_NO_EVENTFD
+        if (d->thread_pipe[1] == -1) {
+            // eventfd
+            eventfd_t value = 1;
+            int ret;
+            EINTR_LOOP(ret, eventfd_write(d->thread_pipe[0], value));
+            return;
+        }
+#endif
         char c = 0;
         qt_safe_write( d->thread_pipe[1], &c, 1 );
     }
@@ -638,7 +663,7 @@ void QEventDispatcherUNIX::wakeUp()
 void QEventDispatcherUNIX::interrupt()
 {
     Q_D(QEventDispatcherUNIX);
-    d->interrupt = true;
+    d->interrupt.store(1);
     wakeUp();
 }
 

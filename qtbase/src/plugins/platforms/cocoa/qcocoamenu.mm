@@ -45,8 +45,33 @@
 #include "qcocoaautoreleasepool.h"
 
 #include <QtCore/QtDebug>
+#include <QtCore/private/qthread_p.h>
+#include <QtGui/private/qguiapplication_p.h>
 #include "qcocoaapplication.h"
 #include "qcocoamenuloader.h"
+#include "qcocoawindow.h"
+#import "qnsview.h"
+
+NSString *qt_mac_removePrivateUnicode(NSString* string)
+{
+    int len = [string length];
+    if (len) {
+        QVarLengthArray <unichar, 10> characters(len);
+        bool changed = false;
+        for (int i = 0; i<len; i++) {
+            characters[i] = [string characterAtIndex:i];
+            // check if they belong to key codes in private unicode range
+            // currently we need to handle only the NSDeleteFunctionKey
+            if (characters[i] == NSDeleteFunctionKey) {
+                characters[i] = NSDeleteCharacter;
+                changed = true;
+            }
+        }
+        if (changed)
+            return [NSString stringWithCharacters:characters.data() length:len];
+    }
+    return string;
+}
 
 static inline QT_MANGLE_NAMESPACE(QCocoaMenuLoader) *getMenuLoader()
 {
@@ -87,6 +112,7 @@ static inline QT_MANGLE_NAMESPACE(QCocoaMenuLoader) *getMenuLoader()
 - (void) itemFired:(NSMenuItem*) item
 {
     QCocoaMenuItem *cocoaItem = reinterpret_cast<QCocoaMenuItem *>([item tag]);
+    QScopedLoopLevelCounter loopLevelCounter(QGuiApplicationPrivate::instance()->threadData);
     cocoaItem->activated();
 }
 
@@ -95,9 +121,82 @@ static inline QT_MANGLE_NAMESPACE(QCocoaMenuLoader) *getMenuLoader()
     if (![menuItem tag])
         return YES;
 
-
     QCocoaMenuItem* cocoaItem = reinterpret_cast<QCocoaMenuItem *>([menuItem tag]);
     return cocoaItem->isEnabled();
+}
+
+- (BOOL)menuHasKeyEquivalent:(NSMenu *)menu forEvent:(NSEvent *)event target:(id *)target action:(SEL *)action
+{
+    /*
+       Check if the menu actually has a keysequence defined for this key event.
+       If it does, then we will first send the key sequence to the QWidget that has focus
+       since (in Qt's eyes) it needs to a chance at the key event first (QEvent::ShortcutOverride).
+       If the widget accepts the key event, we then return YES, but set the target and action to be nil,
+       which means that the action should not be triggered, and instead dispatch the event ourselves.
+       In every other case we return NO, which means that Cocoa can do as it pleases
+       (i.e., fire the menu action).
+    */
+
+    // Change the private unicode keys to the ones used in setting the "Key Equivalents"
+    NSString *characters = qt_mac_removePrivateUnicode([event characters]);
+    if ([self hasShortcut:menu
+            forKey:characters
+            // Interested only in Shift, Cmd, Ctrl & Alt Keys, so ignoring masks like, Caps lock, Num Lock ...
+            forModifiers:([event modifierFlags] & (NSShiftKeyMask | NSControlKeyMask | NSCommandKeyMask | NSAlternateKeyMask))
+            ]) {
+        QObject *object = qApp->focusObject();
+        if (object) {
+            QChar ch;
+            int keyCode;
+            ulong nativeModifiers = [event modifierFlags];
+            Qt::KeyboardModifiers modifiers = [QNSView convertKeyModifiers: nativeModifiers];
+            NSString *charactersIgnoringModifiers = [event charactersIgnoringModifiers];
+            NSString *characters = [event characters];
+
+            if ([charactersIgnoringModifiers length] > 0) { // convert the first character into a key code
+                if ((modifiers & Qt::ControlModifier) && ([characters length] != 0)) {
+                    ch = QChar([characters characterAtIndex:0]);
+                } else {
+                    ch = QChar([charactersIgnoringModifiers characterAtIndex:0]);
+                }
+                keyCode = qt_mac_cocoaKey2QtKey(ch);
+            } else {
+                // might be a dead key
+                ch = QChar::ReplacementCharacter;
+                keyCode = Qt::Key_unknown;
+            }
+
+            QKeyEvent accel_ev(QEvent::ShortcutOverride, (keyCode & (~Qt::KeyboardModifierMask)),
+                               Qt::KeyboardModifiers(keyCode & Qt::KeyboardModifierMask));
+            accel_ev.ignore();
+            QCoreApplication::sendEvent(object, &accel_ev);
+            if (accel_ev.isAccepted()) {
+                [[NSApp keyWindow] sendEvent: event];
+                *target = nil;
+                *action = nil;
+                return YES;
+            }
+        }
+    }
+    return NO;
+}
+
+- (BOOL)hasShortcut:(NSMenu *)menu forKey:(NSString *)key forModifiers:(NSUInteger)modifier
+{
+    for (NSMenuItem *item in [menu itemArray]) {
+        if (![item isEnabled] || [item isHidden] || [item isSeparatorItem])
+            continue;
+        if ([item hasSubmenu]
+            && [self hasShortcut:[item submenu] forKey:key forModifiers:modifier])
+            return YES;
+
+        NSString *menuKey = [item keyEquivalent];
+        if (menuKey
+            && NSOrderedSame == [menuKey compare:key]
+            && modifier == [item keyEquivalentModifierMask])
+            return YES;
+    }
+    return NO;
 }
 
 @end
@@ -133,12 +232,27 @@ void QCocoaMenu::setText(const QString &text)
     [m_nativeItem setTitle:QCFString::toNSString(stripped)];
 }
 
+void QCocoaMenu::setMinimumWidth(int width)
+{
+    m_nativeMenu.minimumWidth = width;
+}
+
+void QCocoaMenu::setFont(const QFont &font)
+{
+    if (font.resolve()) {
+        NSFont *customMenuFont = [NSFont fontWithName:QCFString::toNSString(font.family())
+                                  size:font.pointSize()];
+        m_nativeMenu.font = customMenuFont;
+    }
+}
+
 void QCocoaMenu::insertMenuItem(QPlatformMenuItem *menuItem, QPlatformMenuItem *before)
 {
     QCocoaAutoReleasePool pool;
     QCocoaMenuItem *cocoaItem = static_cast<QCocoaMenuItem *>(menuItem);
     QCocoaMenuItem *beforeItem = static_cast<QCocoaMenuItem *>(before);
 
+    menuItem->setParent(this);
     cocoaItem->sync();
     if (beforeItem) {
         int index = m_menuItems.indexOf(beforeItem);
@@ -194,6 +308,10 @@ void QCocoaMenu::removeMenuItem(QPlatformMenuItem *menuItem)
         qWarning() << Q_FUNC_INFO << "Menu does not contain the item to be removed";
         return;
     }
+
+    if (menuItem->parent() == this)
+        menuItem->setParent(0);
+
     m_menuItems.removeOne(cocoaItem);
     if (!cocoaItem->isMerged()) {
         if (m_nativeMenu != [cocoaItem->nsItem() menu]) {
@@ -251,8 +369,12 @@ void QCocoaMenu::syncSeparatorsCollapsible(bool enable)
         NSArray *itemArray = [m_nativeMenu itemArray];
         for (unsigned int i = 0; i < [itemArray count]; ++i) {
             NSMenuItem *item = reinterpret_cast<NSMenuItem *>([itemArray objectAtIndex:i]);
-            if ([item isSeparatorItem])
+            if ([item isSeparatorItem]) {
+                QCocoaMenuItem *cocoaItem = reinterpret_cast<QCocoaMenuItem *>([item tag]);
+                if (cocoaItem)
+                    cocoaItem->setVisible(!previousIsSeparator);
                 [item setHidden:previousIsSeparator];
+            }
 
             if (![item isHidden]) {
                 previousItem = item;
@@ -261,8 +383,12 @@ void QCocoaMenu::syncSeparatorsCollapsible(bool enable)
         }
 
         // We now need to check the final item since we don't want any separators at the end of the list.
-        if (previousItem && previousIsSeparator)
+        if (previousItem && previousIsSeparator) {
+            QCocoaMenuItem *cocoaItem = reinterpret_cast<QCocoaMenuItem *>([previousItem tag]);
+            if (cocoaItem)
+                cocoaItem->setVisible(false);
             [previousItem setHidden:YES];
+        }
     } else {
         foreach (QCocoaMenuItem *item, m_menuItems) {
             if (!item->isSeparator())
@@ -272,11 +398,6 @@ void QCocoaMenu::syncSeparatorsCollapsible(bool enable)
             item->sync();
         }
     }
-}
-
-void QCocoaMenu::setParentItem(QCocoaMenuItem *item)
-{
-    Q_UNUSED(item);
 }
 
 void QCocoaMenu::setEnabled(bool enabled)
@@ -290,9 +411,67 @@ void QCocoaMenu::setVisible(bool visible)
     [m_nativeItem setSubmenu:(visible ? m_nativeMenu : nil)];
 }
 
+void QCocoaMenu::showPopup(const QWindow *parentWindow, QPoint pos, const QPlatformMenuItem *item)
+{
+    QCocoaAutoReleasePool pool;
+
+    QCocoaWindow *cocoaWindow = parentWindow ? static_cast<QCocoaWindow *>(parentWindow->handle()) : 0;
+    NSView *view = cocoaWindow ? cocoaWindow->contentView() : nil;
+    NSMenuItem *nsItem = item ? ((QCocoaMenuItem *)item)->nsItem() : nil;
+
+    // Ideally, we would call -popUpMenuPositioningItem:atLocation:inView:.
+    // However, this showed not to work with modal windows where the menu items
+    // would appear disabled. So, we resort to a more artisanal solution. Note
+    // that this implies several things.
+    if (nsItem) {
+        // If we want to position the menu popup so that a specific item lies under
+        // the mouse cursor, we resort to NSPopUpButtonCell to do that. This is the
+        // typical use-case for a choice list, or non-editable combobox. We can't
+        // re-use the popUpContextMenu:withEvent:forView: logic below since it won't
+        // respect the menu's minimum width.
+        NSPopUpButtonCell *popupCell = [[[NSPopUpButtonCell alloc] initTextCell:@"" pullsDown:NO]
+                                                                   autorelease];
+        [popupCell setAltersStateOfSelectedItem:NO];
+        [popupCell setTransparent:YES];
+        [popupCell setMenu:m_nativeMenu];
+        [popupCell selectItem:nsItem];
+        NSRect cellFrame = NSMakeRect(pos.x(), pos.y(), m_nativeMenu.minimumWidth, 10);
+        [popupCell performClickWithFrame:cellFrame inView:view];
+    } else {
+        // Else, we need to transform 'pos' to window or screen coordinates.
+        NSPoint nsPos = NSMakePoint(pos.x() - 1, pos.y());
+        if (view) {
+            nsPos.y = view.frame.size.height - nsPos.y;
+        } else if (!QGuiApplication::screens().isEmpty()) {
+            QScreen *screen = QGuiApplication::screens().at(0);
+            nsPos.y = screen->availableVirtualSize().height() - nsPos.y;
+        }
+
+        // Finally, we need to synthesize an event.
+        NSEvent *menuEvent = [NSEvent mouseEventWithType:NSRightMouseDown
+                location:nsPos
+                modifierFlags:0
+                timestamp:0
+                windowNumber:view ? view.window.windowNumber : 0
+                                    context:nil
+                                    eventNumber:0
+                                    clickCount:1
+                                    pressure:1.0];
+        [NSMenu popUpContextMenu:m_nativeMenu withEvent:menuEvent forView:view];
+    }
+
+    // The calls above block, and also swallow any mouse release event,
+    // so we need to clear any mouse button that triggered the menu popup.
+    if ([view isKindOfClass:[QNSView class]])
+        [(QNSView *)view resetMouseButtons];
+}
+
 QPlatformMenuItem *QCocoaMenu::menuItemAt(int position) const
 {
-    return m_menuItems.at(position);
+    if (0 <= position && position < m_menuItems.count())
+        return m_menuItems.at(position);
+
+    return 0;
 }
 
 QPlatformMenuItem *QCocoaMenu::menuItemForTag(quintptr tag) const
@@ -303,6 +482,11 @@ QPlatformMenuItem *QCocoaMenu::menuItemForTag(quintptr tag) const
     }
 
     return 0;
+}
+
+QList<QCocoaMenuItem *> QCocoaMenu::items() const
+{
+    return m_menuItems;
 }
 
 QList<QCocoaMenuItem *> QCocoaMenu::merged() const
@@ -323,6 +507,8 @@ QList<QCocoaMenuItem *> QCocoaMenu::merged() const
 
 void QCocoaMenu::syncModalState(bool modal)
 {
+    QCocoaAutoReleasePool pool;
+
     if (!m_enabled)
         modal = true;
 

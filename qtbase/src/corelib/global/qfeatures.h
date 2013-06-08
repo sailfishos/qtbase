@@ -154,6 +154,9 @@
 // Properties
 //#define QT_NO_PROPERTIES
 
+// QRegularExpression
+//#define QT_NO_REGULAREXPRESSION
+
 // Resize Handler
 //#define QT_NO_RESIZEHANDLER
 
@@ -296,6 +299,11 @@
 // QInputContext
 #if !defined(QT_NO_IM) && (defined(QT_NO_LIBRARY))
 #define QT_NO_IM
+#endif
+
+// QImageIOPlugin
+#if !defined(QT_NO_IMAGEFORMATPLUGIN) && (defined(QT_NO_LIBRARY))
+#define QT_NO_IMAGEFORMATPLUGIN
 #endif
 
 // QLocalServer

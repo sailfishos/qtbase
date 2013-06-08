@@ -688,6 +688,7 @@ void QFontEngineMultiQPA::init(QFontEngine *fe)
     fe->ref.ref();
     fontDef = engines[0]->fontDef;
     setObjectName(QStringLiteral("QFontEngineMultiQPA"));
+    cache_cost = fe->cache_cost;
 }
 
 void QFontEngineMultiQPA::loadEngine(int at)
@@ -710,7 +711,7 @@ void QFontEngineMultiQPA::ensureFallbackFamiliesQueried()
     if (fallbacksQueried)
         return;
     QStringList fallbacks = QGuiApplicationPrivate::instance()->platformIntegration()->fontDatabase()->fallbacksForFamily(engine(0)->fontDef.family, QFont::Style(engine(0)->fontDef.style)
-                                                                                                                     , QFont::AnyStyle, QUnicodeTables::Script(script));
+                                                                                                                          , QFont::AnyStyle, QChar::Script(script));
     setFallbackFamiliesList(fallbacks);
 }
 
@@ -762,7 +763,7 @@ QFontEngine* QFontEngineMultiQPA::createMultiFontEngine(QFontEngine *fe, int scr
         it++;
     }
     if (!engine) {
-        engine = QGuiApplicationPrivate::instance()->platformIntegration()->fontDatabase()->fontEngineMulti(fe, QUnicodeTables::Script(script));
+        engine = QGuiApplicationPrivate::instance()->platformIntegration()->fontDatabase()->fontEngineMulti(fe, QChar::Script(script));
         QFontCache::instance()->insertEngine(key, engine, /* insertMulti */ !faceIsLocal);
     }
     Q_ASSERT(engine);

@@ -41,11 +41,14 @@
 
 #include "qplatformtheme.h"
 
+#include "qplatformtheme_p.h"
+
 #include <QtCore/QVariant>
 #include <QtCore/QStringList>
 #include <QtCore/qfileinfo.h>
 #include <qpalette.h>
 #include <qtextformat.h>
+#include <qiconloader_p.h>
 
 QT_BEGIN_NAMESPACE
 
@@ -136,6 +139,33 @@ QT_BEGIN_NAMESPACE
     \sa themeHint(), QStyle::pixelMetric()
 */
 
+QPlatformThemePrivate::QPlatformThemePrivate()
+        : systemPalette(0)
+{ }
+
+QPlatformThemePrivate::~QPlatformThemePrivate()
+{
+    delete systemPalette;
+}
+
+Q_GUI_EXPORT QPalette qt_fusionPalette();
+
+void QPlatformThemePrivate::initializeSystemPalette()
+{
+    Q_ASSERT(!systemPalette);
+    systemPalette = new QPalette(qt_fusionPalette());
+}
+
+QPlatformTheme::QPlatformTheme()
+    : d_ptr(new QPlatformThemePrivate)
+{
+
+}
+
+QPlatformTheme::QPlatformTheme(QPlatformThemePrivate *priv)
+    : d_ptr(priv)
+{ }
+
 QPlatformTheme::~QPlatformTheme()
 {
 
@@ -155,7 +185,12 @@ QPlatformDialogHelper *QPlatformTheme::createPlatformDialogHelper(DialogType typ
 
 const QPalette *QPlatformTheme::palette(Palette type) const
 {
-    Q_UNUSED(type)
+    Q_D(const QPlatformTheme);
+    if (type == QPlatformTheme::SystemPalette) {
+        if (!d->systemPalette)
+            const_cast<QPlatformTheme *>(this)->d_ptr->initializeSystemPalette();
+        return d->systemPalette;
+    }
     return 0;
 }
 
@@ -203,6 +238,8 @@ QVariant QPlatformTheme::defaultThemeHint(ThemeHint hint)
         return QVariant(500);
     case QPlatformTheme::PasswordMaskDelay:
         return QVariant(int(0));
+    case QPlatformTheme::PasswordMaskCharacter:
+        return QVariant(QChar(0x25CF));
     case QPlatformTheme::StartDragVelocity:
         return QVariant(int(0)); // no limit
     case QPlatformTheme::UseFullScreenForPopupMenu:
@@ -271,5 +308,20 @@ QPlatformSystemTrayIcon *QPlatformTheme::createPlatformSystemTrayIcon() const
     return 0;
 }
 #endif
+
+/*!
+   Factory function for the QIconEngine used by QIcon::fromTheme(). By default this
+   function returns a QIconLoaderEngine, but subclasses can reimplement it to
+   provide their own.
+
+   It is especially useful to benefit from some platform specific facilities or
+   optimizations like an inter-process cache in systems mostly built with Qt.
+
+   \since 5.1
+*/
+QIconEngine *QPlatformTheme::createIconEngine(const QString &iconName) const
+{
+    return new QIconLoaderEngine(iconName);
+}
 
 QT_END_NAMESPACE

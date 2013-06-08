@@ -46,6 +46,7 @@
 #include "qxcbscreen.h"
 
 #include <qpa/qplatformopenglcontext.h>
+#include <qpa/qplatformoffscreensurface.h>
 #include <QtGui/QSurfaceFormat>
 
 #include <QtCore/QMutex>
@@ -54,23 +55,10 @@
 
 QT_BEGIN_NAMESPACE
 
-class QOpenGLDefaultContextInfo
-{
-    Q_DISABLE_COPY(QOpenGLDefaultContextInfo)
-    QOpenGLDefaultContextInfo();
-public:
-    static QOpenGLDefaultContextInfo *create(QXcbScreen *screen);
-
-    const QByteArray vendor;
-    const QByteArray renderer;
-    QSurfaceFormat format;
-};
-
-
 class QGLXContext : public QPlatformOpenGLContext
 {
 public:
-    QGLXContext(QXcbScreen *xd, const QSurfaceFormat &format, QPlatformOpenGLContext *share, QOpenGLDefaultContextInfo *defaultContextInfo);
+    QGLXContext(QXcbScreen *xd, const QSurfaceFormat &format, QPlatformOpenGLContext *share);
     ~QGLXContext();
 
     bool makeCurrent(QPlatformSurface *surface);
@@ -89,6 +77,25 @@ private:
     GLXContext m_context;
     GLXContext m_shareContext;
     QSurfaceFormat m_format;
+    bool m_isPBufferCurrent;
+};
+
+
+class QGLXPbuffer : public QPlatformOffscreenSurface
+{
+public:
+    explicit QGLXPbuffer(QOffscreenSurface *offscreenSurface);
+    ~QGLXPbuffer();
+
+    QSurfaceFormat format() const { return m_format; }
+    bool isValid() const { return m_pbuffer != 0; }
+
+    GLXPbuffer pbuffer() const { return m_pbuffer; }
+
+private:
+    QSurfaceFormat m_format;
+    QXcbScreen *m_screen;
+    GLXPbuffer m_pbuffer;
 };
 
 QT_END_NAMESPACE

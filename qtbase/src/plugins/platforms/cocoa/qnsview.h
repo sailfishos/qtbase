@@ -63,7 +63,6 @@ QT_END_NAMESPACE
     QWindow *m_window;
     QCocoaWindow *m_platformWindow;
     Qt::MouseButtons m_buttons;
-    QAccessibleInterface *m_accessibleRoot;
     QString m_composingText;
     bool m_sendKeyEvent;
     QStringList *currentCustomDragTypes;
@@ -86,6 +85,11 @@ QT_END_NAMESPACE
 
 - (BOOL)isFlipped;
 - (BOOL)acceptsFirstResponder;
+- (BOOL)becomeFirstResponder;
+- (BOOL)hasMask;
+- (BOOL)isOpaque;
+
+- (void)resetMouseButtons;
 
 - (void)handleMouseEvent:(NSEvent *)theEvent;
 - (void)mouseDown:(NSEvent *)theEvent;
@@ -103,7 +107,7 @@ QT_END_NAMESPACE
 - (void)handleFrameStrutMouseEvent:(NSEvent *)theEvent;
 
 - (int) convertKeyCode : (QChar)keyCode;
-- (Qt::KeyboardModifiers) convertKeyModifiers : (ulong)modifierFlags;
++ (Qt::KeyboardModifiers) convertKeyModifiers : (ulong)modifierFlags;
 - (void)handleKeyEvent:(NSEvent *)theEvent eventType:(int)eventType;
 - (void)keyDown:(NSEvent *)theEvent;
 - (void)keyUp:(NSEvent *)theEvent;

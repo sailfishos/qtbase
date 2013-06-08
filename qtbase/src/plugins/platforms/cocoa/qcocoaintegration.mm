@@ -90,11 +90,28 @@ void QCocoaScreen::updateGeometry()
 {
     NSScreen *nsScreen = osScreen();
     NSRect frameRect = [nsScreen frame];
-    m_geometry = QRect(frameRect.origin.x, frameRect.origin.y, frameRect.size.width, frameRect.size.height);
-    NSRect visibleRect = [nsScreen visibleFrame];
-    m_availableGeometry = QRect(visibleRect.origin.x,
-                                frameRect.size.height - (visibleRect.origin.y + visibleRect.size.height), // invert y
-                                visibleRect.size.width, visibleRect.size.height);
+
+    if (m_screenIndex == 0) {
+        m_geometry = QRect(frameRect.origin.x, frameRect.origin.y, frameRect.size.width, frameRect.size.height);
+        // This is the primary screen, the one that contains the menubar. Its origin should be
+        // (0, 0), and it's the only one whose available geometry differs from its full geometry.
+        NSRect visibleRect = [nsScreen visibleFrame];
+        m_availableGeometry = QRect(visibleRect.origin.x,
+                                    frameRect.size.height - (visibleRect.origin.y + visibleRect.size.height), // invert y
+                                    visibleRect.size.width, visibleRect.size.height);
+    } else {
+        // NSScreen origin is at the bottom-left corner, QScreen is at the top-left corner.
+        // When we get the NSScreen frame rect, we need to re-align its origin y coordinate
+        // w.r.t. the primary screen, whose origin is (0, 0).
+        NSRect r = [[[NSScreen screens] objectAtIndex:0] frame];
+        QRect referenceScreenGeometry = QRect(r.origin.x, r.origin.y, r.size.width, r.size.height);
+        m_geometry = QRect(frameRect.origin.x,
+                           referenceScreenGeometry.height() - (frameRect.origin.y + frameRect.size.height),
+                           frameRect.size.width, frameRect.size.height);
+
+        // Not primary screen. See above.
+        m_availableGeometry = m_geometry;
+    }
 
     m_format = QImage::Format_RGB32;
     m_depth = NSBitsPerPixelFromDepth([nsScreen depth]);
@@ -105,7 +122,11 @@ void QCocoaScreen::updateGeometry()
     m_physicalSize = QSizeF(size.width, size.height);
     m_logicalDpi.first = 72;
     m_logicalDpi.second = 72;
-    m_refreshRate = CGDisplayModeGetRefreshRate(CGDisplayCopyDisplayMode(dpy));
+    CGDisplayModeRef displayMode = CGDisplayCopyDisplayMode(dpy);
+    float refresh = CGDisplayModeGetRefreshRate(displayMode);
+    CGDisplayModeRelease(displayMode);
+    if (refresh > 0)
+        m_refreshRate = refresh;
 
     // Get m_name (brand/model of the monitor)
     NSDictionary *deviceInfo = (NSDictionary *)IODisplayCreateInfoDictionary(CGDisplayIOServicePort(dpy), kIODisplayOnlyPreferredName);
@@ -170,13 +191,13 @@ QPixmap QCocoaScreen::grabWindow(WId window, int x, int y, int width, int height
             windowSize.setHeight(windowRect.height());
     }
 
-    QPixmap windowPixmap(windowSize);
+    QPixmap windowPixmap(windowSize * devicePixelRatio());
     windowPixmap.fill(Qt::transparent);
 
     for (uint i = 0; i < displayCount; ++i) {
         const CGRect bounds = CGDisplayBounds(displays[i]);
-        int w = (width < 0 ? bounds.size.width : width);
-        int h = (height < 0 ? bounds.size.height : height);
+        int w = (width < 0 ? bounds.size.width : width) * devicePixelRatio();
+        int h = (height < 0 ? bounds.size.height : height) * devicePixelRatio();
         QRect displayRect = QRect(x, y, w, h);
         QCFType<CGImageRef> image = CGDisplayCreateImageForRect(displays[i],
             CGRectMake(displayRect.x(), displayRect.y(), displayRect.width(), displayRect.height()));
@@ -197,7 +218,7 @@ QCocoaIntegration::QCocoaIntegration()
     : mFontDb(new QCoreTextFontDatabase())
     , mEventDispatcher(new QCocoaEventDispatcher())
     , mInputContext(new QCocoaInputContext)
-#ifndef QT_NO_COCOA_ACCESSIBILITY
+#ifndef QT_NO_ACCESSIBILITY
     , mAccessibility(new QCococaAccessibility)
 #endif
     , mCocoaClipboard(new QCocoaClipboard)
@@ -331,6 +352,7 @@ bool QCocoaIntegration::hasCapability(QPlatformIntegration::Capability cap) cons
     case BufferQueueingOpenGL:
     case WindowMasks:
     case MultipleWindows:
+    case ForeignWindows:
         return true;
     default:
         return QPlatformIntegration::hasCapability(cap);
@@ -376,7 +398,7 @@ QPlatformInputContext *QCocoaIntegration::inputContext() const
 
 QPlatformAccessibility *QCocoaIntegration::accessibility() const
 {
-#ifndef QT_NO_COCOA_ACCESSIBILITY
+#ifndef QT_NO_ACCESSIBILITY
     return mAccessibility.data();
 #else
     return 0;

@@ -48,7 +48,6 @@
 #include "qmutex.h"
 #include "qfile.h"
 #include "qfileinfo.h"
-#include "private/qunicodetables_p.h"
 #include "qfontengine_p.h"
 #include <qpa/qplatformintegration.h>
 
@@ -345,6 +344,7 @@ struct  QtFontFamily
     bool askedForFallback;
     unsigned char writingSystems[QFontDatabase::WritingSystemsCount];
 
+    bool matchesFamilyName(const QString &familyName) const;
     QtFontFoundry *foundry(const QString &f, bool = false);
 };
 
@@ -384,131 +384,9 @@ QtFontFoundry *QtFontFamily::foundry(const QString &f, bool create)
     return foundries[count++];
 }
 
-// ### copied to tools/makeqpf/qpf2.cpp
-
-// see the Unicode subset bitfields in the MSDN docs
-static int requiredUnicodeBits[QFontDatabase::WritingSystemsCount][2] = {
-        // Any,
-    { 127, 127 },
-        // Latin,
-    { 0, 127 },
-        // Greek,
-    { 7, 127 },
-        // Cyrillic,
-    { 9, 127 },
-        // Armenian,
-    { 10, 127 },
-        // Hebrew,
-    { 11, 127 },
-        // Arabic,
-    { 13, 127 },
-        // Syriac,
-    { 71, 127 },
-    //Thaana,
-    { 72, 127 },
-    //Devanagari,
-    { 15, 127 },
-    //Bengali,
-    { 16, 127 },
-    //Gurmukhi,
-    { 17, 127 },
-    //Gujarati,
-    { 18, 127 },
-    //Oriya,
-    { 19, 127 },
-    //Tamil,
-    { 20, 127 },
-    //Telugu,
-    { 21, 127 },
-    //Kannada,
-    { 22, 127 },
-    //Malayalam,
-    { 23, 127 },
-    //Sinhala,
-    { 73, 127 },
-    //Thai,
-    { 24, 127 },
-    //Lao,
-    { 25, 127 },
-    //Tibetan,
-    { 70, 127 },
-    //Myanmar,
-    { 74, 127 },
-        // Georgian,
-    { 26, 127 },
-        // Khmer,
-    { 80, 127 },
-        // SimplifiedChinese,
-    { 126, 127 },
-        // TraditionalChinese,
-    { 126, 127 },
-        // Japanese,
-    { 126, 127 },
-        // Korean,
-    { 56, 127 },
-        // Vietnamese,
-    { 0, 127 }, // same as latin1
-        // Other,
-    { 126, 127 },
-        // Ogham,
-    { 78, 127 },
-        // Runic,
-    { 79, 127 },
-        // Nko,
-    { 14, 127 },
-};
-
-#define SimplifiedChineseCsbBit 18
-#define TraditionalChineseCsbBit 20
-#define JapaneseCsbBit 17
-#define KoreanCsbBit 21
-
-QList<QFontDatabase::WritingSystem> qt_determine_writing_systems_from_truetype_bits(quint32 unicodeRange[4], quint32 codePageRange[2])
+bool QtFontFamily::matchesFamilyName(const QString &familyName) const
 {
-    QList<QFontDatabase::WritingSystem> writingSystems;
-    bool hasScript = false;
-
-    int i;
-    for(i = 0; i < QFontDatabase::WritingSystemsCount; i++) {
-        int bit = requiredUnicodeBits[i][0];
-        int index = bit/32;
-        int flag =  1 << (bit&31);
-        if (bit != 126 && unicodeRange[index] & flag) {
-            bit = requiredUnicodeBits[i][1];
-            index = bit/32;
-
-            flag =  1 << (bit&31);
-            if (bit == 127 || unicodeRange[index] & flag) {
-                writingSystems.append(QFontDatabase::WritingSystem(i));
-                hasScript = true;
-                // qDebug("font %s: index=%d, flag=%8x supports script %d", familyName.latin1(), index, flag, i);
-            }
-        }
-    }
-    if(codePageRange[0] & (1 << SimplifiedChineseCsbBit)) {
-        writingSystems.append(QFontDatabase::SimplifiedChinese);
-        hasScript = true;
-        //qDebug("font %s supports Simplified Chinese", familyName.latin1());
-    }
-    if(codePageRange[0] & (1 << TraditionalChineseCsbBit)) {
-        writingSystems.append(QFontDatabase::TraditionalChinese);
-        hasScript = true;
-        //qDebug("font %s supports Traditional Chinese", familyName.latin1());
-    }
-    if(codePageRange[0] & (1 << JapaneseCsbBit)) {
-        writingSystems.append(QFontDatabase::Japanese);
-        hasScript = true;
-        //qDebug("font %s supports Japanese", familyName.latin1());
-    }
-    if(codePageRange[0] & (1 << KoreanCsbBit)) {
-        writingSystems.append(QFontDatabase::Korean);
-        hasScript = true;
-        //qDebug("font %s supports Korean", familyName.latin1());
-    }
-    if (!hasScript)
-        writingSystems.append(QFontDatabase::Symbol);
-
-    return writingSystems;
+    return name.compare(familyName, Qt::CaseInsensitive) == 0 || aliases.contains(familyName, Qt::CaseInsensitive);
 }
 
 
@@ -601,48 +479,40 @@ QtFontFamily *QFontDatabasePrivate::family(const QString &f, bool create)
 
 
 static const int scriptForWritingSystem[] = {
-    QUnicodeTables::Common, // Any
-    QUnicodeTables::Latin, // Latin
-    QUnicodeTables::Greek, // Greek
-    QUnicodeTables::Cyrillic, // Cyrillic
-    QUnicodeTables::Armenian, // Armenian
-    QUnicodeTables::Hebrew, // Hebrew
-    QUnicodeTables::Arabic, // Arabic
-    QUnicodeTables::Syriac, // Syriac
-    QUnicodeTables::Thaana, // Thaana
-    QUnicodeTables::Devanagari, // Devanagari
-    QUnicodeTables::Bengali, // Bengali
-    QUnicodeTables::Gurmukhi, // Gurmukhi
-    QUnicodeTables::Gujarati, // Gujarati
-    QUnicodeTables::Oriya, // Oriya
-    QUnicodeTables::Tamil, // Tamil
-    QUnicodeTables::Telugu, // Telugu
-    QUnicodeTables::Kannada, // Kannada
-    QUnicodeTables::Malayalam, // Malayalam
-    QUnicodeTables::Sinhala, // Sinhala
-    QUnicodeTables::Thai, // Thai
-    QUnicodeTables::Lao, // Lao
-    QUnicodeTables::Tibetan, // Tibetan
-    QUnicodeTables::Myanmar, // Myanmar
-    QUnicodeTables::Georgian, // Georgian
-    QUnicodeTables::Khmer, // Khmer
-    QUnicodeTables::Common, // SimplifiedChinese
-    QUnicodeTables::Common, // TraditionalChinese
-    QUnicodeTables::Common, // Japanese
-    QUnicodeTables::Hangul, // Korean
-    QUnicodeTables::Common, // Vietnamese
-    QUnicodeTables::Common, // Yi
-    QUnicodeTables::Common, // Tagalog
-    QUnicodeTables::Common, // Hanunoo
-    QUnicodeTables::Common, // Buhid
-    QUnicodeTables::Common, // Tagbanwa
-    QUnicodeTables::Common, // Limbu
-    QUnicodeTables::Common, // TaiLe
-    QUnicodeTables::Common, // Braille
-    QUnicodeTables::Common, // Symbol
-    QUnicodeTables::Ogham,  // Ogham
-    QUnicodeTables::Runic, // Runic
-    QUnicodeTables::Nko // Nko
+    QChar::Script_Common, // Any
+    QChar::Script_Latin, // Latin
+    QChar::Script_Greek, // Greek
+    QChar::Script_Cyrillic, // Cyrillic
+    QChar::Script_Armenian, // Armenian
+    QChar::Script_Hebrew, // Hebrew
+    QChar::Script_Arabic, // Arabic
+    QChar::Script_Syriac, // Syriac
+    QChar::Script_Thaana, // Thaana
+    QChar::Script_Devanagari, // Devanagari
+    QChar::Script_Bengali, // Bengali
+    QChar::Script_Gurmukhi, // Gurmukhi
+    QChar::Script_Gujarati, // Gujarati
+    QChar::Script_Oriya, // Oriya
+    QChar::Script_Tamil, // Tamil
+    QChar::Script_Telugu, // Telugu
+    QChar::Script_Kannada, // Kannada
+    QChar::Script_Malayalam, // Malayalam
+    QChar::Script_Sinhala, // Sinhala
+    QChar::Script_Thai, // Thai
+    QChar::Script_Lao, // Lao
+    QChar::Script_Tibetan, // Tibetan
+    QChar::Script_Myanmar, // Myanmar
+    QChar::Script_Georgian, // Georgian
+    QChar::Script_Khmer, // Khmer
+    QChar::Script_Han, // SimplifiedChinese
+    QChar::Script_Han, // TraditionalChinese
+    QChar::Script_Han, // Japanese
+    QChar::Script_Hangul, // Korean
+    QChar::Script_Latin, // Vietnamese
+    QChar::Script_Common, // Symbol
+    QChar::Script_Ogham,  // Ogham
+    QChar::Script_Runic, // Runic
+    QChar::Script_Nko // Nko
 };
 
 int qt_script_for_writing_system(QFontDatabase::WritingSystem writingSystem)
@@ -749,9 +619,8 @@ static void getEngineData(const QFontPrivate *d, const QFontDef &def)
         // create a new one
         d->engineData = new QFontEngineData;
         QFontCache::instance()->insertEngineData(def, d->engineData);
-    } else {
-        d->engineData->ref.ref();
     }
+    d->engineData->ref.ref();
 }
 
 static QStringList familyList(const QFontDef &req)
@@ -988,19 +857,7 @@ static bool matchFamilyName(const QString &familyName, QtFontFamily *f)
 {
     if (familyName.isEmpty())
         return true;
-
-    if (f->name.compare(familyName, Qt::CaseInsensitive) == 0)
-        return true;
-
-    QStringList::const_iterator it = f->aliases.constBegin();
-    while (it != f->aliases.constEnd()) {
-        if ((*it).compare(familyName, Qt::CaseInsensitive) == 0)
-            return true;
-
-        ++it;
-    }
-
-    return false;
+    return f->matchesFamilyName(familyName);
 }
 
 /*!
@@ -1059,7 +916,7 @@ static void match(int script, const QFontDef &request,
 
         uint score_adjust = 0;
 
-        bool supported = (script == QUnicodeTables::Common);
+        bool supported = (script == QChar::Script_Common);
         for (int ws = 1; !supported && ws < QFontDatabase::WritingSystemsCount; ++ws) {
             if (scriptForWritingSystem[ws] != script)
                 continue;

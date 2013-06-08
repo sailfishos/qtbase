@@ -623,8 +623,8 @@ int QNativeSocketEngine::accept()
 {
     Q_D(QNativeSocketEngine);
     Q_CHECK_VALID_SOCKETLAYER(QNativeSocketEngine::accept(), -1);
-    Q_CHECK_STATE(QNativeSocketEngine::accept(), QAbstractSocket::ListeningState, false);
-    Q_CHECK_TYPE(QNativeSocketEngine::accept(), QAbstractSocket::TcpSocket, false);
+    Q_CHECK_STATE(QNativeSocketEngine::accept(), QAbstractSocket::ListeningState, -1);
+    Q_CHECK_TYPE(QNativeSocketEngine::accept(), QAbstractSocket::TcpSocket, -1);
 
     return d->nativeAccept();
 }
@@ -702,7 +702,7 @@ qint64 QNativeSocketEngine::bytesAvailable() const
 {
     Q_D(const QNativeSocketEngine);
     Q_CHECK_VALID_SOCKETLAYER(QNativeSocketEngine::bytesAvailable(), -1);
-    Q_CHECK_NOT_STATE(QNativeSocketEngine::bytesAvailable(), QAbstractSocket::UnconnectedState, false);
+    Q_CHECK_NOT_STATE(QNativeSocketEngine::bytesAvailable(), QAbstractSocket::UnconnectedState, -1);
 
     return d->nativeBytesAvailable();
 }
@@ -732,7 +732,7 @@ qint64 QNativeSocketEngine::pendingDatagramSize() const
 {
     Q_D(const QNativeSocketEngine);
     Q_CHECK_VALID_SOCKETLAYER(QNativeSocketEngine::pendingDatagramSize(), -1);
-    Q_CHECK_TYPE(QNativeSocketEngine::pendingDatagramSize(), QAbstractSocket::UdpSocket, false);
+    Q_CHECK_TYPE(QNativeSocketEngine::pendingDatagramSize(), QAbstractSocket::UdpSocket, -1);
 
     return d->nativePendingDatagramSize();
 }
@@ -757,7 +757,7 @@ qint64 QNativeSocketEngine::readDatagram(char *data, qint64 maxSize, QHostAddres
 {
     Q_D(QNativeSocketEngine);
     Q_CHECK_VALID_SOCKETLAYER(QNativeSocketEngine::readDatagram(), -1);
-    Q_CHECK_TYPE(QNativeSocketEngine::readDatagram(), QAbstractSocket::UdpSocket, false);
+    Q_CHECK_TYPE(QNativeSocketEngine::readDatagram(), QAbstractSocket::UdpSocket, -1);
 
     return d->nativeReceiveDatagram(data, maxSize, address, port);
 }
@@ -1214,7 +1214,7 @@ void QNativeSocketEngine::setReadNotificationEnabled(bool enable)
     Q_D(QNativeSocketEngine);
     if (d->readNotifier) {
         d->readNotifier->setEnabled(enable);
-    } else if (enable && d->threadData->eventDispatcher) {
+    } else if (enable && d->threadData->hasEventDispatcher()) {
         d->readNotifier = new QReadNotifier(d->socketDescriptor, this);
         d->readNotifier->setEnabled(true);
     }
@@ -1231,7 +1231,7 @@ void QNativeSocketEngine::setWriteNotificationEnabled(bool enable)
     Q_D(QNativeSocketEngine);
     if (d->writeNotifier) {
         d->writeNotifier->setEnabled(enable);
-    } else if (enable && d->threadData->eventDispatcher) {
+    } else if (enable && d->threadData->hasEventDispatcher()) {
         d->writeNotifier = new QWriteNotifier(d->socketDescriptor, this);
         d->writeNotifier->setEnabled(true);
     }
@@ -1248,7 +1248,7 @@ void QNativeSocketEngine::setExceptionNotificationEnabled(bool enable)
     Q_D(QNativeSocketEngine);
     if (d->exceptNotifier) {
         d->exceptNotifier->setEnabled(enable);
-    } else if (enable && d->threadData->eventDispatcher) {
+    } else if (enable && d->threadData->hasEventDispatcher()) {
         d->exceptNotifier = new QExceptionNotifier(d->socketDescriptor, this);
         d->exceptNotifier->setEnabled(true);
     }

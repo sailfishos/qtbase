@@ -54,13 +54,12 @@
 #include <QtCore/qpoint.h>
 #include <QtCore/qstring.h>
 #include <QtGui/qevent.h>
+#include <QtGui/qwindow.h>
 
 #ifdef QT_WIDGETS_LIB
 #include <QtWidgets/qapplication.h>
 #include <QtWidgets/qwidget.h>
 #endif
-
-QT_BEGIN_HEADER
 
 QT_BEGIN_NAMESPACE
 
@@ -84,6 +83,9 @@ namespace QTest
     {
         QTEST_ASSERT(window);
         extern int Q_TESTLIB_EXPORT defaultMouseDelay();
+
+        if (!window->geometry().contains(pos))
+            QTest::qWarn("Mouse event occurs outside of target window.");
 
          static Qt::MouseButton lastButton = Qt::NoButton;
 
@@ -226,7 +228,5 @@ namespace QTest
 }
 
 QT_END_NAMESPACE
-
-QT_END_HEADER
 
 #endif // QTESTMOUSE_H

@@ -606,130 +606,6 @@ QDebug operator<<(QDebug d, const QFontDef &def)
     return d;
 }
 
-/* From QFontDatabase.cpp, qt_determine_writing_systems_from_truetype_bits().
- * Fixme: Make public? */
-
-// see the Unicode subset bitfields in the MSDN docs
-static int requiredUnicodeBits[QFontDatabase::WritingSystemsCount][2] = {
-        // Any,
-    { 127, 127 },
-        // Latin,
-    { 0, 127 },
-        // Greek,
-    { 7, 127 },
-        // Cyrillic,
-    { 9, 127 },
-        // Armenian,
-    { 10, 127 },
-        // Hebrew,
-    { 11, 127 },
-        // Arabic,
-    { 13, 127 },
-        // Syriac,
-    { 71, 127 },
-    //Thaana,
-    { 72, 127 },
-    //Devanagari,
-    { 15, 127 },
-    //Bengali,
-    { 16, 127 },
-    //Gurmukhi,
-    { 17, 127 },
-    //Gujarati,
-    { 18, 127 },
-    //Oriya,
-    { 19, 127 },
-    //Tamil,
-    { 20, 127 },
-    //Telugu,
-    { 21, 127 },
-    //Kannada,
-    { 22, 127 },
-    //Malayalam,
-    { 23, 127 },
-    //Sinhala,
-    { 73, 127 },
-    //Thai,
-    { 24, 127 },
-    //Lao,
-    { 25, 127 },
-    //Tibetan,
-    { 70, 127 },
-    //Myanmar,
-    { 74, 127 },
-        // Georgian,
-    { 26, 127 },
-        // Khmer,
-    { 80, 127 },
-        // SimplifiedChinese,
-    { 126, 127 },
-        // TraditionalChinese,
-    { 126, 127 },
-        // Japanese,
-    { 126, 127 },
-        // Korean,
-    { 56, 127 },
-        // Vietnamese,
-    { 0, 127 }, // same as latin1
-        // Other,
-    { 126, 127 },
-        // Ogham,
-    { 78, 127 },
-        // Runic,
-    { 79, 127 },
-        // Nko,
-    { 14, 127 },
-};
-
-enum
-{
-    SimplifiedChineseCsbBit = 18,
-    TraditionalChineseCsbBit = 20,
-    JapaneseCsbBit = 17,
-    KoreanCsbBit = 21
-};
-
-static inline void writingSystemsFromTrueTypeBits(quint32 unicodeRange[4],
-                                                  quint32 codePageRange[2],
-                                                  QSupportedWritingSystems *ws)
-{
-    bool hasScript = false;
-    for(int i = 0; i < QFontDatabase::WritingSystemsCount; i++) {
-        int bit = requiredUnicodeBits[i][0];
-        int index = bit/32;
-        int flag =  1 << (bit&31);
-        if (bit != 126 && unicodeRange[index] & flag) {
-            bit = requiredUnicodeBits[i][1];
-            index = bit/32;
-
-            flag =  1 << (bit&31);
-            if (bit == 127 || unicodeRange[index] & flag) {
-                ws->setSupported(QFontDatabase::WritingSystem(i), true);
-                hasScript = true;
-            }
-        }
-    }
-    if(codePageRange[0] & (1 << SimplifiedChineseCsbBit)) {
-        ws->setSupported(QFontDatabase::SimplifiedChinese, true);
-        hasScript = true;
-    }
-    if(codePageRange[0] & (1 << TraditionalChineseCsbBit)) {
-        ws->setSupported(QFontDatabase::TraditionalChinese, true);
-        hasScript = true;
-    }
-    if(codePageRange[0] & (1 << JapaneseCsbBit)) {
-        ws->setSupported(QFontDatabase::Japanese, true);
-        hasScript = true;
-        //qDebug("font %s supports Japanese", familyName.latin1());
-    }
-    if(codePageRange[0] & (1 << KoreanCsbBit)) {
-        ws->setSupported(QFontDatabase::Korean, true);
-        hasScript = true;
-    }
-    if (!hasScript)
-        ws->setSupported(QFontDatabase::Symbol, true);
-}
-
 // convert 0 ~ 1000 integer to QFont::Weight
 static inline QFont::Weight weightFromInteger(long weight)
 {
@@ -744,36 +620,43 @@ static inline QFont::Weight weightFromInteger(long weight)
     return QFont::Black;
 }
 
-static inline QFontDatabase::WritingSystem writingSystemFromScript(const QString &scriptName)
+static inline QFontDatabase::WritingSystem writingSystemFromCharSet(uchar charSet)
 {
-    if (scriptName == QStringLiteral("Western")
-            || scriptName == QStringLiteral("Baltic")
-            || scriptName == QStringLiteral("Central European")
-            || scriptName == QStringLiteral("Turkish")
-            || scriptName == QStringLiteral("Vietnamese")
-            || scriptName == QStringLiteral("OEM/Dos"))
+    switch (charSet) {
+    case ANSI_CHARSET:
+    case EASTEUROPE_CHARSET:
+    case BALTIC_CHARSET:
+    case TURKISH_CHARSET:
+    case OEM_CHARSET:
         return QFontDatabase::Latin;
-    if (scriptName == QStringLiteral("Thai"))
-        return QFontDatabase::Thai;
-    if (scriptName == QStringLiteral("Symbol")
-        || scriptName == QStringLiteral("Other"))
-        return QFontDatabase::Symbol;
-    if (scriptName == QStringLiteral("CHINESE_GB2312"))
-        return QFontDatabase::SimplifiedChinese;
-    if (scriptName == QStringLiteral("CHINESE_BIG5"))
-        return QFontDatabase::TraditionalChinese;
-    if (scriptName == QStringLiteral("Cyrillic"))
-        return QFontDatabase::Cyrillic;
-    if (scriptName == QStringLiteral("Hangul"))
-        return QFontDatabase::Korean;
-    if (scriptName == QStringLiteral("Hebrew"))
-        return QFontDatabase::Hebrew;
-    if (scriptName == QStringLiteral("Greek"))
+    case GREEK_CHARSET:
         return QFontDatabase::Greek;
-    if (scriptName == QStringLiteral("Japanese"))
-        return QFontDatabase::Japanese;
-    if (scriptName == QStringLiteral("Arabic"))
+    case RUSSIAN_CHARSET:
+        return QFontDatabase::Cyrillic;
+    case HEBREW_CHARSET:
+        return QFontDatabase::Hebrew;
+    case ARABIC_CHARSET:
         return QFontDatabase::Arabic;
+    case THAI_CHARSET:
+        return QFontDatabase::Thai;
+    case GB2312_CHARSET:
+        return QFontDatabase::SimplifiedChinese;
+    case CHINESEBIG5_CHARSET:
+        return QFontDatabase::TraditionalChinese;
+    case SHIFTJIS_CHARSET:
+        return QFontDatabase::Japanese;
+    case HANGUL_CHARSET:
+    case JOHAB_CHARSET:
+        return QFontDatabase::Korean;
+    case VIETNAMESE_CHARSET:
+        return QFontDatabase::Vietnamese;
+    case SYMBOL_CHARSET:
+        return QFontDatabase::Symbol;
+    // ### case MAC_CHARSET:
+    // ### case DEFAULT_CHARSET:
+    default:
+        break;
+    }
     return QFontDatabase::Any;
 }
 
@@ -957,7 +840,7 @@ error:
 
 Q_GUI_EXPORT void qt_registerAliasToFontFamily(const QString &familyName, const QString &alias);
 
-static bool addFontToDatabase(QString familyName, const QString &scriptName,
+static bool addFontToDatabase(const QString &familyName, uchar charSet,
                               const TEXTMETRIC *textmetric,
                               const FONTSIGNATURE *signature,
                               int type)
@@ -981,7 +864,7 @@ static bool addFontToDatabase(QString familyName, const QString &scriptName,
 #ifndef QT_NO_DEBUG_OUTPUT
     if (QWindowsContext::verboseFonts > 2) {
         QDebug nospace = qDebug().nospace();
-        nospace << __FUNCTION__ << familyName << scriptName
+        nospace << __FUNCTION__ << familyName << charSet
                  << "TTF=" << ttf;
         if (type & DEVICE_FONTTYPE)
             nospace << " DEVICE";
@@ -1001,6 +884,7 @@ static bool addFontToDatabase(QString familyName, const QString &scriptName,
 
     QSupportedWritingSystems writingSystems;
     if (type & TRUETYPE_FONTTYPE) {
+        Q_ASSERT(signature);
         quint32 unicodeRange[4] = {
             signature->fsUsb[0], signature->fsUsb[1],
             signature->fsUsb[2], signature->fsUsb[3]
@@ -1019,7 +903,7 @@ static bool addFontToDatabase(QString familyName, const QString &scriptName,
             unicodeRange[3] = 0xffffffff;
         }
 #endif
-        writingSystemsFromTrueTypeBits(unicodeRange, codePageRange, &writingSystems);
+        writingSystems = QPlatformFontDatabase::writingSystemsFromTrueTypeBits(unicodeRange, codePageRange);
         // ### Hack to work around problem with Thai text on Windows 7. Segoe UI contains
         // the symbol for Baht, and Windows thus reports that it supports the Thai script.
         // Since it's the default UI font on this platform, most widgets will be unable to
@@ -1029,7 +913,7 @@ static bool addFontToDatabase(QString familyName, const QString &scriptName,
                 familyName == QStringLiteral("Segoe UI"))
             writingSystems.setSupported(QFontDatabase::Thai, false);
     } else {
-        const QFontDatabase::WritingSystem ws = writingSystemFromScript(scriptName);
+        const QFontDatabase::WritingSystem ws = writingSystemFromCharSet(charSet);
         if (ws != QFontDatabase::Any)
             writingSystems.setSupported(ws);
     }
@@ -1058,14 +942,14 @@ static int CALLBACK storeFont(ENUMLOGFONTEX* f, NEWTEXTMETRICEX *textmetric,
 {
     typedef QSet<QString> StringSet;
     const QString familyName = QString::fromWCharArray(f->elfLogFont.lfFaceName);
-    const QString script = QString::fromWCharArray(f->elfScript);
+    const uchar charSet = f->elfLogFont.lfCharSet;
 
     const FONTSIGNATURE signature = textmetric->ntmFontSig;
 
     // NEWTEXTMETRICEX is a NEWTEXTMETRIC, which according to the documentation is
     // identical to a TEXTMETRIC except for the last four members, which we don't use
     // anyway
-    if (addFontToDatabase(familyName, script, (TEXTMETRIC *)textmetric, &signature, type))
+    if (addFontToDatabase(familyName, charSet, (TEXTMETRIC *)textmetric, &signature, type))
         reinterpret_cast<StringSet *>(namesSetIn)->insert(familyName);
 
     // keep on enumerating
@@ -1160,9 +1044,7 @@ QWindowsFontDatabase::~QWindowsFontDatabase()
     removeApplicationFonts();
 }
 
-QFontEngine * QWindowsFontDatabase::fontEngine(const QFontDef &fontDef,
-                                              QUnicodeTables::Script script,
-                                              void *handle)
+QFontEngine * QWindowsFontDatabase::fontEngine(const QFontDef &fontDef, QChar::Script script, void *handle)
 {
     QFontEngine *fe = QWindowsFontDatabase::createEngine(script, fontDef,
                                               0, QWindowsContext::instance()->defaultDPI(), false,
@@ -1215,7 +1097,7 @@ QFontEngine *QWindowsFontDatabase::fontEngine(const QByteArray &fontData, qreal 
             request.styleStrategy = QFont::NoFontMerging | QFont::PreferMatch;
             request.hintingPreference = hintingPreference;
 
-            fontEngine = QWindowsFontDatabase::createEngine(QUnicodeTables::Common, request, 0,
+            fontEngine = QWindowsFontDatabase::createEngine(QChar::Script_Common, request, 0,
                     QWindowsContext::instance()->defaultDPI(), false, QStringList(),
                     sharedFontData());
 
@@ -1223,11 +1105,11 @@ QFontEngine *QWindowsFontDatabase::fontEngine(const QByteArray &fontData, qreal 
                 if (request.family != fontEngine->fontDef.family) {
                     qWarning("%s: Failed to load font. Got fallback instead: %s",
                              __FUNCTION__, qPrintable(fontEngine->fontDef.family));
-                    if (fontEngine->cache_count == 0 && fontEngine->ref.load() == 0)
+                    if (fontEngine->ref.load() == 0)
                         delete fontEngine;
                     fontEngine = 0;
                 } else {
-                    Q_ASSERT(fontEngine->cache_count == 0 && fontEngine->ref.load() == 0);
+                    Q_ASSERT(fontEngine->ref.load() == 0);
 
                     // Override the generated font name
                     static_cast<QWindowsFontEngine *>(fontEngine)->setUniqueFamilyName(uniqueFamilyName);
@@ -1291,7 +1173,7 @@ QFontEngine *QWindowsFontDatabase::fontEngine(const QByteArray &fontData, qreal 
         fontFile->Release();
 
         fontEngine = new QWindowsFontEngineDirectWrite(directWriteFontFace, pixelSize,
-                                                       m_fontEngineData);
+                                                       sharedFontData());
 
         // Get font family from font data
         fontEngine->fontDef.family = font.familyName();
@@ -1439,7 +1321,7 @@ QStringList QWindowsFontDatabase::addApplicationFont(const QByteArray &fontData,
             TEXTMETRIC textMetrics;
             GetTextMetrics(hdc, &textMetrics);
 
-            addFontToDatabase(familyName, QString(), &textMetrics, &signatures.at(j),
+            addFontToDatabase(familyName, lf.lfCharSet, &textMetrics, &signatures.at(j),
                               TRUETYPE_FONTTYPE);
 
             SelectObject(hdc, oldobj);
@@ -1529,8 +1411,8 @@ HFONT QWindowsFontDatabase::systemFont()
 
 static inline bool scriptRequiresOpenType(int script)
 {
-    return ((script >= QUnicodeTables::Syriac && script <= QUnicodeTables::Sinhala)
-            || script == QUnicodeTables::Khmer || script == QUnicodeTables::Nko);
+    return ((script >= QChar::Script_Syriac && script <= QChar::Script_Sinhala)
+            || script == QChar::Script_Khmer || script == QChar::Script_Nko);
 }
 
 static const char *other_tryFonts[] = {
@@ -1715,7 +1597,7 @@ static QStringList extraTryFontsForFamily(const QString& family)
     return result;
 }
 
-QStringList QWindowsFontDatabase::fallbacksForFamily(const QString family, const QFont::Style &style, const QFont::StyleHint &styleHint, const QUnicodeTables::Script &script) const
+QStringList QWindowsFontDatabase::fallbacksForFamily(const QString &family, QFont::Style style, QFont::StyleHint styleHint, QChar::Script script) const
 {
     QStringList result = QPlatformFontDatabase::fallbacksForFamily(family, style, styleHint, script);
     if (!result.isEmpty())
@@ -1885,8 +1767,7 @@ QFontEngine *QWindowsFontDatabase::createEngine(int script, const QFontDef &requ
         // for scripts that do not require OpenType we should just look at the list of
         // supported writing systems in the font's OS/2 table.
         if (scriptRequiresOpenType(script)) {
-            HB_Face hbFace = few->harfbuzzFace();
-            if (!hbFace || !hbFace->supported_scripts[script]) {
+            if (!few->supportsScript(QChar::Script(script))) {
                 qWarning("  OpenType support missing for script\n");
                 delete few;
                 return 0;
@@ -1917,7 +1798,7 @@ QFontEngine *QWindowsFontDatabase::createEngine(int script, const QFontDef &requ
         directWriteFont->Release();
 #endif
 
-    if (script == QUnicodeTables::Common
+    if ((script == QChar::Script_Common || script == QChar::Script_Han)
             && !(request.styleStrategy & QFont::NoFontMerging)) {
         QStringList extraFonts = extraTryFontsForFamily(request.family);
         if (extraFonts.size()) {

@@ -2678,7 +2678,7 @@ QString DocParser::untabifyEtc(const QString& str)
         if (c == QLatin1Char('\r'))
             continue;
         if (c == QLatin1Char('\t')) {
-            result += "        " + (column % tabSize);
+            result += &"        "[column % tabSize];
             column = ((column / tabSize) + 1) * tabSize;
             continue;
         }
@@ -3291,7 +3291,7 @@ QString Doc::canonicalTitle(const QString &title)
     for (int i = 0; i != title.size(); ++i) {
         uint c = title.at(i).unicode();
         if (c >= 'A' && c <= 'Z')
-            c -= 'A' - 'a';
+            c += 'a' - 'A';
         bool alnum = (c >= 'a' && c <= 'z') || (c >= '0' && c <= '9');
         if (alnum) {
             result += QLatin1Char(c);

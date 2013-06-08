@@ -106,9 +106,12 @@ public:
     void setWindowTitle(const QString &title);
     void setWindowFilePath(const QString &filePath);
     void setWindowIcon(const QIcon &icon);
+    void setAlertState(bool enabled);
+    bool isAlertState() const;
     void raise();
     void lower();
     bool isExposed() const;
+    bool isOpaque() const;
     void propagateSizeHints();
     void setOpacity(qreal level);
     void setMask(const QRegion &region);
@@ -116,15 +119,20 @@ public:
     bool setMouseGrabEnabled(bool grab);
     QMargins frameMargins() const;
 
+    void requestActivateWindow();
+
     WId winId() const;
     void setParent(const QPlatformWindow *window);
 
     NSView *contentView() const;
+    void setContentView(NSView *contentView);
+
+    void setEmbeddedInForeignView(bool subwindow);
 
     void windowWillMove();
     void windowDidMove();
     void windowDidResize();
-    void windowWillClose();
+    bool windowShouldClose();
     bool windowIsPopupType(Qt::WindowType type = Qt::Widget) const;
 
     NSInteger windowLevel(Qt::WindowFlags flags);
@@ -143,9 +151,12 @@ public:
     void setMenubar(QCocoaMenuBar *mb);
     QCocoaMenuBar *menubar() const;
 
+    void registerTouch(bool enable);
+
     qreal devicePixelRatio() const;
     void exposeWindow();
     void obscureWindow();
+    QWindow *childWindowAt(QPoint windowPoint);
 protected:
     // NSWindow handling. The QCocoaWindow/QNSView can either be displayed
     // in an existing NSWindow or in one created by Qt.
@@ -163,13 +174,20 @@ public: // for QNSView
     friend class QCocoaBackingStore;
     friend class QCocoaNativeInterface;
 
-    QNSView *m_contentView;
+    NSView *m_contentView;
+    QNSView *m_qtView;
     NSWindow *m_nsWindow;
+
+    // TODO merge to one variable if possible
+    bool m_contentViewIsEmbedded; // true if the m_contentView is actually embedded in a "foreign" NSView hiearchy
+    bool m_contentViewIsToBeEmbedded; // true if the m_contentView is intended to be embedded in a "foreign" NSView hiearchy
+
     QNSWindowDelegate *m_nsWindowDelegate;
     Qt::WindowFlags m_windowFlags;
     Qt::WindowState m_synchedWindowState;
     Qt::WindowModality m_windowModality;
     QPointer<QWindow> m_activePopupWindow;
+    QPointer<QWindow> m_underMouseWindow;
 
     bool m_inConstructor;
     QCocoaGLContext *m_glContext;
@@ -178,6 +196,10 @@ public: // for QNSView
     bool m_hasModalSession;
     bool m_frameStrutEventsEnabled;
     bool m_isExposed;
+    int m_registerTouchCount;
+
+    static const int NoAlertRequest;
+    NSInteger m_alertRequest;
 };
 
 QT_END_NAMESPACE

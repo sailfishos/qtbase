@@ -48,10 +48,16 @@
 
 //#define QT_COCOA_ENABLE_MENU_DEBUG
 
-@class NSMenuItem;
-@class NSMenu;
+#ifdef __OBJC__
+#define QT_FORWARD_DECLARE_OBJC_CLASS(__KLASS__) @class __KLASS__
+#else
+#define QT_FORWARD_DECLARE_OBJC_CLASS(__KLASS__) typedef struct objc_object __KLASS__
+#endif
 
-QT_BEGIN_HEADER
+QT_FORWARD_DECLARE_OBJC_CLASS(NSMenuItem);
+QT_FORWARD_DECLARE_OBJC_CLASS(NSMenu);
+QT_FORWARD_DECLARE_OBJC_CLASS(NSObject);
+
 
 QT_BEGIN_NAMESPACE
 
@@ -76,6 +82,7 @@ public:
     void setFont(const QFont &font);
     void setRole(MenuRole role);
     void setShortcut(const QKeySequence& shortcut);
+    void setCheckable(bool checkable) { Q_UNUSED(checkable) }
     void setChecked(bool isChecked);
     void setEnabled(bool isEnabled);
 
@@ -97,6 +104,7 @@ private:
 
     NSMenuItem *m_native;
     QString m_text;
+    bool m_textSynced;
     QIcon m_icon;
     QCocoaMenu *m_menu;
     bool m_isVisible;
@@ -109,8 +117,6 @@ private:
     bool m_merged;
     quintptr m_tag;
 };
-
-QT_END_HEADER
 
 QT_END_NAMESPACE
 

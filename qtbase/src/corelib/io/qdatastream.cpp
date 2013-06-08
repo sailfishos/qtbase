@@ -251,7 +251,7 @@ QT_BEGIN_NAMESPACE
         return retVal;
 
 enum {
-    DefaultStreamVersion = QDataStream::Qt_5_0
+    DefaultStreamVersion = QDataStream::Qt_5_1
 };
 
 /*!
@@ -539,6 +539,7 @@ void QDataStream::setByteOrder(ByteOrder bo)
     \value Qt_4_8 Same as Qt_4_6.
     \value Qt_4_9 Same as Qt_4_6.
     \value Qt_5_0 Version 13 (Qt 5.0)
+    \value Qt_5_1 Version 14 (Qt 5.1)
 
     \sa setVersion(), version()
 */
@@ -570,6 +571,8 @@ void QDataStream::setByteOrder(ByteOrder bo)
 
     \table
     \header \li Qt Version       \li QDataStream Version
+    \row \li Qt 5.1                  \li 14
+    \row \li Qt 5.0                  \li 13
     \row \li Qt 4.6                  \li 12
     \row \li Qt 4.5                  \li 11
     \row \li Qt 4.4                  \li 10
@@ -742,7 +745,7 @@ QDataStream &QDataStream::operator>>(bool &i)
 */
 
 QDataStream &QDataStream::operator>>(float &f)
-{    
+{
     if (version() >= QDataStream::Qt_4_6
         && floatingPointPrecision() == QDataStream::DoublePrecision) {
         double d;
@@ -814,8 +817,12 @@ QDataStream &QDataStream::operator>>(double &f)
     Reads the '\\0'-terminated string \a s from the stream and returns
     a reference to the stream.
 
-    Space for the string is allocated using \c new -- the caller must
-    destroy it with \c{delete[]}.
+    The string is deserialized using \c{readBytes()}.
+
+    Space for the string is allocated using \c{new []} -- the caller must
+    destroy it with \c{delete []}.
+
+    \sa readBytes(), readRawData()
 */
 
 QDataStream &QDataStream::operator>>(char *&s)
@@ -829,8 +836,8 @@ QDataStream &QDataStream::operator>>(char *&s)
     Reads the buffer \a s from the stream and returns a reference to
     the stream.
 
-    The buffer \a s is allocated using \c new. Destroy it with the \c
-    delete[] operator.
+    The buffer \a s is allocated using \c{new []}. Destroy it with the
+    \c{delete []} operator.
 
     The \a l parameter is set to the length of the buffer. If the
     string read is empty, \a l is set to 0 and \a s is set to
@@ -1099,7 +1106,9 @@ QDataStream &QDataStream::operator<<(double f)
     Writes the '\\0'-terminated string \a s to the stream and returns a
     reference to the stream.
 
-    The string is serialized using writeBytes().
+    The string is serialized using \c{writeBytes()}.
+
+    \sa writeBytes(), writeRawData()
 */
 
 QDataStream &QDataStream::operator<<(const char *s)

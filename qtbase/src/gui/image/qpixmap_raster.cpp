@@ -240,12 +240,15 @@ QImage QRasterPlatformPixmap::toImage(const QRect &rect) const
 
     QRect clipped = rect.intersected(QRect(0, 0, w, h));
     const uint du = uint(d);
-    if ((du % 8 == 0) && (((uint(clipped.x()) * du)) % 32 == 0))
-        return QImage(image.scanLine(clipped.y()) + clipped.x() * (du / 8),
+    if ((du % 8 == 0) && (((uint(clipped.x()) * du)) % 32 == 0)) {
+        QImage newImage(image.scanLine(clipped.y()) + clipped.x() * (du / 8),
                       clipped.width(), clipped.height(),
                       image.bytesPerLine(), image.format());
-    else
+        newImage.setDevicePixelRatio(image.devicePixelRatio());
+        return newImage;
+    } else {
         return image.copy(clipped);
+    }
 }
 
 QPaintEngine* QRasterPlatformPixmap::paintEngine() const
@@ -276,11 +279,13 @@ int QRasterPlatformPixmap::metric(QPaintDevice::PaintDeviceMetric metric) const
     case QPaintDevice::PdmDpiX:
         return qt_defaultDpiX();
     case QPaintDevice::PdmPhysicalDpiX:
-        return qt_defaultDpiX() * image.devicePixelRatio();
+        return qt_defaultDpiX();
     case QPaintDevice::PdmDpiY:
         return qt_defaultDpiX();
     case QPaintDevice::PdmPhysicalDpiY:
-        return qt_defaultDpiY() * image.devicePixelRatio();
+        return qt_defaultDpiY();
+    case QPaintDevice::PdmDevicePixelRatio:
+        return image.devicePixelRatio();
     default:
         qWarning("QRasterPlatformPixmap::metric(): Unhandled metric type %d", metric);
         break;
@@ -354,7 +359,9 @@ void QRasterPlatformPixmap::createPixmapForImage(QImage &sourceImage, Qt::ImageC
     is_null = (w <= 0 || h <= 0);
 
     image.d->devicePixelRatio = sourceImage.devicePixelRatio();
+    //ensure the pixmap and the image resulting from toImage() have the same cacheKey();
     setSerialNumber(image.cacheKey() >> 32);
+    setDetachNumber(image.d->detach_no);
 }
 
 QImage* QRasterPlatformPixmap::buffer()

@@ -198,11 +198,21 @@ bool QFSFileEnginePrivate::nativeFlush()
         return true;
     }
 
-    // Windows native mode; flushing is
-    // unnecessary. FlushFileBuffers(), the equivalent of sync() or
-    // fsync() on Unix, does a low-level flush to the disk, and we
-    // don't expose an API for this.
+    // Windows native mode; flushing is unnecessary.
     return true;
+}
+
+/*
+    \internal
+    \since 5.1
+*/
+bool QFSFileEnginePrivate::nativeSyncToDisk()
+{
+    if (fh || fd != -1) {
+        // stdlib / stdio mode. No API available.
+        return false;
+    }
+    return FlushFileBuffers(fileHandle);
 }
 
 /*
@@ -504,6 +514,43 @@ bool QFSFileEngine::rename(const QString &newName)
     bool ret = QFileSystemEngine::renameFile(d->fileEntry, QFileSystemEntry(newName), error);
     if (!ret)
         setError(QFile::RenameError, error.toString());
+    return ret;
+}
+
+bool QFSFileEngine::renameOverwrite(const QString &newName)
+{
+    Q_D(QFSFileEngine);
+#if defined(Q_OS_WINCE)
+    // Windows Embedded Compact 7 does not have MoveFileEx, simulate it with  the following sequence:
+    //   1. DeleteAndRenameFile  (Should work on RAM FS when both files exist)
+    //   2. DeleteFile/MoveFile  (Should work on all file systems)
+    //
+    // DeleteFile/MoveFile fallback implementation violates atomicity, but it is more acceptable than
+    // alternative CopyFile/DeleteFile sequence for the following reasons:
+    //
+    //  1. DeleteFile/MoveFile is way faster than CopyFile/DeleteFile and thus more atomic.
+    //  2. Given the intended use case of this function in QSaveFile, DeleteFile/MoveFile sequence will
+    //     delete the old content, but leave a file "filename.ext.XXXXXX" in the same directory if MoveFile fails.
+    //     With CopyFile/DeleteFile sequence, it can happen that new data is partially copied to target file
+    //     (because CopyFile is not atomic either), thus leaving *some* content to target file.
+    //     This makes the need for application level recovery harder to detect than in DeleteFile/MoveFile
+    //     sequence where target file simply does not exist.
+    //
+    bool ret = ::DeleteAndRenameFile((wchar_t*)QFileSystemEntry(newName).nativeFilePath().utf16(),
+                                     (wchar_t*)d->fileEntry.nativeFilePath().utf16()) != 0;
+    if (!ret) {
+        ret = ::DeleteFile((wchar_t*)d->fileEntry.nativeFilePath().utf16()) != 0;
+        if (ret)
+            ret = ::MoveFile((wchar_t*)d->fileEntry.nativeFilePath().utf16(),
+                             (wchar_t*)QFileSystemEntry(newName).nativeFilePath().utf16()) != 0;
+    }
+#else
+    bool ret = ::MoveFileEx((wchar_t*)d->fileEntry.nativeFilePath().utf16(),
+                            (wchar_t*)QFileSystemEntry(newName).nativeFilePath().utf16(),
+                            MOVEFILE_REPLACE_EXISTING) != 0;
+#endif
+    if (!ret)
+        setError(QFile::RenameError, QSystemError(::GetLastError(), QSystemError::NativeError).toString());
     return ret;
 }
 
@@ -900,7 +947,7 @@ uchar *QFSFileEnginePrivate::map(qint64 offset, qint64 size,
         return 0;
     }
 
-    if (mapHandle == INVALID_HANDLE_VALUE) {
+    if (mapHandle == NULL) {
         // get handle to the file
         HANDLE handle = fileHandle;
 
@@ -933,7 +980,7 @@ uchar *QFSFileEnginePrivate::map(qint64 offset, qint64 size,
         // first create the file mapping handle
         DWORD protection = (openMode & QIODevice::WriteOnly) ? PAGE_READWRITE : PAGE_READONLY;
         mapHandle = ::CreateFileMapping(handle, 0, protection, 0, 0, 0);
-        if (mapHandle == INVALID_HANDLE_VALUE) {
+        if (mapHandle == NULL) {
             q->setError(QFile::PermissionsError, qt_error_string());
 #ifdef Q_USE_DEPRECATED_MAP_API
             ::CloseHandle(handle);
@@ -976,6 +1023,7 @@ uchar *QFSFileEnginePrivate::map(qint64 offset, qint64 size,
     }
 
     ::CloseHandle(mapHandle);
+    mapHandle = NULL;
     return 0;
 }
 
@@ -995,7 +1043,7 @@ bool QFSFileEnginePrivate::unmap(uchar *ptr)
     maps.remove(ptr);
     if (maps.isEmpty()) {
         ::CloseHandle(mapHandle);
-        mapHandle = INVALID_HANDLE_VALUE;
+        mapHandle = NULL;
     }
 
     return true;

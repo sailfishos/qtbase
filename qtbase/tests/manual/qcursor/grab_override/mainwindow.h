@@ -42,7 +42,7 @@
 #ifndef MAINWINDOW_H
 #define MAINWINDOW_H
 
-#include <QtWidgets/QMainWindow>
+#include <QMainWindow>
 
 class QTimer;
 
@@ -64,11 +64,11 @@ private slots:
 
 private:
     void keyPressEvent(QKeyEvent* event);
-    
+
     Ui::MainWindow *ui;
     QTimer *timer;
     int override;
-    
+
     QCursor ccurs;
     QCursor bcurs;
 };

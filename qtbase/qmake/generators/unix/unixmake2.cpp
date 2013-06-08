@@ -221,7 +221,11 @@ UnixMakefileGenerator::writeMakeParts(QTextStream &t)
         do_incremental = false;
     t << "DIST          = " << valList(fileFixify(project->values("DISTFILES").toQStringList())) << endl;
     t << "QMAKE_TARGET  = " << var("QMAKE_ORIG_TARGET") << endl;
-    t << "DESTDIR       = " << var("DESTDIR") << endl;
+    // The comment is important for mingw32-make.exe on Windows as otherwise trailing slashes
+    // would be interpreted as line continuation. The lack of spacing between the value and the
+    // comment is also important as otherwise quoted use of "$(DESTDIR)" would include this
+    // spacing.
+    t << "DESTDIR       = " << var("DESTDIR") << "#avoid trailing-slash linebreak" << endl;
     if(project->isActiveConfig("compile_libtool"))
         t << "TARGETL       = " << var("TARGET_la") << endl;
     t << "TARGET        = " << escapeFilePath(var("TARGET")) << endl;
@@ -349,7 +353,8 @@ UnixMakefileGenerator::writeMakeParts(QTextStream &t)
               << project->first("QMAKE_EXTENSION_STATICLIB") << " ";
         t << endl << endl;
     }
-    if(project->isActiveConfig("depend_prl") && !project->isEmpty("QMAKE_PRL_INTERNAL_FILES")) {
+    if ((project->isActiveConfig("depend_prl") || project->isActiveConfig("fast_depend_prl"))
+        && !project->isEmpty("QMAKE_PRL_INTERNAL_FILES")) {
         const ProStringList &l = project->values("QMAKE_PRL_INTERNAL_FILES");
         ProStringList::ConstIterator it;
         for(it = l.begin(); it != l.end(); ++it) {
@@ -361,8 +366,12 @@ UnixMakefileGenerator::writeMakeParts(QTextStream &t)
                     dir = (*it).left(slsh + 1);
                 QString targ = dir + libinfo.first("QMAKE_PRL_TARGET");
                 target_deps += " " + targ;
-                t << targ << ":" << "\n\t"
-                  << "@echo \"Creating '" << targ << "'\"" << "\n\t"
+                t << targ;
+                if (project->isActiveConfig("fast_depend_prl"))
+                    t << ":\n\t@echo \"Creating '";
+                else
+                    t << ": FORCE\n\t@echo \"Creating/updating '";
+                t << targ << "'\"" << "\n\t"
                   << "(cd " << libinfo.first("QMAKE_PRL_BUILD_DIR") << ";"
                   << "$(MAKE))" << endl;
             }
@@ -436,7 +445,7 @@ UnixMakefileGenerator::writeMakeParts(QTextStream &t)
                 t << "\n\t" << mkdir_p_asstring(destdir) << "\n\t";
             if(!project->isEmpty("QMAKE_PRE_LINK"))
                 t << var("QMAKE_PRE_LINK") << "\n\t";
-            t << "$(LINK) $(LFLAGS) -o $(TARGET) " << incr_deps << " " << incr_objs << " $(OBJCOMP) $(LIBS)";
+            t << "$(LINK) $(LFLAGS) " << var("QMAKE_LINK_O_FLAG") << "$(TARGET) " << incr_deps << " " << incr_objs << " $(OBJCOMP) $(LIBS)";
             if(!project->isEmpty("QMAKE_POST_LINK"))
                 t << "\n\t" << var("QMAKE_POST_LINK");
             t << endl << endl;
@@ -451,7 +460,7 @@ UnixMakefileGenerator::writeMakeParts(QTextStream &t)
                     t << mkdir_p_asstring(destdir) << "\n\t";
                 if (!project->isEmpty("QMAKE_PRE_LINK"))
                     t << var("QMAKE_PRE_LINK") << "\n\t";
-                t << "$(LINK) $(LFLAGS) -o $(TARGET) $(OBJECTS) $(OBJCOMP) $(LIBS)";
+                t << "$(LINK) $(LFLAGS) " << var("QMAKE_LINK_O_FLAG") << "$(TARGET) $(OBJECTS) $(OBJCOMP) $(LIBS)";
                 if (!project->isEmpty("QMAKE_POST_LINK"))
                     t << "\n\t" << var("QMAKE_POST_LINK");
             }
@@ -503,7 +512,7 @@ UnixMakefileGenerator::writeMakeParts(QTextStream &t)
                 t << incr_target_dir << ": $(INCREMENTAL_OBJECTS)" << "\n\t";
                 if(!destdir.isEmpty())
                     t << mkdir_p_asstring(destdir) << "\n\t";
-                t << "$(LINK) " << incr_lflags << " -o "<< incr_target_dir <<
+                t << "$(LINK) " << incr_lflags << " " << var("QMAKE_LINK_O_FLAG") << incr_target_dir <<
                     " $(INCREMENTAL_OBJECTS)" << endl;
                 //communicated below
                 ProStringList &cmd = project->values("QMAKE_LINK_SHLIB_CMD");
@@ -541,7 +550,7 @@ UnixMakefileGenerator::writeMakeParts(QTextStream &t)
               << var("QMAKE_LINK_SHLIB_CMD");
             if(!destdir.isEmpty())
                 t << "\n\t"
-                  << "-$(MOVE) $(TARGET) " << destdir;
+                  << "-$(MOVE) $(TARGET) " << destdir << " ";
             if(!project->isEmpty("QMAKE_POST_LINK"))
                 t << "\n\t" << var("QMAKE_POST_LINK");
             t << endl << endl;
@@ -574,7 +583,10 @@ UnixMakefileGenerator::writeMakeParts(QTextStream &t)
                   << "-$(DEL_FILE) " << destdir << "$(TARGET0)\n\t"
                   << "-$(DEL_FILE) " << destdir << "$(TARGET1)\n\t"
                   << "-$(DEL_FILE) " << destdir << "$(TARGET2)\n\t"
-                  << "-$(MOVE) $(TARGET) $(TARGET0) $(TARGET1) $(TARGET2) " << destdir;
+                  << "-$(MOVE) $(TARGET)  " << destdir << " \n\t"
+                  << "-$(MOVE) $(TARGET0) " << destdir << " \n\t"
+                  << "-$(MOVE) $(TARGET1) " << destdir << " \n\t"
+                  << "-$(MOVE) $(TARGET2) " << destdir << " \n\t";
             if(!project->isEmpty("QMAKE_POST_LINK"))
                 t << "\n\t" << var("QMAKE_POST_LINK");
             t << endl << endl;
@@ -587,7 +599,8 @@ UnixMakefileGenerator::writeMakeParts(QTextStream &t)
                 t  << "\n\t"
                    << "-$(DEL_FILE) " << destdir << "$(TARGET)\n\t"
                    << "-$(DEL_FILE) " << destdir << "$(TARGET0)\n\t"
-                   << "-$(MOVE) $(TARGET) $(TARGET0) " << destdir;
+                   << "-$(MOVE) $(TARGET)  " << destdir << " \n\t"
+                   << "-$(MOVE) $(TARGET0) " << destdir << " \n\t";
             if(!project->isEmpty("QMAKE_POST_LINK"))
                 t << "\n\t" << var("QMAKE_POST_LINK");
             t << endl << endl;
@@ -626,7 +639,7 @@ UnixMakefileGenerator::writeMakeParts(QTextStream &t)
                 t << "\t" << "$(RANLIB) $(TARGET)" << "\n";
             if(!destdir.isEmpty())
                 t << "\t" << "-$(DEL_FILE) " << destdir << "$(TARGET)" << "\n"
-                  << "\t" << "-$(MOVE) $(TARGET) " << destdir << "\n";
+                  << "\t" << "-$(MOVE) $(TARGET) " << destdir << " \n";
         } else {
             int max_files = project->first("QMAKE_MAX_FILES_PER_AR").toInt();
             ProStringList objs = project->values("OBJECTS") + project->values("OBJCOMP"),
@@ -657,7 +670,7 @@ UnixMakefileGenerator::writeMakeParts(QTextStream &t)
                     t << "\t" << "$(RANLIB) " << (*libit) << "\n";
                 if(!destdir.isEmpty())
                     t << "\t" << "-$(DEL_FILE) " << destdir << (*libit) << "\n"
-                      << "\t" << "-$(MOVE) " << (*libit) << " " << destdir << "\n";
+                      << "\t" << "-$(MOVE) " << (*libit) << " " << destdir << " \n";
             }
         }
         t << endl << endl;
@@ -1173,7 +1186,7 @@ void UnixMakefileGenerator::init2()
         }
         if (project->values("QMAKE_LINK_SHLIB_CMD").isEmpty())
             project->values("QMAKE_LINK_SHLIB_CMD").append(
-                "$(LINK) $(LFLAGS) -o $(TARGET) $(OBJECTS) $(LIBS) $(OBJCOMP)");
+                "$(LINK) $(LFLAGS) " + project->first("QMAKE_LINK_O_FLAG") + "$(TARGET) $(OBJECTS) $(LIBS) $(OBJCOMP)");
     }
     if (!project->values("QMAKE_APP_FLAG").isEmpty()) {
         project->values("QMAKE_CFLAGS") += project->values("QMAKE_CFLAGS_APP");
@@ -1218,7 +1231,7 @@ void UnixMakefileGenerator::init2()
     }
 
     if(!project->isEmpty("QMAKE_BUNDLE")) {
-        QString plist = fileFixify(project->first("QMAKE_INFO_PLIST").toQString());
+        QString plist = fileFixify(project->first("QMAKE_INFO_PLIST").toQString(), qmake_getpwd());
         if(plist.isEmpty())
             plist = specdir() + QDir::separator() + "Info.plist." + project->first("TEMPLATE");
         if(exists(Option::fixPathToLocalOS(plist))) {

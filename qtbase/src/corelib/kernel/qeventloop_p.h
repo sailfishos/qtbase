@@ -44,8 +44,6 @@
 
 #include "qobject_p.h"
 
-QT_BEGIN_HEADER
-
 QT_BEGIN_NAMESPACE
 
 class QEventLoopPrivate : public QObjectPrivate
@@ -53,13 +51,17 @@ class QEventLoopPrivate : public QObjectPrivate
     Q_DECLARE_PUBLIC(QEventLoop)
 public:
     inline QEventLoopPrivate()
-        : exit(true), inExec(false), returnCode(-1)
-    { }
+        : inExec(false)
+    {
+        returnCode.store(-1);
+        exit.store(true);
+    }
 
     QAtomicInt quitLockRef;
 
-    bool exit, inExec;
-    int returnCode;
+    QBasicAtomicInt exit; // bool
+    QBasicAtomicInt returnCode;
+    bool inExec;
 
     void ref()
     {
@@ -75,7 +77,5 @@ public:
 };
 
 QT_END_NAMESPACE
-
-QT_END_HEADER
 
 #endif // QEVENTLOOP_P_H

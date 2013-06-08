@@ -268,7 +268,8 @@ static int NColorRoles[] = {
     QPalette::ToolTipText + 1,     // Qt_4_5
     QPalette::ToolTipText + 1,     // Qt_4_6
     QPalette::ToolTipText + 1,     // Qt_5_0
-    0                              // add the correct value for Qt_5_1 here later
+    QPalette::ToolTipText + 1,     // Qt_5_1
+    0                              // add the correct value for Qt_5_2 here later
 };
 
 // Testing get/set functions
@@ -883,7 +884,7 @@ static QBrush qBrushData(int index)
             return custom;
         }
     case 7:
-        QLinearGradient gradient(QPoint(2.718, 3.142), QPoint(3.1337, 42));
+        QLinearGradient gradient(QPointF(2.718, 3.142), QPointF(3.1337, 42));
         gradient.setCoordinateMode(QGradient::ObjectBoundingMode);
         gradient.setSpread(QGradient::ReflectSpread);
         gradient.setInterpolationMode(QGradient::ComponentInterpolation);

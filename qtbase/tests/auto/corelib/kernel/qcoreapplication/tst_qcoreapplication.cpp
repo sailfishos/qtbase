@@ -643,7 +643,7 @@ void tst_QCoreApplication::customEventDispatcher()
     QCOMPARE(QCoreApplication::eventDispatcher(), ed);
     // test the alternative API of QAbstractEventDispatcher
     QCOMPARE(QAbstractEventDispatcher::instance(), ed);
-    QWeakPointer<DummyEventDispatcher> weak_ed(ed);
+    QPointer<DummyEventDispatcher> weak_ed(ed);
     QVERIFY(!weak_ed.isNull());
     {
         int argc = 1;
@@ -769,6 +769,18 @@ void tst_QCoreApplication::testQuitLock()
     app.exec();
 }
 
+static void createQObjectOnDestruction()
+{
+    // Make sure that we can create a QObject after the last QObject has been
+    // destroyed (especially after QCoreApplication has).
+    //
+    // Before the fixes, this would cause a dangling pointer dereference. If
+    // the problem comes back, it's possible that the following causes no
+    // effect.
+    QObject obj;
+    obj.thread()->setProperty("testing", 1);
+}
+Q_DESTRUCTOR_FUNCTION(createQObjectOnDestruction)
 
 QTEST_APPLESS_MAIN(tst_QCoreApplication)
 #include "tst_qcoreapplication.moc"

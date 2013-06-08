@@ -39,9 +39,11 @@
 **
 ****************************************************************************/
 
-#include <QtWidgets>
-#include "../shared/shared.h"
+#include <QApplication>
+#include <QMainWindow>
+#include <QScrollArea>
 
+#include "../shared/shared.h"
 
 int main(int argc, char **argv)
 {
@@ -57,8 +59,7 @@ int main(int argc, char **argv)
 
     scrollView.resize(600, 400);
     scrollView.show();
-    
-    
+
     return app.exec();
 }
 

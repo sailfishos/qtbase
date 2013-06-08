@@ -68,6 +68,7 @@ QStringList Generator::imageDirs;
 QStringList Generator::imageFiles;
 QMap<QString, QStringList> Generator::imgFileExts;
 QString Generator::outDir_;
+QString Generator::outSubdir_;
 QSet<QString> Generator::outputFormats;
 QHash<QString, QString> Generator::outputPrefixes;
 QString Generator::project;
@@ -360,7 +361,7 @@ QString Generator::fileBase(const Node *node) const
         QChar c = base.at(i);
         uint u = c.unicode();
         if (u >= 'A' && u <= 'Z')
-            u -= 'A' - 'a';
+            u += 'a' - 'A';
         if ((u >= 'a' &&  u <= 'z') || (u >= '0' && u <= '9')) {
             res += QLatin1Char(u);
             begun = true;
@@ -653,7 +654,7 @@ void Generator::generateBody(const Node *node, CodeMarker *marker)
         }
     }
     if (node->doc().isEmpty()) {
-        if (!quiet && !node->isReimp()) { // ### might be unnecessary
+        if (!node->isWrapper() && !quiet && !node->isReimp()) { // ### might be unnecessary
             node->location().warning(tr("No documentation for '%1'").arg(node->plainFullName()));
         }
     }
@@ -1474,10 +1475,13 @@ void Generator::initialize(const Config &config)
     outputFormats = config.getOutputFormats();
     if (!outputFormats.isEmpty()) {
         outDir_ = config.getOutputDir();
-
-        if (outDir_.isEmpty())
+        if (outDir_.isEmpty()) {
             config.lastLocation().fatal(tr("No output directory specified in "
                                            "configuration file or on the command line"));
+        }
+        else {
+            outSubdir_ = outDir_.mid(outDir_.lastIndexOf('/') + 1);
+        }
 
         QDir dirInfo;
         if (dirInfo.exists(outDir_)) {
@@ -1622,8 +1626,12 @@ void Generator::augmentImageDirs(QSet<QString>& moreImageDirs)
     }
 }
 
-void Generator::initializeGenerator(const Config & /* config */)
+/*!
+  Sets the generator's pointer to the Config instance.
+ */
+void Generator::initializeGenerator(const Config& config)
 {
+    config_ = &config;
 }
 
 bool Generator::matchAhead(const Atom *atom, Atom::Type expectedAtomType)

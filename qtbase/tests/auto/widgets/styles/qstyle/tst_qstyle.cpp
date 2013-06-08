@@ -234,7 +234,10 @@ void tst_QStyle::testProxyStyle()
     QVERIFY(proxyStyle->baseStyle());
     qApp->setStyle(proxyStyle);
 
-    QProxyStyle doubleProxy(new QProxyStyle(QStyleFactory::create("Windows")));
+    QProxyStyle* baseStyle = new QProxyStyle("Windows");
+    QCOMPARE(baseStyle->baseStyle()->objectName(), style->objectName());
+
+    QProxyStyle doubleProxy(baseStyle);
     QVERIFY(testAllFunctions(&doubleProxy));
 
     CustomProxy customStyle;
@@ -545,7 +548,7 @@ void tst_QStyle::testMacStyle()
 void tst_QStyle::testWindowsCEStyle()
 {
     QStyle *cstyle = QStyleFactory::create("WindowsCE");
-    QVERIFY(testAllFunctions(&cstyle));
+    QVERIFY(testAllFunctions(cstyle));
     delete cstyle;
 }
 #endif
@@ -555,7 +558,7 @@ void tst_QStyle::testWindowsCEStyle()
 void tst_QStyle::testWindowsMobileStyle()
 {
     QStyle *cstyle = QStyleFactory::create("WindowsMobile");
-    QVERIFY(testAllFunctions(&cstyle));
+    QVERIFY(testAllFunctions(cstyle));
     delete cstyle;
 }
 #endif
@@ -686,7 +689,7 @@ void tst_QStyle::lineUpLayoutTest(QStyle *style)
     widget.setLayout(&layout);
         widget.setStyle(style);
         // propagate the style.
-        foreach (QWidget *w, qFindChildren<QWidget *>(&widget))
+        foreach (QWidget *w, widget.findChildren<QWidget *>())
             w->setStyle(style);
     widget.show();
     QVERIFY(QTest::qWaitForWindowExposed(&widget));
@@ -738,7 +741,7 @@ public:
 
 void tst_QStyle::testDrawingShortcuts()
 {
-    {   
+    {
         QWidget w;
         setFrameless(&w);
         QToolButton *tb = new QToolButton(&w);
@@ -768,14 +771,14 @@ void tst_QStyle::testDrawingShortcuts()
         bool showMnemonic = dts->styleHint(QStyle::SH_UnderlineShortcut, &sotb, tb);
         QVERIFY(dts->alignment & (showMnemonic ? Qt::TextShowMnemonic : Qt::TextHideMnemonic));
         delete dts;
-     }   
+     }
 }
 
 #define SCROLLBAR_SPACING 33
 
 class FrameTestStyle : public QProxyStyle {
 public:
-    FrameTestStyle() : QProxyStyle(QStyleFactory::create("Windows")) { }
+    FrameTestStyle() : QProxyStyle("Windows") { }
     int styleHint(StyleHint hint, const QStyleOption *opt, const QWidget *widget, QStyleHintReturn *returnData) const {
         if (hint == QStyle::SH_ScrollView_FrameOnlyAroundContents)
             return 1;

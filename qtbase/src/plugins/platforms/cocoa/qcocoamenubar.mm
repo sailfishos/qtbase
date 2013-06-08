@@ -77,8 +77,10 @@ QCocoaMenuBar::~QCocoaMenuBar()
     [m_nativeMenu release];
     static_menubars.removeOne(this);
 
-    if (m_window)
+    if (m_window && m_window->menubar() == this) {
         m_window->setMenubar(0);
+        updateMenuBarImmediately();
+    }
 }
 
 void QCocoaMenuBar::insertMenu(QPlatformMenu *platformMenu, QPlatformMenu *before)
@@ -107,11 +109,15 @@ void QCocoaMenuBar::insertMenu(QPlatformMenu *platformMenu, QPlatformMenu *befor
         [m_nativeMenu addItem: menu->nsMenuItem()];
     }
 
+    platformMenu->setParent(this);
+    syncMenu(platformMenu);
     [m_nativeMenu setSubmenu: menu->nsMenu() forItem: menu->nsMenuItem()];
 }
 
 void QCocoaMenuBar::removeMenu(QPlatformMenu *platformMenu)
 {
+    QCocoaAutoReleasePool pool;
+
     QCocoaMenu *menu = static_cast<QCocoaMenu *>(platformMenu);
     if (!m_menus.contains(menu)) {
         qWarning() << Q_FUNC_INFO << "Trying to remove a menu that does not belong to the menubar";
@@ -119,13 +125,17 @@ void QCocoaMenuBar::removeMenu(QPlatformMenu *platformMenu)
     }
     m_menus.removeOne(menu);
 
+    if (platformMenu->parent() == this)
+        platformMenu->setParent(0);
     NSUInteger realIndex = [m_nativeMenu indexOfItem:menu->nsMenuItem()];
     [m_nativeMenu removeItemAtIndex: realIndex];
 }
 
 void QCocoaMenuBar::syncMenu(QPlatformMenu *menu)
 {
-    Q_UNUSED(menu);
+    QCocoaMenu *cocoaMenu = static_cast<QCocoaMenu *>(menu);
+    Q_FOREACH (QCocoaMenuItem *item, cocoaMenu->items())
+        cocoaMenu->syncMenuItem(item);
 }
 
 void QCocoaMenuBar::handleReparent(QWindow *newParentWindow)

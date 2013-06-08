@@ -45,7 +45,7 @@
 #include <QGuiApplication>
 #include <qpa/qwindowsysteminterface.h>
 
-#ifdef QQNXNAVIGATOREVENTHANDLER_DEBUG
+#if defined(QQNXNAVIGATOREVENTHANDLER_DEBUG)
 #define qNavigatorEventHandlerDebug qDebug
 #else
 #define qNavigatorEventHandlerDebug QT_NO_QDEBUG_MACRO
@@ -104,6 +104,12 @@ void QQnxNavigatorEventHandler::handleWindowGroupDeactivated(const QByteArray &i
 {
     qNavigatorEventHandlerDebug() << Q_FUNC_INFO << id;
     Q_EMIT windowGroupDeactivated(id);
+}
+
+void QQnxNavigatorEventHandler::handleWindowGroupStateChanged(const QByteArray &id, Qt::WindowState state)
+{
+    qNavigatorEventHandlerDebug() << Q_FUNC_INFO << id;
+    Q_EMIT windowGroupStateChanged(id, state);
 }
 
 QT_END_NAMESPACE

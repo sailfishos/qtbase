@@ -109,7 +109,8 @@ bool QTextureGlyphCache::populate(QFontEngine *fontEngine, int numGlyphs, const 
 
     m_current_fontengine = fontEngine;
     const int margin = m_current_fontengine->glyphMargin(m_type);
-    const int paddingDoubled = glyphPadding() * 2;
+    const int padding = glyphPadding();
+    const int paddingDoubled = padding * 2;
 
     bool supportsSubPixelPositions = fontEngine->supportsSubPixelPositions();
     if (fontEngine->m_subPixelPositionCount == 0) {
@@ -122,6 +123,11 @@ bool QTextureGlyphCache::populate(QFontEngine *fontEngine, int numGlyphs, const 
         }
     }
 
+    if (m_cx == 0 && m_cy == 0) {
+        m_cx = padding;
+        m_cy = padding;
+    }
+
     QHash<GlyphAndSubPixelPosition, Coord> listItemCoordinates;
     int rowHeight = 0;
 
@@ -129,6 +135,7 @@ bool QTextureGlyphCache::populate(QFontEngine *fontEngine, int numGlyphs, const 
     switch (m_type) {
     case Raster_A8: format = QFontEngine::Format_A8; break;
     case Raster_RGBMask: format = QFontEngine::Format_A32; break;
+    case Raster_ARGB: format = QFontEngine::Format_ARGB; break;
     default: format = QFontEngine::Format_Mono; break;
     }
 
@@ -157,7 +164,7 @@ bool QTextureGlyphCache::populate(QFontEngine *fontEngine, int numGlyphs, const 
                metrics.yoff.toReal(),
                metrics.x.toReal(),
                metrics.y.toReal());
-#endif        
+#endif
         GlyphAndSubPixelPosition key(glyph, subPixelPosition);
         int glyph_width = metrics.width.ceil().toInt();
         int glyph_height = metrics.height.ceil().toInt();
@@ -202,21 +209,21 @@ bool QTextureGlyphCache::populate(QFontEngine *fontEngine, int numGlyphs, const 
 
         m_currentRowHeight = qMax(m_currentRowHeight, c.h + margin * 2);
 
-        if (m_cx + c.w > requiredWidth) {
+        if (m_cx + c.w + padding > requiredWidth) {
             int new_width = requiredWidth*2;
-            while (new_width < m_cx + c.w)
+            while (new_width < m_cx + c.w + padding)
                 new_width *= 2;
             if (new_width <= maxTextureWidth()) {
                 requiredWidth = new_width;
             } else {
                 // no room on the current line, start new glyph strip
-                m_cx = 0;
+                m_cx = padding;
                 m_cy += m_currentRowHeight + paddingDoubled;
                 m_currentRowHeight = c.h + margin * 2; // New row
             }
         }
 
-        if (maxTextureHeight() > 0 && m_cy + c.h > maxTextureHeight()) {
+        if (maxTextureHeight() > 0 && m_cy + c.h + padding > maxTextureHeight()) {
             // We can't make a cache of the required size, so we bail out
             return false;
         }
@@ -275,6 +282,8 @@ QImage QTextureGlyphCache::textureMapForGlyph(glyph_t g, QFixed subPixelPosition
 {
     if (m_type == QFontEngineGlyphCache::Raster_RGBMask)
         return m_current_fontengine->alphaRGBMapForGlyph(g, subPixelPosition, m_transform);
+    else if (m_type == QFontEngineGlyphCache::Raster_ARGB)
+        return m_current_fontengine->bitmapForGlyph(g, subPixelPosition, m_transform);
     return m_current_fontengine->alphaMapForGlyph(g, subPixelPosition, m_transform);
 }
 
@@ -306,6 +315,7 @@ void QImageTextureGlyphCache::createTextureData(int width, int height)
         m_image = QImage(width, height, QImage::Format_RGB32);
         break;
     case QFontEngineGlyphCache::Raster_ARGB:
+        m_image = QImage(width, height, QImage::Format_ARGB32_Premultiplied);
         break;
     }
 }
@@ -322,7 +332,8 @@ void QImageTextureGlyphCache::fillTexture(const Coord &c, glyph_t g, QFixed subP
     }
 #endif
 
-    if (m_type == QFontEngineGlyphCache::Raster_RGBMask) {        
+    if (m_type == QFontEngineGlyphCache::Raster_RGBMask
+        || m_type == QFontEngineGlyphCache::Raster_ARGB) {
         QImage ref(m_image.bits() + (c.x * 4 + c.y * m_image.bytesPerLine()),
                    qMax(mask.width(), c.w), qMax(mask.height(), c.h), m_image.bytesPerLine(),
                    m_image.format());

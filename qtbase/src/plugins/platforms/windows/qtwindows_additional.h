@@ -49,6 +49,10 @@
 #    define WM_THEMECHANGED 0x031A
 #endif
 
+#ifndef GWL_HWNDPARENT
+#    define GWL_HWNDPARENT (-8)
+#endif
+
 /* Complement the definitions and declarations missing
  * when using MinGW or older Windows SDKs. */
 
@@ -125,6 +129,10 @@ typedef struct tagUPDATELAYEREDWINDOWINFO {
 
 // IME.
 #define IMR_CONFIRMRECONVERTSTRING      0x0005
+
+#ifndef MAPVK_VK_TO_CHAR
+#  define MAPVK_VK_TO_CHAR 2
+#endif
 
 #endif // if defined(Q_CC_MINGW)
 

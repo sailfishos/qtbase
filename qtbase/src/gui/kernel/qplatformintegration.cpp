@@ -199,6 +199,22 @@ QPlatformServices *QPlatformIntegration::services() const
     \value MultipleWindows The platform supports multiple QWindows, i.e. does some kind
     of compositing either client or server side. Some platforms might only support a
     single fullscreen window.
+
+    \value ApplicationState The platform handles the application state explicitly.
+    This means that QEvent::ApplicationActivate and QEvent::ApplicationDeativate
+    will not be posted automatically. Instead, the platform must handle application
+    state explicitly by using QWindowSystemInterface::handleApplicationStateChanged().
+    If not set, application state will follow window activation, which is the normal
+    behavior for desktop platforms.
+
+    \value ForeignWindows The platform allows creating QWindows which represent
+    native windows created by other processes or anyway created by using native
+    libraries.
+
+    \value NonFullScreenWindows The platform supports top-level windows which do not
+    fill the screen. The default implementation returns true. Returning false for
+    this will cause all windows, including dialogs and popups, to be resized to fill the
+    screen.
  */
 
 
@@ -216,8 +232,7 @@ QPlatformServices *QPlatformIntegration::services() const
 
 bool QPlatformIntegration::hasCapability(Capability cap) const
 {
-    Q_UNUSED(cap);
-    return false;
+    return cap == NonFullScreenWindows;
 }
 
 QPlatformPixmap *QPlatformIntegration::createPlatformPixmap(QPlatformPixmap::PixelType type) const
@@ -298,6 +313,8 @@ QVariant QPlatformIntegration::styleHint(StyleHint hint) const
         return false;
     case PasswordMaskDelay:
         return QPlatformTheme::defaultThemeHint(QPlatformTheme::PasswordMaskDelay);
+    case PasswordMaskCharacter:
+        return QPlatformTheme::defaultThemeHint(QPlatformTheme::PasswordMaskCharacter);
     case FontSmoothingGamma:
         return qreal(1.7);
     case StartDragVelocity:
@@ -358,6 +375,17 @@ class QPlatformTheme *QPlatformIntegration::createPlatformTheme(const QString &n
 {
     Q_UNUSED(name)
     return new QPlatformTheme;
+}
+
+/*!
+   Factory function for QOffscreenSurface. An offscreen surface will typically be implemented with a
+   pixel buffer (pbuffer). If the platform doesn't support offscreen surfaces, an invisible window
+   will be used by QOffscreenSurface instead.
+*/
+QPlatformOffscreenSurface *QPlatformIntegration::createPlatformOffscreenSurface(QOffscreenSurface *surface) const
+{
+    Q_UNUSED(surface)
+    return 0;
 }
 
 QT_END_NAMESPACE

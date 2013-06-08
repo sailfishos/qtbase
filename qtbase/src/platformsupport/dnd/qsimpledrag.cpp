@@ -95,7 +95,7 @@ static QWindow* topLevelAt(const QPoint &pos)
 QBasicDrag::QBasicDrag() :
     m_restoreCursor(false), m_eventLoop(0),
     m_executed_drop_action(Qt::IgnoreAction), m_can_drop(false),
-    m_drag(0), m_drag_icon_window(0), m_cursor_drop_action(Qt::IgnoreAction)
+    m_drag(0), m_drag_icon_window(0)
 {
 }
 
@@ -207,6 +207,8 @@ void QBasicDrag::resetDndState(bool /* deleteSource */)
 
 void QBasicDrag::startDrag()
 {
+    // ### TODO Check if its really necessary to have m_drag_icon_window
+    // when QDrag is used without a pixmap - QDrag::setPixmap()
     if (!m_drag_icon_window)
         m_drag_icon_window = new QShapedPixmapWindow();
 

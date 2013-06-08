@@ -1,6 +1,9 @@
 option(host_build)
+QT = core xml
 
-DEFINES += QDOC2_COMPAT
+DEFINES += \
+    QT_QMLDEVTOOLS_LIB \   # force static exports even if not bootstrapping
+    QDOC2_COMPAT
 
 INCLUDEPATH += $$QT_SOURCE_TREE/src/tools/qdoc \
                $$QT_SOURCE_TREE/src/tools/qdoc/qmlparser
@@ -64,12 +67,11 @@ SOURCES += atom.cpp \
            text.cpp \
            tokenizer.cpp \
            tree.cpp \
-           yyindent.cpp \
-           ../../corelib/tools/qcryptographichash.cpp
+           yyindent.cpp
 
 ### QML/JS Parser ###
 
-include(qmlparser/qmlparser.pri)
+include(qmlparser/parser.pri)
 
 HEADERS += jscodemarker.h \
             qmlcodemarker.h \

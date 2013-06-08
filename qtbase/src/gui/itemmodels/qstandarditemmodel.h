@@ -50,8 +50,6 @@
 #include <QtCore/qdatastream.h>
 #endif
 
-QT_BEGIN_HEADER
-
 QT_BEGIN_NAMESPACE
 
 
@@ -332,6 +330,7 @@ public:
     int rowCount(const QModelIndex &parent = QModelIndex()) const;
     int columnCount(const QModelIndex &parent = QModelIndex()) const;
     bool hasChildren(const QModelIndex &parent = QModelIndex()) const;
+    // Qt 6: Remove
     QModelIndex sibling(int row, int column, const QModelIndex &idx) const;
 
     QVariant data(const QModelIndex &index, int role = Qt::DisplayRole) const;
@@ -452,7 +451,5 @@ Q_GUI_EXPORT QDataStream &operator<<(QDataStream &out, const QStandardItem &item
 #endif // QT_NO_STANDARDITEMMODEL
 
 QT_END_NAMESPACE
-
-QT_END_HEADER
 
 #endif //QSTANDARDITEMMODEL_H

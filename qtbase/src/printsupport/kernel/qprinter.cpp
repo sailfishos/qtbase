@@ -295,9 +295,9 @@ void QPrinterPrivate::addToManualSetList(QPrintEngine::PrintEnginePropertyKey ke
     lower quality output than HighResolution and should only be used
     for drafts.
 
-    \value PrinterResolution This value is deprecated. Is is
+    \value PrinterResolution This value is deprecated. It is
     equivalent to ScreenResolution on Unix and HighResolution on
-    Windows and Mac. Due do the difference between ScreenResolution
+    Windows and Mac. Due to the difference between ScreenResolution
     and HighResolution, use of this value may lead to non-portable
     printer code.
 
@@ -1020,6 +1020,37 @@ QSizeF QPrinter::paperSize(Unit unit) const
     else {
         return qt_printerPaperSize(orientation(), paperType, unit, res);
     }
+}
+
+/*!
+    \since 5.1
+
+    Sets the paper used by the printer to \a paperName.
+
+    \sa paperName()
+*/
+
+void QPrinter::setPaperName(const QString &paperName)
+{
+    Q_D(QPrinter);
+    if (d->paintEngine->type() != QPaintEngine::Pdf)
+        ABORT_IF_ACTIVE("QPrinter::setPaperName");
+    d->printEngine->setProperty(QPrintEngine::PPK_PaperName, paperName);
+    d->addToManualSetList(QPrintEngine::PPK_PaperName);
+}
+
+/*!
+    \since 5.1
+
+    Returns the paper name of the paper set on the printer.
+
+    The default value for this is driver-dependent.
+*/
+
+QString QPrinter::paperName() const
+{
+    Q_D(const QPrinter);
+    return d->printEngine->property(QPrintEngine::PPK_PaperName).toString();
 }
 
 /*!
@@ -1958,6 +1989,8 @@ QPrinter::PrintRange QPrinter::printRange() const
     \value PPK_PaperSource Specifies a QPrinter::PaperSource value.
 
     \value PPK_PaperSources Specifies more than one QPrinter::PaperSource value.
+
+    \value PPK_PaperName A string specifying the name of the paper.
 
     \value PPK_PaperSize Specifies a QPrinter::PaperSize value.
 

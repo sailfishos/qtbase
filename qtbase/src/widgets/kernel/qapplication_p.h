@@ -3,7 +3,7 @@
 ** Copyright (C) 2013 Digia Plc and/or its subsidiary(-ies).
 ** Contact: http://www.qt-project.org/legal
 **
-** This file is part of the QtGui module of the Qt Toolkit.
+** This file is part of the QtWidgets module of the Qt Toolkit.
 **
 ** $QT_BEGIN_LICENSE:LGPL$
 ** Commercial License Usage
@@ -165,7 +165,8 @@ public:
     void closePopup(QWidget *popup);
     void openPopup(QWidget *popup);
     static void setFocusWidget(QWidget *focus, Qt::FocusReason reason);
-    static QWidget *focusNextPrevChild_helper(QWidget *toplevel, bool next);
+    static QWidget *focusNextPrevChild_helper(QWidget *toplevel, bool next,
+                                              bool *wrappingOccurred = 0);
 
 #ifndef QT_NO_GRAPHICSVIEW
     // Maintain a list of all scenes to ensure font and palette propagation to
@@ -283,7 +284,7 @@ public:
     void appendTouchPoint(const QTouchEvent::TouchPoint &touchPoint);
     void removeTouchPoint(int touchPointId);
     bool translateTouchToMouse(QWidget *widget, QTouchEvent *event);
-    static void translateRawTouchEvent(QWidget *widget,
+    static bool translateRawTouchEvent(QWidget *widget,
                                        QTouchDevice *device,
                                        const QList<QTouchEvent::TouchPoint> &touchPoints,
                                        ulong timestamp);

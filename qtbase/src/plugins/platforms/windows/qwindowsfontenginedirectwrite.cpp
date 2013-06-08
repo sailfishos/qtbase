@@ -220,6 +220,7 @@ QWindowsFontEngineDirectWrite::QWindowsFontEngineDirectWrite(IDWriteFontFace *di
 
     fontDef.pixelSize = pixelSize;
     collectMetrics();
+    cache_cost = (m_ascent.toInt() + m_descent.toInt()) * m_xHeight.toInt() * 2000;
 }
 
 QWindowsFontEngineDirectWrite::~QWindowsFontEngineDirectWrite()
@@ -376,9 +377,11 @@ void QWindowsFontEngineDirectWrite::recalcAdvances(QGlyphLayout *glyphs, QFontEn
     if (SUCCEEDED(hr)) {
         for (int i=0; i<glyphs->numGlyphs; ++i) {
             glyphs->advances_x[i] = DESIGN_TO_LOGICAL(glyphMetrics[i].advanceWidth);
-            if (fontDef.styleStrategy & QFont::ForceIntegerMetrics)
-                glyphs->advances_x[i] = glyphs->advances_x[i].round();
             glyphs->advances_y[i] = 0;
+        }
+        if (fontDef.styleStrategy & QFont::ForceIntegerMetrics) {
+            for (int i = 0; i < glyphs->numGlyphs; ++i)
+                glyphs->advances_x[i] = glyphs->advances_x[i].round();
         }
     } else {
         qErrnoWarning("%s: GetDesignGlyphMetrics failed", __FUNCTION__);
@@ -738,6 +741,8 @@ void QWindowsFontEngineDirectWrite::initFontInfo(const QFontDef &request,
 
     if (familyNames != NULL)
         familyNames->Release();
+    if (fontFamily)
+        fontFamily->Release();
 
     if (FAILED(hr))
         qErrnoWarning(hr, "initFontInfo: Failed to get family name");

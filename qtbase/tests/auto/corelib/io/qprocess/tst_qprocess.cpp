@@ -81,6 +81,7 @@ private slots:
     void getSetCheck();
     void constructing();
     void simpleStart();
+    void startWithOpen();
     void execute();
     void startDetached();
     void crashTest();
@@ -151,6 +152,7 @@ private slots:
     void invalidProgramString_data();
     void invalidProgramString();
     void onlyOneStartedSignal();
+    void finishProcessBeforeReadingDone();
 
     // keep these at the end, since they use lots of processes and sometimes
     // caused obscure failures to occur in tests that followed them (esp. on the Mac)
@@ -283,6 +285,25 @@ void tst_QProcess::simpleStart()
     QCOMPARE(qvariant_cast<QProcess::ProcessState>(spy.at(1).at(0)), QProcess::Running);
     QCOMPARE(qvariant_cast<QProcess::ProcessState>(spy.at(2).at(0)), QProcess::NotRunning);
 }
+
+//-----------------------------------------------------------------------------
+void tst_QProcess::startWithOpen()
+{
+    QProcess p;
+    QTest::ignoreMessage(QtWarningMsg, "QProcess::start: program not set");
+    QCOMPARE(p.open(QIODevice::ReadOnly), false);
+
+    p.setProgram("testProcessNormal/testProcessNormal");
+    QCOMPARE(p.program(), QString("testProcessNormal/testProcessNormal"));
+
+    p.setArguments(QStringList() << "arg1" << "arg2");
+    QCOMPARE(p.arguments().size(), 2);
+
+    QVERIFY(p.open(QIODevice::ReadOnly));
+    QCOMPARE(p.openMode(), QIODevice::ReadOnly);
+    QVERIFY(p.waitForFinished(5000));
+}
+
 //-----------------------------------------------------------------------------
 void tst_QProcess::execute()
 {
@@ -1256,7 +1277,6 @@ void tst_QProcess::waitForBytesWrittenInABytesWrittenSlot()
     process->start("testProcessEcho/testProcessEcho");
     QVERIFY(process->waitForStarted(5000));
 
-    qRegisterMetaType<qint64>("qint64");
     QSignalSpy spy(process, SIGNAL(bytesWritten(qint64)));
     QVERIFY(spy.isValid());
     process->write("f");
@@ -2147,6 +2167,39 @@ void tst_QProcess::onlyOneStartedSignal()
     QVERIFY(process.waitForFinished(5000));
     QCOMPARE(spyStarted.count(), 1);
     QCOMPARE(spyFinished.count(), 1);
+}
+
+//-----------------------------------------------------------------------------
+
+class BlockOnReadStdOut : public QObject
+{
+    Q_OBJECT
+public:
+    BlockOnReadStdOut(QProcess *process)
+    {
+        connect(process, SIGNAL(readyReadStandardOutput()), SLOT(block()));
+    }
+
+public slots:
+    void block()
+    {
+        QThread::sleep(1);
+    }
+};
+
+void tst_QProcess::finishProcessBeforeReadingDone()
+{
+    QProcess process;
+    BlockOnReadStdOut blocker(&process);
+    QEventLoop loop;
+    connect(&process, SIGNAL(finished(int)), &loop, SLOT(quit()));
+    process.start("testProcessOutput/testProcessOutput");
+    QVERIFY(process.waitForStarted());
+    loop.exec();
+    QStringList lines = QString::fromLocal8Bit(process.readAllStandardOutput()).split(
+            QRegExp(QStringLiteral("[\r\n]")), QString::SkipEmptyParts);
+    QVERIFY(!lines.isEmpty());
+    QCOMPARE(lines.last(), QStringLiteral("10239 -this is a number"));
 }
 
 #endif //QT_NO_PROCESS

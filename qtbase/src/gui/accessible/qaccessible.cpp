@@ -41,9 +41,13 @@
 
 #include "qaccessible.h"
 
+#include "qaccessible2_p.h"
+#include "qaccessiblecache_p.h"
 #include "qaccessibleplugin.h"
 #include "qaccessibleobject.h"
 #include "qaccessiblebridge.h"
+#include <QtCore/qtextboundaryfinder.h>
+#include <QtGui/qtextcursor.h>
 #include <QtGui/QGuiApplication>
 #include <private/qguiapplication_p.h>
 #include <qpa/qplatformaccessibility.h>
@@ -51,6 +55,7 @@
 
 #include <QtCore/qdebug.h>
 #include <QtCore/qmetaobject.h>
+#include <QtCore/qhash.h>
 #include <private/qfactoryloader_p.h>
 
 QT_BEGIN_NAMESPACE
@@ -430,11 +435,12 @@ Q_GLOBAL_STATIC_WITH_ARGS(QFactoryLoader, loader,
 #endif
 
 Q_GLOBAL_STATIC(QList<QAccessible::InterfaceFactory>, qAccessibleFactories)
+typedef QHash<QString, QAccessiblePlugin*> QAccessiblePluginsHash;
+Q_GLOBAL_STATIC(QAccessiblePluginsHash, qAccessiblePlugins);
 
 QAccessible::UpdateHandler QAccessible::updateHandler = 0;
 QAccessible::RootObjectHandler QAccessible::rootObjectHandler = 0;
 
-static bool accessibility_active = false;
 static bool cleanupAdded = false;
 
 #ifndef QT_NO_ACCESSIBILITY
@@ -555,6 +561,8 @@ QAccessible::RootObjectHandler QAccessible::installRootObjectHandler(RootObjectH
     return old;
 }
 
+Q_GLOBAL_STATIC(QAccessibleCache, qAccessibleCache)
+
 /*!
     If a QAccessibleInterface implementation exists for the given \a object,
     this function returns a pointer to the implementation; otherwise it
@@ -571,52 +579,142 @@ QAccessible::RootObjectHandler QAccessible::installRootObjectHandler(RootObjectH
     function tries to find an implementation for the object's parent
     class, using the above strategy.
 
-    \warning The caller is responsible for deleting the returned
-    interface after use.
+    All interfaces are managed by an internal cache and should not be deleted.
 */
 QAccessibleInterface *QAccessible::queryAccessibleInterface(QObject *object)
 {
-    accessibility_active = true;
     if (!object)
         return 0;
 
+    if (Id id = qAccessibleCache->objectToId.value(object))
+        return qAccessibleCache->interfaceForId(id);
+
+    // Create a QAccessibleInterface for the object class. Start by the most
+    // derived class and walk up the class hierarchy.
     const QMetaObject *mo = object->metaObject();
     while (mo) {
         const QString cn = QLatin1String(mo->className());
+
+        // Check if the class has a InterfaceFactory installed.
         for (int i = qAccessibleFactories()->count(); i > 0; --i) {
             InterfaceFactory factory = qAccessibleFactories()->at(i - 1);
-            if (QAccessibleInterface *iface = factory(cn, object))
+            if (QAccessibleInterface *iface = factory(cn, object)) {
+                qAccessibleCache->insert(object, iface);
+                Q_ASSERT(qAccessibleCache->objectToId.contains(object));
                 return iface;
+            }
         }
 #ifndef QT_NO_ACCESSIBILITY
 #ifndef QT_NO_LIBRARY
-        if (QAccessibleInterface * iface = qLoadPlugin1<QAccessibleInterface, QAccessiblePlugin>(loader(), cn, object))
-            return iface;
+        // Find a QAccessiblePlugin (factory) for the class name. If there's
+        // no entry in the cache try to create it using the plugin loader.
+        if (!qAccessiblePlugins()->contains(cn)) {
+            QAccessiblePlugin *factory = 0; // 0 means "no plugin found". This is cached as well.
+            const int index = loader()->indexOf(cn);
+            if (index != -1)
+                factory = qobject_cast<QAccessiblePlugin *>(loader()->instance(index));
+            qAccessiblePlugins()->insert(cn, factory);
+        }
+
+        // At this point the cache should contain a valid factory pointer or 0:
+        Q_ASSERT(qAccessiblePlugins()->contains(cn));
+        QAccessiblePlugin *factory = qAccessiblePlugins()->value(cn);
+        if (factory) {
+            QAccessibleInterface *result = factory->create(cn, object);
+            if (result) {   // Need this condition because of QDesktopScreenWidget
+                qAccessibleCache->insert(object, result);
+                Q_ASSERT(qAccessibleCache->objectToId.contains(object));
+            }
+            return result;
+        }
 #endif
 #endif
         mo = mo->superClass();
     }
 
 #ifndef QT_NO_ACCESSIBILITY
-    if (object == qApp)
-        return new QAccessibleApplication;
+    if (object == qApp) {
+        QAccessibleInterface *appInterface = new QAccessibleApplication;
+        qAccessibleCache->insert(object, appInterface);
+        Q_ASSERT(qAccessibleCache->objectToId.contains(qApp));
+        return appInterface;
+    }
 #endif
 
     return 0;
 }
 
 /*!
-    Returns true if an accessibility implementation has been requested
-    during the runtime of the application; otherwise returns false.
+    \internal
+    Required to ensure that manually created interfaces
+    are properly memory managed.
 
-    Use this function to prevent potentially expensive notifications via
-    updateAccessibility().
+    Must only be called exactly once per interface.
+    This is implicitly called when calling queryAccessibleInterface,
+    so it's only required when re-implementing for example
+    the child function and returning the child after new-ing
+    a QAccessibleInterface subclass.
+ */
+QAccessible::Id QAccessible::registerAccessibleInterface(QAccessibleInterface *iface)
+{
+    Q_ASSERT(iface);
+    return qAccessibleCache->insert(iface->object(), iface);
+}
+
+/*!
+    \internal
+    Removes the interface belonging to this id from the cache and
+    deletes it. The id becomes invalid an may be re-used by the
+    cache.
+*/
+void QAccessible::deleteAccessibleInterface(Id id)
+{
+    qAccessibleCache->deleteInterface(id);
+}
+
+/*!
+    \internal
+    Returns the unique ID for the accessibleInterface.
+*/
+QAccessible::Id QAccessible::uniqueId(QAccessibleInterface *iface)
+{
+    Id id = qAccessibleCache->idToInterface.key(iface);
+    if (!id)
+        id = registerAccessibleInterface(iface);
+    return id;
+}
+
+/*!
+    \internal
+    Returns the QAccessibleInterface belonging to the id.
+
+    Returns 0 if the id is invalid.
+*/
+QAccessibleInterface *QAccessible::accessibleInterface(Id id)
+{
+    return qAccessibleCache->idToInterface.value(id);
+}
+
+
+/*!
+    Returns true if the platform requested accessibility information.
+
+    This function will return false until a tool such as a screen reader
+    accessed the accessibility framework. It is still possible to use
+    \l QAccessible::queryAccessibleInterface even if accessibility is not
+    active. But there will be no notifications sent to the platform.
+
+    It is recommended to use this function to prevent expensive notifications
+    via updateAccessibility() when they are not needed.
 */
 bool QAccessible::isActive()
 {
-    return accessibility_active;
+#ifndef QT_NO_ACCESSIBILITY
+    if (QPlatformAccessibility *pfAccessibility = platformAccessibility())
+        return pfAccessibility->isActive();
+#endif
+    return false;
 }
-
 
 
 /*!
@@ -667,15 +765,23 @@ void QAccessible::setRootObject(QObject *object)
 */
 void QAccessible::updateAccessibility(QAccessibleEvent *event)
 {
+    if (!isActive())
+        return;
+
+#ifndef QT_NO_ACCESSIBILITY
+    if (event->type() == QAccessible::TableModelChanged) {
+        Q_ASSERT(event->object());
+        if (QAccessibleInterface *iface = QAccessible::queryAccessibleInterface(event->object())) {
+            if (iface->tableInterface())
+                iface->tableInterface()->modelChange(static_cast<QAccessibleTableModelChangeEvent*>(event));
+        }
+    }
+
     if (updateHandler) {
         updateHandler(event);
         return;
     }
 
-    if (!isActive())
-        return;
-
-#ifndef QT_NO_ACCESSIBILITY
     if (QPlatformAccessibility *pfAccessibility = platformAccessibility())
         pfAccessibility->notifyAccessibilityUpdate(event);
 #endif
@@ -689,6 +795,77 @@ void QAccessible::updateAccessibility(QAccessibleEvent *event)
     \brief Use QAccessible::updateAccessibility(QAccessibleEvent*) instead.
 */
 #endif
+
+/*!
+    \internal
+    \brief getBoundaries is a helper function to find the accessible text boundaries for QTextCursor based documents.
+    \param documentCursor a valid cursor bound to the document (not null). It needs to ba at the position to look for the boundary
+    \param boundaryType the type of boundary to find
+    \return the boundaries as pair
+*/
+QPair< int, int > QAccessible::qAccessibleTextBoundaryHelper(const QTextCursor &offsetCursor, TextBoundaryType boundaryType)
+{
+    Q_ASSERT(!offsetCursor.isNull());
+
+    QTextCursor endCursor = offsetCursor;
+    endCursor.movePosition(QTextCursor::End);
+    int characterCount = endCursor.position();
+
+    QPair<int, int> result;
+    QTextCursor cursor = offsetCursor;
+    switch (boundaryType) {
+    case CharBoundary:
+        result.first = cursor.position();
+        cursor.movePosition(QTextCursor::NextCharacter, QTextCursor::KeepAnchor);
+        result.second = cursor.position();
+        break;
+    case WordBoundary:
+        cursor.movePosition(QTextCursor::StartOfWord, QTextCursor::MoveAnchor);
+        result.first = cursor.position();
+        cursor.movePosition(QTextCursor::EndOfWord, QTextCursor::KeepAnchor);
+        result.second = cursor.position();
+        break;
+    case SentenceBoundary: {
+        // QCursor does not provide functionality to move to next sentence.
+        // We therefore find the current block, then go through the block using
+        // QTextBoundaryFinder and find the sentence the \offset represents
+        cursor.movePosition(QTextCursor::StartOfBlock, QTextCursor::MoveAnchor);
+        result.first = cursor.position();
+        cursor.movePosition(QTextCursor::EndOfBlock, QTextCursor::KeepAnchor);
+        result.second = cursor.position();
+        QString blockText = cursor.selectedText();
+        const int offsetWithinBlockText = offsetCursor.position() - result.first;
+        QTextBoundaryFinder sentenceFinder(QTextBoundaryFinder::Sentence, blockText);
+        sentenceFinder.setPosition(offsetWithinBlockText);
+        int prevBoundary = offsetWithinBlockText;
+        int nextBoundary = offsetWithinBlockText;
+        if (!(sentenceFinder.boundaryReasons() & QTextBoundaryFinder::StartOfItem))
+            prevBoundary = sentenceFinder.toPreviousBoundary();
+        nextBoundary = sentenceFinder.toNextBoundary();
+        if (nextBoundary != -1)
+            result.second = result.first + nextBoundary;
+        if (prevBoundary != -1)
+            result.first += prevBoundary;
+        break; }
+    case LineBoundary:
+        cursor.movePosition(QTextCursor::StartOfLine, QTextCursor::MoveAnchor);
+        result.first = cursor.position();
+        cursor.movePosition(QTextCursor::EndOfLine, QTextCursor::KeepAnchor);
+        result.second = cursor.position();
+        break;
+    case ParagraphBoundary:
+        cursor.movePosition(QTextCursor::StartOfBlock, QTextCursor::MoveAnchor);
+        result.first = cursor.position();
+        cursor.movePosition(QTextCursor::EndOfBlock, QTextCursor::KeepAnchor);
+        result.second = cursor.position();
+        break;
+    case NoBoundary:
+        result.first = 0;
+        result.second = characterCount;
+        break;
+    }
+    return result;
+}
 
 /*!
     \class QAccessibleInterface
@@ -1006,6 +1183,10 @@ QColor QAccessibleInterface::foregroundColor() const
 QColor QAccessibleInterface::backgroundColor() const
 {
     return QColor();
+}
+
+QAccessibleInterface::~QAccessibleInterface()
+{
 }
 
 /*!
@@ -1329,15 +1510,19 @@ QColor QAccessibleInterface::backgroundColor() const
 QAccessibleInterface *QAccessibleEvent::accessibleInterface() const
 {
     QAccessibleInterface *iface = QAccessible::queryAccessibleInterface(m_object);
-    if (!iface) {
-        qWarning() << "Cannot create accessible interface for object: " << m_object;
+    if (!iface || !iface->isValid()) {
+        static bool hasWarned = false;
+        if (!iface && !hasWarned) {
+            qWarning() << "Problem creating accessible interface for: " << m_object << endl
+                       << "Make sure to deploy Qt with accessibility plugins.";
+            hasWarned = true;
+        }
         return 0;
     }
 
     if (m_child >= 0) {
         QAccessibleInterface *child = iface->child(m_child);
         if (child) {
-            delete iface;
             iface = child;
         } else {
             qWarning() << "Cannot creat accessible child interface for object: " << m_object << " index: " << m_child;

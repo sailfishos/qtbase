@@ -157,6 +157,10 @@
 #    define Q_CC_CLANG
 #    define Q_ASSUME_IMPL(expr)  if (expr){} else __builtin_unreachable()
 #    define Q_UNREACHABLE_IMPL() __builtin_unreachable()
+#    if !defined(__has_extension)
+#      /* Compatibility with older Clang versions */
+#      define __has_extension __has_feature
+#    endif
 #  else
 /* Plain GCC */
 #    if (__GNUC__ * 100 + __GNUC_MINOR__) >= 405
@@ -179,6 +183,7 @@
 #  define Q_TYPEOF(expr)    __typeof__(expr)
 #  define Q_DECL_DEPRECATED __attribute__ ((__deprecated__))
 #  define Q_DECL_ALIGN(n)   __attribute__((__aligned__(n)))
+#  define Q_DECL_UNUSED     __attribute__((__unused__))
 #  define Q_LIKELY(expr)    __builtin_expect(!!(expr), true)
 #  define Q_UNLIKELY(expr)  __builtin_expect(!!(expr), false)
 #  define Q_NORETURN        __attribute__((__noreturn__))
@@ -653,7 +658,11 @@
 #      define Q_COMPILER_ALIGNOF
 #      define Q_COMPILER_INHERITING_CONSTRUCTORS
 #      define Q_COMPILER_THREAD_LOCAL
+#      if (__GNUC__ * 100 + __GNUC_MINOR__) > 408 || __GNUC_PATCHLEVEL__ >= 1
+#         define Q_COMPILER_REF_QUALIFIERS
+#      endif
 #    endif
+     /* C++11 features are complete as of GCC 4.8.1 */
 #  endif
 #endif
 
@@ -816,6 +825,9 @@
 #ifndef Q_DECL_HIDDEN
 #  define Q_DECL_HIDDEN
 #endif
+#ifndef Q_DECL_UNUSED
+#  define Q_DECL_UNUSED
+#endif
 #ifndef Q_FUNC_INFO
 #  if defined(Q_OS_SOLARIS) || defined(Q_CC_XLC)
 #    define Q_FUNC_INFO __FILE__ "(line number unavailable)"
@@ -862,6 +874,7 @@
         const bool valueOfExpression = Expr;\
         Q_ASSERT_X(valueOfExpression, "Q_ASSUME()", "Assumption in Q_ASSUME(\"" #Expr "\") was not correct");\
         Q_ASSUME_IMPL(valueOfExpression);\
+        Q_UNUSED(valueOfExpression); /* the value may not be used if Q_ASSERT_X and Q_ASSUME_IMPL are noop */\
     } while (0)
 
 #endif // QCOMPILERDETECTION_H

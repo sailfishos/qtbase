@@ -55,8 +55,6 @@
 
 #include <QtGui/qaccessible.h>
 
-QT_BEGIN_HEADER
-
 QT_BEGIN_NAMESPACE
 
 
@@ -71,11 +69,14 @@ public:
     virtual void initialize();
     virtual void cleanup();
 
+    inline bool isActive() const { return m_active; }
+    inline void setActive(bool active) { m_active = active; }
+
+private:
+    bool m_active;
 };
 
 QT_END_NAMESPACE
-
-QT_END_HEADER
 
 #endif // QT_NO_ACCESSIBILITY
 

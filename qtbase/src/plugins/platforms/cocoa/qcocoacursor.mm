@@ -65,8 +65,9 @@ void QCocoaCursor::changeCursor(QCursor *cursor, QWindow *window)
 {
     Q_UNUSED(window);
 
+    const Qt::CursorShape newShape = cursor ? cursor->shape() : Qt::ArrowCursor;
     // Check for a suitable built-in NSCursor first:
-    switch (cursor->shape()) {
+    switch (newShape) {
     case Qt::ArrowCursor:
         [[NSCursor arrowCursor] set];
         break;
@@ -104,7 +105,7 @@ void QCocoaCursor::changeCursor(QCursor *cursor, QWindow *window)
     default : {
         // No suitable OS cursor exist, use cursors provided
         // by Qt for the rest. Check for a cached cursor:
-        NSCursor *cocoaCursor = m_cursors.value(cursor->shape());
+        NSCursor *cocoaCursor = m_cursors.value(newShape);
         if (cocoaCursor && cursor->shape() == Qt::BitmapCursor) {
             [cocoaCursor release];
             cocoaCursor = 0;
@@ -115,7 +116,7 @@ void QCocoaCursor::changeCursor(QCursor *cursor, QWindow *window)
                 [[NSCursor arrowCursor] set];
                 return;
             }
-            m_cursors.insert(cursor->shape(), cocoaCursor);
+            m_cursors.insert(newShape, cocoaCursor);
         }
 
         [cocoaCursor set];
@@ -198,14 +199,14 @@ NSCursor *QCocoaCursor::createCursorData(QCursor *cursor)
 #endif
     const uchar *cursorData = 0;
     const uchar *cursorMaskData = 0;
-    QPoint hotspot;
+    QPoint hotspot = cursor->hotSpot();
 
     switch (cursor->shape()) {
     case Qt::BitmapCursor: {
         if (cursor->pixmap().isNull())
-            return createCursorFromBitmap(cursor->bitmap(), cursor->mask());
+            return createCursorFromBitmap(cursor->bitmap(), cursor->mask(), hotspot);
         else
-            return createCursorFromPixmap(cursor->pixmap());
+            return createCursorFromPixmap(cursor->pixmap(), hotspot);
         break; }
     case Qt::BlankCursor: {
         QPixmap pixmap = QPixmap(16, 16);
@@ -214,19 +215,19 @@ NSCursor *QCocoaCursor::createCursorData(QCursor *cursor)
         break; }
     case Qt::WaitCursor: {
         QPixmap pixmap = QPixmap(QLatin1String(":/qt-project.org/mac/cursors/images/spincursor.png"));
-        return createCursorFromPixmap(pixmap);
+        return createCursorFromPixmap(pixmap, hotspot);
         break; }
     case Qt::SizeAllCursor: {
         QPixmap pixmap = QPixmap(QLatin1String(":/qt-project.org/mac/cursors/images/pluscursor.png"));
-        return createCursorFromPixmap(pixmap);
+        return createCursorFromPixmap(pixmap, hotspot);
         break; }
     case Qt::BusyCursor: {
         QPixmap pixmap = QPixmap(QLatin1String(":/qt-project.org/mac/cursors/images/waitcursor.png"));
-        return createCursorFromPixmap(pixmap);
+        return createCursorFromPixmap(pixmap, hotspot);
         break; }
     case Qt::ForbiddenCursor: {
         QPixmap pixmap = QPixmap(QLatin1String(":/qt-project.org/mac/cursors/images/forbiddencursor.png"));
-        return createCursorFromPixmap(pixmap);
+        return createCursorFromPixmap(pixmap, hotspot);
         break; }
 #define QT_USE_APPROXIMATE_CURSORS
 #ifdef QT_USE_APPROXIMATE_CURSORS

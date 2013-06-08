@@ -30,8 +30,6 @@
     \title SQL Database Drivers
     \brief How to configure and install Qt SQL drivers for supported databases.
 
-    \ingroup qt-sql
-
     The Qt SQL module uses driver \l{How to Create Qt
     Plugins}{plugins} to communicate with the different database
     APIs. Since Qt's SQL Module API is database-independent, all
@@ -212,7 +210,7 @@
 
     \li Open the DOS prompt, go to \c{C:\MySQL\MySQL51\lib\opt}, and run
        the following commands:
-       \list 
+       \list
        \li \c{reimp -d libmysql.lib}
        \li \c{dlltool -k -d libmysql.def -l libmysql.a}
        \endlist
@@ -227,7 +225,7 @@
 
     \li Open the DOS prompt, go to
         \c{C:\Qt\4.6.2\src\plugins\sqldrivers\mysql} and run the
-        following command: 
+        following command:
 	\list
         \li \c{qmake "INCLUDEPATH+=C:/MySQL/MySQL51/include" "LIBS+=-L. mysql" mysql.pro}
 	\endlist
