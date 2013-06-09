@@ -58,6 +58,7 @@
 #include <private/qguiapplication_p.h>
 #include "qcocoabackingstore.h"
 #include "qcocoaglcontext.h"
+#include "qcocoaintegration.h"
 
 #ifdef QT_COCOA_ENABLE_ACCESSIBILITY_INSPECTOR
 #include <accessibilityinspector.h>
@@ -85,6 +86,8 @@ static QTouchDevice *touchDevice = 0;
         m_buttons = Qt::NoButton;
         m_sendKeyEvent = false;
         m_subscribesForGlobalFrameNotifications = false;
+        m_glContext = 0;
+        m_shouldSetGLContextinDrawRect = false;
         currentCustomDragTypes = 0;
         m_sendUpAsRightButton = false;
 
@@ -150,7 +153,13 @@ static QTouchDevice *touchDevice = 0;
 
 - (void) setQCocoaGLContext:(QCocoaGLContext *)context
 {
-    [context->nsOpenGLContext() setView:self];
+    m_glContext = context;
+    [m_glContext->nsOpenGLContext() setView:self];
+    if (![m_glContext->nsOpenGLContext() view]) {
+        //was unable to set view
+        m_shouldSetGLContextinDrawRect = true;
+    }
+
     if (!m_subscribesForGlobalFrameNotifications) {
         // NSOpenGLContext expects us to repaint (or update) the view when
         // it changes position on screen. Since this happens unnoticed for
@@ -268,6 +277,15 @@ static QTouchDevice *touchDevice = 0;
         m_platformWindow->obscureWindow();
     } else if ([notificationName isEqualToString: @"NSWindowDidOrderOnScreenAndFinishAnimatingNotification"]) {
         m_platformWindow->exposeWindow();
+    } else if (notificationName == NSWindowDidChangeScreenNotification) {
+        if (m_window) {
+            QCocoaIntegration *ci = static_cast<QCocoaIntegration *>(QGuiApplicationPrivate::platformIntegration());
+            NSUInteger screenIndex = [[NSScreen screens] indexOfObject:self.window.screen];
+            if (screenIndex != NSNotFound) {
+                QCocoaScreen *cocoaScreen = ci->screenAtIndex(screenIndex);
+                QWindowSystemInterface::handleWindowScreenChanged(m_window, cocoaScreen->screen());
+            }
+        }
     } else {
 
 #if MAC_OS_X_VERSION_MAX_ALLOWED >= MAC_OS_X_VERSION_10_7
@@ -322,15 +340,20 @@ static QTouchDevice *touchDevice = 0;
     }
 
     const QRect &rect = region->boundingRect();
-    QImage maskImage(rect.size(), QImage::Format_RGB888);
-    maskImage.fill(Qt::white);
-    QPainter p(&maskImage);
-    p.setRenderHint(QPainter::Antialiasing);
+    QImage tmp(rect.size(), QImage::Format_RGB32);
+    tmp.fill(Qt::white);
+    QPainter p(&tmp);
     p.setClipRegion(*region);
-    p.fillRect(rect, QBrush(Qt::black));
+    p.fillRect(rect, Qt::black);
     p.end();
-
-    maskImage = maskImage.convertToFormat(QImage::Format_Indexed8);
+    QImage maskImage = QImage(rect.size(), QImage::Format_Indexed8);
+    for (int y=0; y<rect.height(); ++y) {
+        const uint *src = (const uint *) tmp.constScanLine(y);
+        uchar *dst = maskImage.scanLine(y);
+        for (int x=0; x<rect.width(); ++x) {
+            dst[x] = src[x] & 0xff;
+        }
+    }
     m_maskImage = qt_mac_toCGImage(maskImage, true, &m_maskData);
 }
 
@@ -344,6 +367,11 @@ static QTouchDevice *touchDevice = 0;
 
 - (void) drawRect:(NSRect)dirtyRect
 {
+    if (m_glContext && m_shouldSetGLContextinDrawRect) {
+        [m_glContext->nsOpenGLContext() setView:self];
+        m_shouldSetGLContextinDrawRect = false;
+    }
+
     if (!m_backingStore)
         return;
 
@@ -869,7 +897,6 @@ static QTouchDevice *touchDevice = 0;
     ulong timestamp = [nsevent timestamp] * 1000;
     ulong nativeModifiers = [nsevent modifierFlags];
     Qt::KeyboardModifiers modifiers = [QNSView convertKeyModifiers: nativeModifiers];
-    NSString *charactersIgnoringModifiers = [nsevent charactersIgnoringModifiers];
     NSString *characters = [nsevent characters];
 
     // [from Qt 4 impl] There is no way to get the scan code from carbon. But we cannot
@@ -881,19 +908,11 @@ static QTouchDevice *touchDevice = 0;
     EventRef eventRef = EventRef([nsevent eventRef]);
     GetEventParameter(eventRef, kEventParamKeyCode, typeUInt32, 0, sizeof(nativeVirtualKey), 0, &nativeVirtualKey);
 
-    QChar ch;
-    int keyCode;
-    if ([charactersIgnoringModifiers length] > 0) { // convert the first character into a key code
-        if ((modifiers & Qt::ControlModifier) && ([characters length] != 0)) {
-            ch = QChar([characters characterAtIndex:0]);
-        } else {
-            ch = QChar([charactersIgnoringModifiers characterAtIndex:0]);
-        }
+    QChar ch = QChar::ReplacementCharacter;
+    int keyCode = Qt::Key_unknown;
+    if ([characters length] != 0) {
+        ch = QChar([characters characterAtIndex:0]);
         keyCode = [self convertKeyCode:ch];
-    } else {
-        // might be a dead key
-        ch = QChar::ReplacementCharacter;
-        keyCode = Qt::Key_unknown;
     }
 
     // we will send a key event unless the input method sets m_sendKeyEvent to false
@@ -903,7 +922,7 @@ static QTouchDevice *touchDevice = 0;
     if (eventType == QEvent::KeyPress) {
         // ignore text for the U+F700-U+F8FF range. This is used by Cocoa when
         // delivering function keys (e.g. arrow keys, backspace, F1-F35, etc.)
-        if ([charactersIgnoringModifiers length] == 1 && (ch.unicode() < 0xf700 || ch.unicode() > 0xf8ff))
+        if (ch.unicode() < 0xf700 || ch.unicode() > 0xf8ff)
             text = QCFString::toQString(characters);
 
         if (m_composingText.isEmpty())
@@ -1316,14 +1335,17 @@ static QTouchDevice *touchDevice = 0;
         QCocoaDropData mimeData([sender draggingPasteboard]);
         response = QWindowSystemInterface::handleDrop(m_window, &mimeData, qt_windowPoint, qtAllowed);
     }
+    if (response.isAccepted()) {
+        QCocoaDrag* nativeDrag = static_cast<QCocoaDrag *>(QGuiApplicationPrivate::platformIntegration()->drag());
+        nativeDrag->setAcceptedAction(response.acceptedAction());
+    }
     return response.isAccepted();
 }
 
 - (void)draggedImage:(NSImage*) img endedAt:(NSPoint) point operation:(NSDragOperation) operation
 {
     Q_UNUSED(img);
-    QCocoaDrag* nativeDrag = static_cast<QCocoaDrag *>(QGuiApplicationPrivate::platformIntegration()->drag());
-    nativeDrag->setAcceptedAction(qt_mac_mapNSDragOperation(operation));
+    Q_UNUSED(operation);
 
 // keep our state, and QGuiApplication state (buttons member) in-sync,
 // or future mouse events will be processed incorrectly

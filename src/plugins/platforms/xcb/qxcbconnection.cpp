@@ -1397,6 +1397,7 @@ static const char * xcb_atomnames = {
 #if XCB_USE_MAEMO_WINDOW_PROPERTIES
     "_MEEGOTOUCH_ORIENTATION_ANGLE\0"
 #endif
+    "_XSETTINGS_SETTINGS"
 };
 
 xcb_atom_t QXcbConnection::atom(QXcbAtom::Atom atom)
@@ -1718,5 +1719,25 @@ bool QXcbConnection::xi2PrepareXIGenericDeviceEvent(xcb_ge_event_t *event, int o
     return false;
 }
 #endif // defined(XCB_USE_XINPUT2) || defined(XCB_USE_XINPUT2_MAEMO)
+
+QXcbConnectionGrabber::QXcbConnectionGrabber(QXcbConnection *connection)
+    :m_connection(connection)
+{
+    connection->grabServer();
+}
+
+QXcbConnectionGrabber::~QXcbConnectionGrabber()
+{
+    if (m_connection)
+        m_connection->ungrabServer();
+}
+
+void QXcbConnectionGrabber::release()
+{
+    if (m_connection) {
+        m_connection->ungrabServer();
+        m_connection = 0;
+    }
+}
 
 QT_END_NAMESPACE

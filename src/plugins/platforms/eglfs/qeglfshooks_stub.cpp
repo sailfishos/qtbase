@@ -40,6 +40,7 @@
 ****************************************************************************/
 
 #include "qeglfshooks.h"
+#include "qeglfscursor.h"
 
 #include <fcntl.h>
 #include <unistd.h>
@@ -98,6 +99,7 @@ QSizeF QEglFSHooks::physicalScreenSize() const
         struct fb_var_screeninfo vinfo;
         int w = -1;
         int h = -1;
+        QSize screenResolution;
 
         if (framebuffer != -1) {
             if (ioctl(framebuffer, FBIOGET_VSCREENINFO, &vinfo) == -1) {
@@ -105,12 +107,15 @@ QSizeF QEglFSHooks::physicalScreenSize() const
             } else {
                 w = vinfo.width;
                 h = vinfo.height;
+                screenResolution = QSize(vinfo.xres, vinfo.yres);
             }
+        } else {
+            screenResolution = screenSize();
         }
 
         const int defaultPhysicalDpi = 100;
-        size.setWidth(w <= 0 ? vinfo.xres * Q_MM_PER_INCH / defaultPhysicalDpi : qreal(w));
-        size.setHeight(h <= 0 ? vinfo.yres * Q_MM_PER_INCH / defaultPhysicalDpi : qreal(h));
+        size.setWidth(w <= 0 ? screenResolution.width() * Q_MM_PER_INCH / defaultPhysicalDpi : qreal(w));
+        size.setHeight(h <= 0 ? screenResolution.height() * Q_MM_PER_INCH / defaultPhysicalDpi : qreal(h));
 
         if (w <= 0 || h <= 0) {
             qWarning("EGLFS: Unable to query physical screen size, defaulting to %d dpi.\n"
@@ -249,8 +254,7 @@ bool QEglFSHooks::hasCapability(QPlatformIntegration::Capability cap) const
 
 QEglFSCursor *QEglFSHooks::createCursor(QEglFSScreen *screen) const
 {
-    Q_UNUSED(screen);
-    return 0;
+    return new QEglFSCursor(screen);
 }
 
 void QEglFSHooks::waitForVSync() const

@@ -293,6 +293,7 @@ bool QPainterPrivate::attachPainterPrivate(QPainter *q, QPaintDevice *pdev)
     // Update matrix.
     if (q->d_ptr->state->WxF) {
         q->d_ptr->state->redirectionMatrix = q->d_ptr->state->matrix;
+        q->d_ptr->state->redirectionMatrix *= q->d_ptr->hidpiScaleTransform().inverted();
         q->d_ptr->state->redirectionMatrix.translate(-offset.x(), -offset.y());
         q->d_ptr->state->worldMatrix = QTransform();
         q->d_ptr->state->WxF = false;
@@ -5727,16 +5728,19 @@ void QPainter::drawStaticText(const QPointF &topLeftPosition, const QStaticText 
         staticText_d->needsRelayout = true;
     }
 
-    // If we don't have an extended paint engine, or if the painter is projected,
-    // we go through standard code path
-    if (d->extended == 0 || !d->state->matrix.isAffine()) {
-        staticText_d->paintText(topLeftPosition, this);
-        return;
-    }
-
     QFontEngine *fe = staticText_d->font.d->engineForScript(QChar::Script_Common);
     if (fe->type() == QFontEngine::Multi)
         fe = static_cast<QFontEngineMulti *>(fe)->engine(0);
+
+    // If we don't have an extended paint engine, if the painter is projected,
+    // or if the font engine does not support the matrix, we go through standard
+    // code path
+    if (d->extended == 0
+            || !d->state->matrix.isAffine()
+            || !fe->supportsTransformation(d->state->matrix)) {
+        staticText_d->paintText(topLeftPosition, this);
+        return;
+    }
 
     bool engineRequiresPretransform = d->extended->requiresPretransformedGlyphPositions(fe, d->state->matrix);
     if (staticText_d->untransformedCoordinates && engineRequiresPretransform) {

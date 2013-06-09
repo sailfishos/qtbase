@@ -3,7 +3,7 @@
 ** Copyright (C) 2013 Digia Plc and/or its subsidiary(-ies).
 ** Contact: http://www.qt-project.org/legal
 **
-** This file is part of the QtGui module of the Qt Toolkit.
+** This file is part of the plugins of the Qt Toolkit.
 **
 ** $QT_BEGIN_LICENSE:LGPL$
 ** Commercial License Usage
@@ -39,84 +39,33 @@
 **
 ****************************************************************************/
 
-#ifndef QSIMPLEDRAG_H
-#define QSIMPLEDRAG_H
+#ifndef QXCBXSETTINGS_H
+#define QXCBXSETTINGS_H
 
-#include <qpa/qplatformdrag.h>
-
-#include <QtCore/QObject>
+#include "qxcbscreen.h"
 
 QT_BEGIN_NAMESPACE
 
-#ifndef QT_NO_DRAGANDDROP
+class QXcbXSettingsPrivate;
 
-class QMouseEvent;
-class QWindow;
-class QEventLoop;
-class QDropData;
-class QShapedPixmapWindow;
-
-class QBasicDrag : public QPlatformDrag, public QObject
+class QXcbXSettings : public QXcbWindowEventListener
 {
+    Q_DECLARE_PRIVATE(QXcbXSettings)
 public:
-    virtual ~QBasicDrag();
+    QXcbXSettings(QXcbScreen *screen);
 
-    virtual Qt::DropAction drag(QDrag *drag);
+    QVariant setting(const QByteArray &property) const;
 
-    virtual bool eventFilter(QObject *o, QEvent *e);
+    typedef void (*PropertyChangeFunc)(QXcbScreen *screen, const QByteArray &name, const QVariant &property, void *handle);
+    void registerCallbackForProperty(const QByteArray &property, PropertyChangeFunc func, void *handle);
+    void removeCallbackForHandle(const QByteArray &property, void *handle);
+    void removeCallbackForHandle(void *handle);
 
-protected:
-    QBasicDrag();
-
-    virtual void startDrag();
-    virtual void cancel();
-    virtual void move(const QMouseEvent *me);
-    virtual void drop(const QMouseEvent *me);
-    virtual void endDrag();
-
-    QShapedPixmapWindow *shapedPixmapWindow() const { return m_drag_icon_window; }
-    void updateCursor(Qt::DropAction action);
-
-    bool canDrop() const { return m_can_drop; }
-    void setCanDrop(bool c) { m_can_drop = c; }
-
-    Qt::DropAction executedDropAction() const { return m_executed_drop_action; }
-    void  setExecutedDropAction(Qt::DropAction da) { m_executed_drop_action = da; }
-
-    QDrag *drag() const { return m_drag; }
-
+    void handlePropertyNotifyEvent(const xcb_property_notify_event_t *event) Q_DECL_OVERRIDE;
 private:
-    void enableEventFilter();
-    void disableEventFilter();
-    void resetDndState(bool deleteSource);
-    void exitDndEventLoop();
-
-    bool m_restoreCursor;
-    QEventLoop *m_eventLoop;
-    Qt::DropAction m_executed_drop_action;
-    bool m_can_drop;
-    QDrag *m_drag;
-    QShapedPixmapWindow *m_drag_icon_window;
+    QXcbXSettingsPrivate *d_ptr;
 };
-
-class QSimpleDrag : public QBasicDrag
-{
-public:
-    QSimpleDrag();
-    virtual QMimeData *platformDropData();
-
-protected:
-    virtual void startDrag();
-    virtual void cancel();
-    virtual void move(const QMouseEvent *me);
-    virtual void drop(const QMouseEvent *me);
-
-private:
-    QWindow *m_current_window;
-};
-
-#endif // QT_NO_DRAGANDDROP
 
 QT_END_NAMESPACE
 
-#endif
+#endif // QXCBXSETTINGS_H

@@ -79,6 +79,9 @@
 
 QT_USE_NAMESPACE
 
+template <bool b> struct QTBUG_31218 {};
+struct QTBUG_31218_Derived : QTBUG_31218<-1<0> {};
+
 struct MyStruct {};
 struct MyStruct2 {};
 
@@ -322,6 +325,8 @@ public slots:
 signals:
     void signalWithArray(const double[3]);
     void signalWithNamedArray(const double namedArray[3]);
+    void signalWithIterator(QList<QUrl>::iterator);
+    void signalWithListPointer(QList<QUrl>*); //QTBUG-31002
 
 private slots:
     // for tst_Moc::preprocessorConditionals
