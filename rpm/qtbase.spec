@@ -546,6 +546,8 @@ This package contains the Qt5 development defaults package
 %setup -q -n qt5-%{version}/qtbase
 
 %build
+touch .git
+
 MAKEFLAGS=%{?_smp_mflags} \
 ./configure --disable-static \
     -confirm-license \
