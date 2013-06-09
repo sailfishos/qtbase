@@ -433,6 +433,9 @@ QPlatformWindow *QWindowsIntegration::createPlatformWindow(QWindow *window) cons
         return 0;
     if (requested.flags != obtained.flags)
         window->setFlags(obtained.flags);
+    // Trigger geometry change signals of QWindow.
+    if ((obtained.flags & Qt::Desktop) != Qt::Desktop && requested.geometry != obtained.geometry)
+        QWindowSystemInterface::handleGeometryChange(window, obtained.geometry);
     return new QWindowsWindow(window, obtained);
 }
 
@@ -552,11 +555,15 @@ QVariant QWindowsIntegration::styleHint(QPlatformIntegration::StyleHint hint) co
         break;
     case QPlatformIntegration::UseRtlExtensions:
         return QVariant(d->m_context.useRTLExtensions());
+#ifdef Q_OS_WINCE
     case QPlatformIntegration::SynthesizeMouseFromTouchEvents:
         // We do not want Qt to synthesize mouse events as Windows also does that.
         // Alternatively, Windows-generated touch mouse events can be identified and
         // ignored by checking GetMessageExtraInfo() for MI_WP_SIGNATURE (0xFF515700).
        return false;
+#endif // Q_OS_WINCE
+    default:
+        break;
     }
     return QPlatformIntegration::styleHint(hint);
 }

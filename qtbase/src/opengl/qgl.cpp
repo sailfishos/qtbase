@@ -1579,10 +1579,7 @@ QGLContextPrivate::QGLContextPrivate(QGLContext *context)
 {
     group = new QGLContextGroup(context);
 
-    if (qApp) {
-        texture_destroyer = new QGLTextureDestroyer;
-        texture_destroyer->moveToThread(qApp->thread());
-    }
+    texture_destroyer = new QGLTextureDestroyer;
 }
 
 QGLContextPrivate::~QGLContextPrivate()
@@ -4090,11 +4087,12 @@ QImage QGLWidget::grabFrameBuffer(bool withAlpha)
 {
     makeCurrent();
     QImage res;
-    int w = width();
-    int h = height();
+    qreal pixelRatio = devicePixelRatio();
+    int w = pixelRatio * width();
+    int h = pixelRatio * height();
     if (format().rgba())
         res = qt_gl_read_frame_buffer(QSize(w, h), format().alpha(), withAlpha);
-
+    res.setDevicePixelRatio(pixelRatio);
     return res;
 }
 

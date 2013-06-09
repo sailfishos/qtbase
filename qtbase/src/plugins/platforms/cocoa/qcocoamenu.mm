@@ -96,6 +96,16 @@ static inline QT_MANGLE_NAMESPACE(QCocoaMenuLoader) *getMenuLoader()
     return self;
 }
 
+
+- (void)menu:(NSMenu*)menu willHighlightItem:(NSMenuItem*)item
+{
+    Q_UNUSED(menu);
+    if (item && [item tag]) {
+        QCocoaMenuItem *cocoaItem = reinterpret_cast<QCocoaMenuItem *>([item tag]);
+        cocoaItem->hovered();
+    }
+}
+
 - (void) menuWillOpen:(NSMenu*)m
 {
     Q_UNUSED(m);
@@ -167,7 +177,7 @@ static inline QT_MANGLE_NAMESPACE(QCocoaMenuLoader) *getMenuLoader()
             }
 
             QKeyEvent accel_ev(QEvent::ShortcutOverride, (keyCode & (~Qt::KeyboardModifierMask)),
-                               Qt::KeyboardModifiers(keyCode & Qt::KeyboardModifierMask));
+                               Qt::KeyboardModifiers(modifiers & Qt::KeyboardModifierMask));
             accel_ev.ignore();
             QCoreApplication::sendEvent(object, &accel_ev);
             if (accel_ev.isAccepted()) {
@@ -205,7 +215,8 @@ QT_BEGIN_NAMESPACE
 
 QCocoaMenu::QCocoaMenu() :
     m_enabled(true),
-    m_tag(0)
+    m_tag(0),
+    m_menuBar(0)
 {
     m_delegate = [[QT_MANGLE_NAMESPACE(QCocoaMenuDelegate) alloc] initWithMenu:this];
     m_nativeItem = [[NSMenuItem alloc] initWithTitle:@"" action:nil keyEquivalent:@""];
@@ -522,6 +533,16 @@ void QCocoaMenu::syncModalState(bool modal)
 
         item->syncModalState(modal);
     }
+}
+
+void QCocoaMenu::setMenuBar(QCocoaMenuBar *menuBar)
+{
+    m_menuBar = menuBar;
+}
+
+QCocoaMenuBar *QCocoaMenu::menuBar() const
+{
+    return m_menuBar;
 }
 
 QT_END_NAMESPACE

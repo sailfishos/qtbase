@@ -1755,12 +1755,12 @@ void HtmlGenerator::generateHeader(const QString& title,
     if (shortVersion.count(QChar('.')) == 2)
         shortVersion.truncate(shortVersion.lastIndexOf(QChar('.')));
     if (!project.isEmpty())
-        shortVersion = project + QLatin1Char(' ') + shortVersion + QLatin1String(": ");
+        shortVersion = QLatin1String(" | ") + project + QLatin1Char(' ') + shortVersion;
     else
-        shortVersion = QLatin1String("Qt ") + shortVersion + QLatin1String(": ");
+        shortVersion = QLatin1String(" | ") + QLatin1String("Qt ") + shortVersion ;
 
     // Generating page title
-    out() << "  <title>" << shortVersion << protectEnc(title) << "</title>\n";
+    out() << "  <title>" << protectEnc(title) << shortVersion << "</title>\n";
 
     // Include style sheet and script links.
     out() << headerStyles;
@@ -2287,10 +2287,19 @@ void HtmlGenerator::generateAnnotatedList(const Node *relative,
                 generateText(brief, node, marker);
                 out() << "</p></td>";
             }
+            else if (!node->reconstitutedBrief().isEmpty()) {
+                out() << "<td class=\"tblDescr\"><p>";
+                out() << node->reconstitutedBrief();
+                out() << "</p></td>";
+            }
         }
         else {
             out() << "<td class=\"tblDescr\"><p>";
-            out() << protectEnc(node->doc().briefText().toString());
+            if (!node->reconstitutedBrief().isEmpty()) {
+                out() << node->reconstitutedBrief();
+            }
+            else
+                out() << protectEnc(node->doc().briefText().toString());
             out() << "</p></td>";
         }
         out() << "</tr>\n";
@@ -2635,7 +2644,7 @@ void HtmlGenerator::generateOverviewList(const Node *relative)
                     // If we encounter a group definition page, we add all
                     // the pages in that group to the list for that group.
                     foreach (Node *member, docNode->members()) {
-                        if (member->type() != Node::Document)
+                        if (member->isInternal() || member->type() != Node::Document)
                             continue;
                         DocNode *page = static_cast<DocNode *>(member);
                         if (page) {
@@ -2652,7 +2661,7 @@ void HtmlGenerator::generateOverviewList(const Node *relative)
                     // If we encounter a page that belongs to a group then
                     // we add that page to the list for that group.
                     const DocNode* gn = qdb_->getGroup(group);
-                    if (gn)
+                    if (gn && !docNode->isInternal())
                         docNodeMap[gn].insert(sortKey, docNode);
                 }
             }

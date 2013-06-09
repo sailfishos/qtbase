@@ -150,6 +150,9 @@
 
 - (void)updateTouchList:(NSSet *)touches withState:(Qt::TouchPointState)state
 {
+    QPlatformScreen *screen = QGuiApplication::primaryScreen()->handle();
+    QRect applicationRect = fromPortraitToPrimary(fromCGRect(self.window.screen.applicationFrame), screen);
+
     foreach (UITouch *uiTouch, m_activeTouches.keys()) {
         QWindowSystemInterface::TouchPoint &touchPoint = m_activeTouches[uiTouch];
         if (![touches containsObject:uiTouch]) {
@@ -158,14 +161,14 @@
             touchPoint.state = state;
             touchPoint.pressure = (state == Qt::TouchPointReleased) ? 0.0 : 1.0;
 
-            // Set position
-            QRect viewGeometry = fromCGRect(self.frame);
-            QPoint touchViewLocation = fromCGPoint([uiTouch locationInView:self]);
-            QPoint touchScreenLocation = touchViewLocation + viewGeometry.topLeft();
-            touchPoint.area = QRectF(touchScreenLocation , QSize(0, 0));
-
-            CGSize fullscreenSize = self.window.rootViewController.view.bounds.size;
-            touchPoint.normalPosition = QPointF(touchScreenLocation.x() / fullscreenSize.width, touchScreenLocation.y() / fullscreenSize.height);
+            // Find the touch position relative to the window. Then calculate the screen
+            // position by subtracting the position of the applicationRect (since UIWindow
+            // does not take that into account when reporting its own frame):
+            QRect touchInWindow = QRect(fromCGPoint([uiTouch locationInView:nil]), QSize(0, 0));
+            QRect touchInScreen = fromPortraitToPrimary(touchInWindow, screen);
+            QPoint touchPos = touchInScreen.topLeft() - applicationRect.topLeft();
+            touchPoint.area = QRectF(touchPos, QSize(0, 0));
+            touchPoint.normalPosition = QPointF(touchPos.x() / applicationRect.width(), touchPos.y() / applicationRect.height());
         }
     }
 }
@@ -407,7 +410,7 @@ void QIOSWindow::requestActivateWindow()
     // Note that several windows can be active at the same time if they exist in the same
     // hierarchy (transient children). But only one window can be QGuiApplication::focusWindow().
     // Dispite the name, 'requestActivateWindow' means raise and transfer focus to the window:
-    if (blockedByModal())
+    if (!window()->isTopLevel() || blockedByModal())
         return;
 
     raise();

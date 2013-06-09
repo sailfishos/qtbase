@@ -60,7 +60,8 @@ static const int MAGIC_ZORDER_FOR_NO_NAV = 10;
 QQnxRootWindow::QQnxRootWindow(const QQnxScreen *screen)
     : m_screen(screen),
       m_window(0),
-      m_windowGroupName()
+      m_windowGroupName(),
+      m_translucent(false)
 {
     qRootWindowDebug() << Q_FUNC_INFO;
     // Create one top-level QNX window to act as a container for child windows
@@ -68,17 +69,15 @@ QQnxRootWindow::QQnxRootWindow(const QQnxScreen *screen)
     errno = 0;
     int result = screen_create_window(&m_window, m_screen->nativeContext());
     int val[2];
-    if (result != 0) {
+    if (result != 0)
         qFatal("QQnxRootWindow: failed to create window, errno=%d", errno);
-    }
 
     // Move window to proper display
     errno = 0;
     screen_display_t display = m_screen->nativeDisplay();
     result = screen_set_window_property_pv(m_window, SCREEN_PROPERTY_DISPLAY, (void **)&display);
-    if (result != 0) {
+    if (result != 0)
         qFatal("QQnxRootWindow: failed to set window display, errno=%d", errno);
-    }
 
     // Make sure window is above navigator but below keyboard if running as root
     // since navigator won't automatically set our z-order in this case
@@ -86,29 +85,109 @@ QQnxRootWindow::QQnxRootWindow(const QQnxScreen *screen)
         errno = 0;
         val[0] = MAGIC_ZORDER_FOR_NO_NAV;
         result = screen_set_window_property_iv(m_window, SCREEN_PROPERTY_ZORDER, val);
-        if (result != 0) {
+        if (result != 0)
             qFatal("QQnxRootWindow: failed to set window z-order, errno=%d", errno);
-        }
     }
 
     // Window won't be visible unless it has some buffers so make one dummy buffer that is 1x1
     errno = 0;
     val[0] = SCREEN_USAGE_NATIVE;
     result = screen_set_window_property_iv(m_window, SCREEN_PROPERTY_USAGE, val);
-    if (result != 0) {
+    if (result != 0)
         qFatal("QQnxRootWindow: failed to set window buffer usage, errno=%d", errno);
-    }
 
     errno = 0;
     val[0] = m_screen->nativeFormat();
     result = screen_set_window_property_iv(m_window, SCREEN_PROPERTY_FORMAT, val);
-    if (result != 0) {
+    if (result != 0)
         qFatal("QQnxRootWindow: failed to set window pixel format, errno=%d", errno);
-    }
 
     errno = 0;
     val[0] = 1;
     val[1] = 1;
+    result = screen_set_window_property_iv(m_window, SCREEN_PROPERTY_BUFFER_SIZE, val);
+    if (result != 0)
+        qFatal("QQnxRootWindow: failed to set window buffer size, errno=%d", errno);
+
+    errno = 0;
+    result = screen_create_window_buffers(m_window, 1);
+    if (result != 0)
+        qFatal("QQNX: failed to create window buffer, errno=%d", errno);
+
+    // Window is always the size of the display
+    errno = 0;
+    QRect geometry = m_screen->geometry();
+    val[0] = geometry.width();
+    val[1] = geometry.height();
+    result = screen_set_window_property_iv(m_window, SCREEN_PROPERTY_SIZE, val);
+    if (result != 0)
+        qFatal("QQnxRootWindow: failed to set window size, errno=%d", errno);
+
+    // Fill the window with solid black. Note that the LSB of the pixel value
+    // 0x00000000 just happens to be 0x00, so if and when this root window's
+    // alpha blending mode is changed from None to Source-Over, it will then
+    // be interpreted as transparent.
+    errno = 0;
+    val[0] = 0;
+    result = screen_set_window_property_iv(m_window, SCREEN_PROPERTY_COLOR, val);
+    if (result != 0)
+        qFatal("QQnxRootWindow: failed to set window colour, errno=%d", errno);
+
+    // Make the window opaque
+    errno = 0;
+    val[0] = SCREEN_TRANSPARENCY_NONE;
+    result = screen_set_window_property_iv(m_window, SCREEN_PROPERTY_TRANSPARENCY, val);
+    if (result != 0)
+        qFatal("QQnxRootWindow: failed to set window transparency, errno=%d", errno);
+
+    // Set the swap interval to 1
+    errno = 0;
+    val[0] = 1;
+    result = screen_set_window_property_iv(m_window, SCREEN_PROPERTY_SWAP_INTERVAL, val);
+    if (result != 0)
+        qFatal("QQnxRootWindow: failed to set window swap interval, errno=%d", errno);
+
+    // Set viewport size equal to window size but move outside buffer so the fill colour is used exclusively
+    errno = 0;
+    val[0] = geometry.width();
+    val[1] = geometry.height();
+    result = screen_set_window_property_iv(m_window, SCREEN_PROPERTY_SOURCE_SIZE, val);
+    if (result != 0)
+        qFatal("QQnxRootWindow: failed to set window source size, errno=%d", errno);
+
+    errno = 0;
+    val[0] = 0;
+    val[1] = 0;
+    result = screen_set_window_property_iv(m_window, SCREEN_PROPERTY_SOURCE_POSITION, val);
+    if (result != 0)
+        qFatal("QQnxRootWindow: failed to set window source position, errno=%d", errno);
+
+    createWindowGroup();
+
+    // Don't post yet. This will be lazily done from QQnxScreen upon first posting of
+    // a child window. Doing it now pre-emptively would create a flicker if one of
+    // the QWindow's about to be created sets its Qt::WA_TranslucentBackground flag
+    // and immediately triggers the buffer re-creation in makeTranslucent().
+}
+
+void QQnxRootWindow::makeTranslucent()
+{
+    if (m_translucent)
+        return;
+
+    int result;
+
+    errno = 0;
+    result = screen_destroy_window_buffers(m_window);
+    if (result != 0) {
+        qFatal("QQnxRootWindow: failed to destroy window buffer, errno=%d", errno);
+    }
+
+    QRect geometry = m_screen->geometry();
+    errno = 0;
+    int val[2];
+    val[0] = geometry.width();
+    val[1] = geometry.height();
     result = screen_set_window_property_iv(m_window, SCREEN_PROPERTY_BUFFER_SIZE, val);
     if (result != 0) {
         qFatal("QQnxRootWindow: failed to set window buffer size, errno=%d", errno);
@@ -120,58 +199,19 @@ QQnxRootWindow::QQnxRootWindow(const QQnxScreen *screen)
         qFatal("QQNX: failed to create window buffer, errno=%d", errno);
     }
 
-    // Window is always the size of the display
+    // Install an alpha channel on the root window.
+    //
+    // This is necessary in order to avoid interfering with any particular
+    // toplevel widget's QQnxWindow window instance from showing transparent
+    // if it desires.
     errno = 0;
-    QRect geometry = m_screen->geometry();
-    val[0] = geometry.width();
-    val[1] = geometry.height();
-    result = screen_set_window_property_iv(m_window, SCREEN_PROPERTY_SIZE, val);
-    if (result != 0) {
-        qFatal("QQnxRootWindow: failed to set window size, errno=%d", errno);
-    }
-
-    // Fill the window with solid black
-    errno = 0;
-    val[0] = 0;
-    result = screen_set_window_property_iv(m_window, SCREEN_PROPERTY_COLOR, val);
-    if (result != 0) {
-        qFatal("QQnxRootWindow: failed to set window colour, errno=%d", errno);
-    }
-
-    // Make the window opaque
-    errno = 0;
-    val[0] = SCREEN_TRANSPARENCY_NONE;
+    val[0] = SCREEN_TRANSPARENCY_SOURCE_OVER;
     result = screen_set_window_property_iv(m_window, SCREEN_PROPERTY_TRANSPARENCY, val);
     if (result != 0) {
         qFatal("QQnxRootWindow: failed to set window transparency, errno=%d", errno);
     }
 
-    // Set the swap interval to 1
-    errno = 0;
-    val[0] = 1;
-    result = screen_set_window_property_iv(m_window, SCREEN_PROPERTY_SWAP_INTERVAL, val);
-    if (result != 0) {
-        qFatal("QQnxRootWindow: failed to set window swap interval, errno=%d", errno);
-    }
-
-    // Set viewport size equal to window size but move outside buffer so the fill colour is used exclusively
-    errno = 0;
-    val[0] = geometry.width();
-    val[1] = geometry.height();
-    result = screen_set_window_property_iv(m_window, SCREEN_PROPERTY_SOURCE_SIZE, val);
-    if (result != 0) {
-        qFatal("QQnxRootWindow: failed to set window source size, errno=%d", errno);
-    }
-
-    errno = 0;
-    val[0] = 1;
-    val[1] = 0;
-    result = screen_set_window_property_iv(m_window, SCREEN_PROPERTY_SOURCE_POSITION, val);
-    if (result != 0) {
-        qFatal("QQnxRootWindow: failed to set window source position, errno=%d", errno);
-    }
-
-    createWindowGroup();
+    m_translucent = true;
     post();
 }
 
@@ -187,16 +227,14 @@ void QQnxRootWindow::post() const
     errno = 0;
     screen_buffer_t buffer;
     int result = screen_get_window_property_pv(m_window, SCREEN_PROPERTY_RENDER_BUFFERS, (void **)&buffer);
-    if (result != 0) {
+    if (result != 0)
         qFatal("QQnxRootWindow: failed to query window buffer, errno=%d", errno);
-    }
 
     errno = 0;
     int dirtyRect[] = {0, 0, 1, 1};
     result = screen_post_window(m_window, buffer, 1, dirtyRect, 0);
-    if (result != 0) {
+    if (result != 0)
         qFatal("QQNX: failed to post window buffer, errno=%d", errno);
-    }
 }
 
 void QQnxRootWindow::flush() const
@@ -205,9 +243,8 @@ void QQnxRootWindow::flush() const
     // Force immediate display update
     errno = 0;
     int result = screen_flush_context(m_screen->nativeContext(), 0);
-    if (result != 0) {
+    if (result != 0)
         qFatal("QQnxRootWindow: failed to flush context, errno=%d", errno);
-    }
 }
 
 void QQnxRootWindow::setRotation(int rotation)
@@ -215,9 +252,8 @@ void QQnxRootWindow::setRotation(int rotation)
     qRootWindowDebug() << Q_FUNC_INFO << "angle =" << rotation;
     errno = 0;
     int result = screen_set_window_property_iv(m_window, SCREEN_PROPERTY_ROTATION, &rotation);
-    if (result != 0) {
+    if (result != 0)
         qFatal("QQnxRootWindow: failed to set window rotation, errno=%d", errno);
-    }
 }
 
 void QQnxRootWindow::resize(const QSize &size)
@@ -225,15 +261,13 @@ void QQnxRootWindow::resize(const QSize &size)
     errno = 0;
     int val[] = {size.width(), size.height()};
     int result = screen_set_window_property_iv(m_window, SCREEN_PROPERTY_SIZE, val);
-    if (result != 0) {
+    if (result != 0)
         qFatal("QQnxRootWindow: failed to set window size, errno=%d", errno);
-    }
 
     errno = 0;
     result = screen_set_window_property_iv(m_window, SCREEN_PROPERTY_SOURCE_SIZE, val);
-    if (result != 0) {
+    if (result != 0)
         qFatal("QQnxRootWindow: failed to set window source size, errno=%d", errno);
-    }
 
     // NOTE: display will update when child windows relayout and repaint
 }
@@ -246,7 +280,6 @@ void QQnxRootWindow::createWindowGroup()
     // Create window group so child windows can be parented by container window
     errno = 0;
     int result = screen_create_window_group(m_window, m_windowGroupName.constData());
-    if (result != 0) {
+    if (result != 0)
         qFatal("QQnxRootWindow: failed to create app window group, errno=%d", errno);
-    }
 }

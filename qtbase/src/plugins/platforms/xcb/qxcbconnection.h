@@ -269,6 +269,7 @@ namespace QXcbAtom {
 #if XCB_USE_MAEMO_WINDOW_PROPERTIES
         MeegoTouchOrientationAngle,
 #endif
+        _XSETTINGS_SETTINGS,
 
         NPredefinedAtoms,
 
@@ -584,6 +585,15 @@ xcb_generic_event_t *QXcbConnection::checkEvent(T &checker)
     return 0;
 }
 
+class QXcbConnectionGrabber
+{
+public:
+    QXcbConnectionGrabber(QXcbConnection *connection);
+    ~QXcbConnectionGrabber();
+    void release();
+private:
+    QXcbConnection *m_connection;
+};
 
 #ifdef Q_XCB_DEBUG
 template <typename cookie_t>
