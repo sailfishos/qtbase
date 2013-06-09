@@ -686,7 +686,7 @@ ln -s %{_sysconfdir}/xdg/qtchooser/5.conf %{buildroot}%{_sysconfdir}/xdg/qtchoos
 %defattr(-,root,root,-)
 %{_libdir}/qt5/bin/moc
 %{_libdir}/qt5/bin/rcc
-%{_libdir}/qt5/bin/syncqt
+%{_libdir}/qt5/bin/syncqt.pl
 %{_libdir}/qt5/bin/uic
 %{_libdir}/qt5/bin/qdoc
 %{_docdir}/qt5/*
