@@ -71,6 +71,7 @@ QEvdevMouseHandler *QEvdevMouseHandler::create(const QString &device, const QStr
     bool compression = true;
     int jitterLimit = 0;
     int grab = 0;
+    float scale = 1;
 
     QStringList args = specification.split(QLatin1Char(':'));
     foreach (const QString &arg, args) {
@@ -80,22 +81,24 @@ QEvdevMouseHandler *QEvdevMouseHandler::create(const QString &device, const QStr
             jitterLimit = arg.mid(9).toInt();
         else if (arg.startsWith(QLatin1String("grab=")))
             grab = arg.mid(5).toInt();
+        else if (arg.startsWith(QLatin1String("scale=")))
+            scale = arg.mid(6).toFloat();
     }
 
     int fd;
     fd = qt_safe_open(device.toLocal8Bit().constData(), O_RDONLY | O_NDELAY, 0);
     if (fd >= 0) {
         ::ioctl(fd, EVIOCGRAB, grab);
-        return new QEvdevMouseHandler(device, fd, compression, jitterLimit);
+        return new QEvdevMouseHandler(device, fd, compression, jitterLimit, scale);
     } else {
         qWarning("Cannot open mouse input device '%s': %s", qPrintable(device), strerror(errno));
         return 0;
     }
 }
 
-QEvdevMouseHandler::QEvdevMouseHandler(const QString &device, int fd, bool compression, int jitterLimit)
+QEvdevMouseHandler::QEvdevMouseHandler(const QString &device, int fd, bool compression, int jitterLimit, float scale)
     : m_device(device), m_fd(fd), m_notify(0), m_x(0), m_y(0), m_prevx(0), m_prevy(0),
-      m_compression(compression), m_buttons(0), m_prevInvalid(true)
+      m_compression(compression), m_buttons(0), m_prevInvalid(true), m_scale(scale)
 {
     setObjectName(QLatin1String("Evdev Mouse Handler"));
 
@@ -113,6 +116,11 @@ QEvdevMouseHandler::~QEvdevMouseHandler()
         qt_safe_close(m_fd);
 }
 
+Qt::MouseButtons QEvdevMouseHandler::buttons() const
+{
+    return m_buttons;
+}
+
 void QEvdevMouseHandler::sendMouseEvent()
 {
     int x = m_x - m_prevx;
@@ -122,7 +130,7 @@ void QEvdevMouseHandler::sendMouseEvent()
         m_prevInvalid = false;
     }
 
-    emit handleMouseEvent(x, y, m_buttons);
+    emit handleMouseEvent(x * m_scale, y * m_scale, m_buttons);
 
     m_prevx = m_x;
     m_prevy = m_y;

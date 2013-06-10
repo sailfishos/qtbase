@@ -130,6 +130,13 @@ void QEvdevMouseManager::handleMouseEvent(int x, int y, Qt::MouseButtons buttons
         m_y = g.bottom() - m_yoffset;
 
     QPoint pos(m_x + m_xoffset, m_y + m_yoffset);
+
+    if (m_mice.size() > 1) {
+        for (QHash<QString,QEvdevMouseHandler*>::ConstIterator iter = m_mice.begin();
+             iter != m_mice.end(); ++iter)
+            buttons |= (*iter)->buttons();
+    }
+
     QWindowSystemInterface::handleMouseEvent(0, pos, pos, buttons);
 
 #ifdef QT_QPA_MOUSEMANAGER_DEBUG

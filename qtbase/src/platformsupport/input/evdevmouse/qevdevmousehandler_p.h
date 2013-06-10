@@ -56,6 +56,8 @@ public:
     static QEvdevMouseHandler *create(const QString &device, const QString &specification);
     ~QEvdevMouseHandler();
 
+    Qt::MouseButtons buttons() const;
+
 signals:
     void handleMouseEvent(int x, int y, Qt::MouseButtons buttons);
     void handleWheelEvent(int delta, Qt::Orientation orientation);
@@ -64,7 +66,7 @@ private slots:
     void readMouseData();
 
 private:
-    QEvdevMouseHandler(const QString &device, int fd, bool compression, int jitterLimit);
+    QEvdevMouseHandler(const QString &device, int fd, bool compression, int jitterLimit, float scale);
 
     void sendMouseEvent();
 
@@ -77,6 +79,7 @@ private:
     Qt::MouseButtons m_buttons;
     int m_jitterLimitSquared;
     bool m_prevInvalid;
+    float m_scale;
 };
 
 QT_END_NAMESPACE
