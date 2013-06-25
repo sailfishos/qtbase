@@ -233,6 +233,11 @@ QSurfaceFormat QEglFSHooks::surfaceFormatFor(const QSurfaceFormat &inputFormat) 
         newFormat.setGreenBufferSize(6);
         newFormat.setBlueBufferSize(5);
     } else {
+        QByteArray alphaChannelString = qgetenv("QT_QPA_EGLFS_HAS_ALPHACHANNEL");
+
+        if (alphaChannelString.toInt() == 1)
+             newFormat.setAlphaBufferSize(8);
+
         newFormat.setStencilBufferSize(8);
         newFormat.setRedBufferSize(8);
         newFormat.setGreenBufferSize(8);
