@@ -55,6 +55,7 @@
 
 QT_BEGIN_NAMESPACE
 
+
 class Q_GUI_EXPORT QPlatformScreenBuffer {
 public:
     QPlatformScreenBuffer();
@@ -73,6 +74,9 @@ protected:
     bool m_destroyed;
     bool m_ready;
 };
+
+
+Q_DECLARE_METATYPE(QPlatformScreenBuffer*)
 
 class Q_GUI_EXPORT QPlatformScreenPageFlipper : public QObject
 {

@@ -56,7 +56,7 @@ QPlatformScreenBuffer::QPlatformScreenBuffer()
     : m_destroyed(false)
     , m_ready(true)
 {
-
+    qRegisterMetaType<QPlatformScreenBuffer *>();
 }
 
 QPlatformScreenBuffer::~QPlatformScreenBuffer()
