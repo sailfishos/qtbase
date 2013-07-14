@@ -551,7 +551,9 @@ touch .git
 MAKEFLAGS=%{?_smp_mflags} \
 ./configure --disable-static \
     -confirm-license \
+%if ! 0%{?qt5_release_build}
     -developer-build \
+%endif
     -platform linux-g++ \
     -prefix "%{_prefix}" \
     -bindir "%{_libdir}/qt5/bin" \
@@ -584,6 +586,7 @@ MAKEFLAGS=%{?_smp_mflags} \
     -no-rpath \
     -optimized-qmake \
     -dbus-linked \
+    -no-strip \
     -no-separate-debug-info \
     -verbose \
     -no-gtkstyle \
