@@ -45,7 +45,7 @@ defineReplace(cmakePortablePaths) {
     variable = $$1
     out =
     for(v, variable) {
-        out += ${CMAKE_FIND_ROOT_PATH}$$cmakeTargetPath($$v)
+        out += $$[QT_SYSROOT]$$cmakeTargetPath($$v)
     }
     return ($$join(out, ";"))
 }
@@ -54,7 +54,7 @@ defineReplace(cmakeProcessLibs) {
     variable = $$1
     out =
     for(v, variable) {
-        if(!equals(v, -framework):!equals(v, -L.*)) {
+        if(!equals(v, -framework):!contains(v, -L.*)) {
             v ~= s,^-l,,
             v ~= s,^-lib,,
             v ~= s,.lib$,,

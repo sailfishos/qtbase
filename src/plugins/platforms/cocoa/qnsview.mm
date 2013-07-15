@@ -251,6 +251,15 @@ static QTouchDevice *touchDevice = 0;
     }
 }
 
+- (void)notifyWindowStateChanged:(Qt::WindowState)newState
+{
+    QWindowSystemInterface::handleWindowStateChanged(m_window, newState);
+    // We want to read the window state back from the window,
+    // but the event we just sent may be asynchronous.
+    QWindowSystemInterface::flushWindowSystemEvents();
+    m_platformWindow->setSynchedWindowStateFromWindow();
+}
+
 - (void)windowNotification : (NSNotification *) windowNotification
 {
     //qDebug() << "windowNotification" << QCFString::toQString([windowNotification name]);
@@ -269,10 +278,11 @@ static QTouchDevice *touchDevice = 0;
             if (!m_platformWindow->windowIsPopupType())
                 QWindowSystemInterface::handleWindowActivated(0);
         }
-    } else if (notificationName == NSWindowDidMiniaturizeNotification) {
-        QWindowSystemInterface::handleWindowStateChanged(m_window, Qt::WindowMinimized);
-    } else if (notificationName == NSWindowDidDeminiaturizeNotification) {
-        QWindowSystemInterface::handleWindowStateChanged(m_window, Qt::WindowNoState);
+    } else if (notificationName == NSWindowDidMiniaturizeNotification
+               || notificationName == NSWindowDidDeminiaturizeNotification) {
+        Qt::WindowState newState = notificationName == NSWindowDidMiniaturizeNotification ?
+                    Qt::WindowMinimized : Qt::WindowNoState;
+        [self notifyWindowStateChanged:newState];
     } else if ([notificationName isEqualToString: @"NSWindowDidOrderOffScreenNotification"]) {
         m_platformWindow->obscureWindow();
     } else if ([notificationName isEqualToString: @"NSWindowDidOrderOnScreenAndFinishAnimatingNotification"]) {
@@ -290,15 +300,22 @@ static QTouchDevice *touchDevice = 0;
 
 #if MAC_OS_X_VERSION_MAX_ALLOWED >= MAC_OS_X_VERSION_10_7
     if (QSysInfo::QSysInfo::MacintoshVersion >= QSysInfo::MV_10_7) {
-        if (notificationName == NSWindowDidEnterFullScreenNotification) {
-            QWindowSystemInterface::handleWindowStateChanged(m_window, Qt::WindowFullScreen);
-        } else if (notificationName == NSWindowDidExitFullScreenNotification) {
-            QWindowSystemInterface::handleWindowStateChanged(m_window, Qt::WindowNoState);
+        if (notificationName == NSWindowDidEnterFullScreenNotification
+            || notificationName == NSWindowDidExitFullScreenNotification) {
+            Qt::WindowState newState = notificationName == NSWindowDidEnterFullScreenNotification ?
+                        Qt::WindowFullScreen : Qt::WindowNoState;
+            [self notifyWindowStateChanged:newState];
         }
     }
 #endif
 
     }
+}
+
+- (void)notifyWindowWillZoom:(BOOL)willZoom
+{
+    Qt::WindowState newState = willZoom ? Qt::WindowMaximized : Qt::WindowNoState;
+    [self notifyWindowStateChanged:newState];
 }
 
 - (void)viewDidHide
@@ -897,6 +914,7 @@ static QTouchDevice *touchDevice = 0;
     ulong timestamp = [nsevent timestamp] * 1000;
     ulong nativeModifiers = [nsevent modifierFlags];
     Qt::KeyboardModifiers modifiers = [QNSView convertKeyModifiers: nativeModifiers];
+    NSString *charactersIgnoringModifiers = [nsevent charactersIgnoringModifiers];
     NSString *characters = [nsevent characters];
 
     // [from Qt 4 impl] There is no way to get the scan code from carbon. But we cannot
@@ -911,19 +929,22 @@ static QTouchDevice *touchDevice = 0;
     QChar ch = QChar::ReplacementCharacter;
     int keyCode = Qt::Key_unknown;
     if ([characters length] != 0) {
-        ch = QChar([characters characterAtIndex:0]);
+        if ((modifiers & Qt::MetaModifier) && ([charactersIgnoringModifiers length] != 0))
+            ch = QChar([charactersIgnoringModifiers characterAtIndex:0]);
+        else
+            ch = QChar([characters characterAtIndex:0]);
         keyCode = [self convertKeyCode:ch];
     }
 
     // we will send a key event unless the input method sets m_sendKeyEvent to false
     m_sendKeyEvent = true;
-
     QString text;
+    // ignore text for the U+F700-U+F8FF range. This is used by Cocoa when
+    // delivering function keys (e.g. arrow keys, backspace, F1-F35, etc.)
+    if (ch.unicode() < 0xf700 || ch.unicode() > 0xf8ff)
+        text = QCFString::toQString(characters);
+
     if (eventType == QEvent::KeyPress) {
-        // ignore text for the U+F700-U+F8FF range. This is used by Cocoa when
-        // delivering function keys (e.g. arrow keys, backspace, F1-F35, etc.)
-        if (ch.unicode() < 0xf700 || ch.unicode() > 0xf8ff)
-            text = QCFString::toQString(characters);
 
         if (m_composingText.isEmpty())
             m_sendKeyEvent = !QWindowSystemInterface::tryHandleShortcutEvent(m_window, timestamp, keyCode, modifiers, text);
