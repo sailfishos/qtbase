@@ -304,40 +304,51 @@ QEvdevTouchScreenHandler::~QEvdevTouchScreenHandler()
 void QEvdevTouchScreenHandler::readData()
 {
     ::input_event buffer[32];
-    int n = 0;
-    for (; ;) {
+
+
 #ifdef USE_MTDEV
-        int result = mtdev_get(m_mtdev, m_fd, buffer, sizeof(buffer) / sizeof(::input_event));
-        if (result > 0)
-            result *= sizeof(::input_event);
+    int events = 0;
+
+    do {
+        do {
+            events = mtdev_get(m_mtdev, m_fd, buffer, sizeof(buffer) / sizeof(::input_event));
+            // keep trying mtdev_get if we get interrupted. note that we do not
+            // (and should not) handle EAGAIN; EAGAIN means that reading would
+            // block and we'll get back here later to try again anyway.
+        } while (errno == EINTR);
+
+        // 0 events is EOF, -1 means error, handle both in the same place
+        if (events < 1)
+            goto err;
+
+        // process our shiny new events
+        for (int i = 0; i < events; ++i)
+            d->processInputEvent(&buffer[i]);
+
+        // keep going as long as we processed at least one event
+    } while (events >= 1);
 #else
-        int result = QT_READ(m_fd, reinterpret_cast<char*>(buffer) + n, sizeof(buffer) - n);
+    qFatal("Implement me");
 #endif
-        if (!result) {
-            qWarning("Got EOF from input device");
-            return;
-        } else if (result < 0) {
-            if (errno != EINTR && errno != EAGAIN) {
-                qWarning("Could not read from input device: %s", strerror(errno));
-                if (errno == ENODEV) { // device got disconnected -> stop reading
-                    delete m_notify;
-                    m_notify = 0;
-                    QT_CLOSE(m_fd);
-                    m_fd = -1;
-                }
-                return;
+
+    return;
+
+err:
+    if (!events) {
+        qWarning("Got EOF from input device");
+        return;
+    } else if (events < 0) {
+        if (errno != EINTR && errno != EAGAIN) {
+            qWarning("Could not read from input device: %s", strerror(errno));
+            if (errno == ENODEV) { // device got disconnected -> stop reading
+                delete m_notify;
+                m_notify = 0;
+                QT_CLOSE(m_fd);
+                m_fd = -1;
             }
-        } else {
-            n += result;
-            if (n % sizeof(::input_event) == 0)
-                break;
+            return;
         }
     }
-
-    n /= sizeof(::input_event);
-
-    for (int i = 0; i < n; ++i)
-        d->processInputEvent(&buffer[i]);
 }
 
 void QEvdevTouchScreenData::processInputEvent(input_event *data)
@@ -561,21 +572,16 @@ void QEvdevTouchScreenData::reportPoints()
 QEvdevTouchScreenHandlerThread::QEvdevTouchScreenHandlerThread(const QString &spec, QObject *parent)
     : QThread(parent), m_spec(spec), m_handler(0)
 {
-    start();
+    m_handler = new QEvdevTouchScreenHandler(spec);
 }
 
 QEvdevTouchScreenHandlerThread::~QEvdevTouchScreenHandlerThread()
 {
-    quit();
-    wait();
+    delete m_handler;
 }
 
 void QEvdevTouchScreenHandlerThread::run()
 {
-    m_handler = new QEvdevTouchScreenHandler(m_spec);
-    exec();
-    delete m_handler;
-    m_handler = 0;
 }
 
 
