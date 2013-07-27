@@ -561,21 +561,16 @@ void QEvdevTouchScreenData::reportPoints()
 QEvdevTouchScreenHandlerThread::QEvdevTouchScreenHandlerThread(const QString &spec, QObject *parent)
     : QThread(parent), m_spec(spec), m_handler(0)
 {
-    start();
+    m_handler = new QEvdevTouchScreenHandler(spec);
 }
 
 QEvdevTouchScreenHandlerThread::~QEvdevTouchScreenHandlerThread()
 {
-    quit();
-    wait();
+    delete m_handler;
 }
 
 void QEvdevTouchScreenHandlerThread::run()
 {
-    m_handler = new QEvdevTouchScreenHandler(m_spec);
-    exec();
-    delete m_handler;
-    m_handler = 0;
 }
 
 
