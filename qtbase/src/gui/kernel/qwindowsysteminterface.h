@@ -122,6 +122,23 @@ public:
         QVector<QPointF> rawPositions; // in screen coordinates
     };
 
+    class Q_GUI_EXPORT TouchEventFilter {
+        friend class QWindowSystemInterface;
+
+    public:
+        TouchEventFilter();
+        virtual ~TouchEventFilter();
+
+        virtual bool handleTouchEvent(QWindow *w, ulong timestamp, QTouchDevice *device,
+                                      const QList<struct TouchPoint> &points,
+                                      Qt::KeyboardModifiers mods) = 0;
+
+    protected:
+        static void deliverTouchEvent(QWindow *w, ulong timestamp, QTouchDevice *device,
+                                      const QList<struct TouchPoint> &points,
+                                      Qt::KeyboardModifiers mods);
+    };
+
     static void registerTouchDevice(QTouchDevice *device);
     static void handleTouchEvent(QWindow *w, QTouchDevice *device,
                                  const QList<struct TouchPoint> &points, Qt::KeyboardModifiers mods = Qt::NoModifier);
