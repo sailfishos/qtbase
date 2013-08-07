@@ -587,7 +587,6 @@ MAKEFLAGS=%{?_smp_mflags} \
     -no-openvg \
     -lfontconfig \
     -I/usr/include/freetype2 \
-    -no-neon \
     -nomake tests \
     -nomake examples \
     -nomake demos \
