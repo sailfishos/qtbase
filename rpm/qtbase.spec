@@ -1,10 +1,3 @@
-%ifarch armv7l armv7el armv7hl amv7nhl armv7thl armv7tnhl
-%define arch_arg armv6
-%endif
-%ifarch i486 i586
-%define arch_arg i386
-%endif
-
 # libQtPlatformSupport is not built as a shared library, only as a
 # static .a lib-archive. By default the OBS build removes all discovered
 # libFOO.a files and as such rpmlint never complains about
@@ -591,11 +584,9 @@ MAKEFLAGS=%{?_smp_mflags} \
     -verbose \
     -no-gtkstyle \
     -opengl es2 \
-    -arch %{arch_arg} \
     -no-openvg \
     -lfontconfig \
     -I/usr/include/freetype2 \
-    -no-neon \
     -nomake tests \
     -nomake examples \
     -nomake demos \
