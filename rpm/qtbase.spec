@@ -588,6 +588,9 @@ MAKEFLAGS=%{?_smp_mflags} \
     -lfontconfig \
     -I/usr/include/freetype2 \
     -nomake tests \
+%ifarch %{arm}
+    -no-pch \
+%endif
     -nomake examples \
     -nomake demos \
     -no-xinput2 \
