@@ -56,6 +56,7 @@ QElapsedTimer QWindowSystemInterfacePrivate::eventTime;
 bool QWindowSystemInterfacePrivate::synchronousWindowsSystemEvents = false;
 QWaitCondition QWindowSystemInterfacePrivate::eventsFlushed;
 QMutex QWindowSystemInterfacePrivate::flushEventMutex;
+QList<QWindowSystemInterface::TouchEventFilter *> QWindowSystemInterfacePrivate::touchEventFilters;
 
 //------------------------------------------------------------
 //
@@ -444,8 +445,19 @@ QList<QTouchEvent::TouchPoint> QWindowSystemInterfacePrivate::convertTouchPoints
     return touchPoints;
 }
 
-void QWindowSystemInterface::handleTouchEvent(QWindow *tlw, ulong timestamp, QTouchDevice *device,
-                                              const QList<TouchPoint> &points, Qt::KeyboardModifiers mods)
+QWindowSystemInterface::TouchEventFilter::TouchEventFilter()
+{
+    QWindowSystemInterfacePrivate::touchEventFilters.append(this);
+}
+
+QWindowSystemInterface::TouchEventFilter::~TouchEventFilter()
+{
+    QWindowSystemInterfacePrivate::touchEventFilters.removeAll(this);
+}
+
+void QWindowSystemInterface::TouchEventFilter::deliverTouchEvent(QWindow *w, ulong timestamp, QTouchDevice *device,
+                                                                 const QList<struct TouchPoint> &points,
+                                                                 Qt::KeyboardModifiers mods)
 {
     if (!points.size()) // Touch events must have at least one point
         return;
@@ -457,8 +469,20 @@ void QWindowSystemInterface::handleTouchEvent(QWindow *tlw, ulong timestamp, QTo
     QList<QTouchEvent::TouchPoint> touchPoints = QWindowSystemInterfacePrivate::convertTouchPoints(points, &type);
 
     QWindowSystemInterfacePrivate::TouchEvent *e =
-            new QWindowSystemInterfacePrivate::TouchEvent(tlw, timestamp, type, device, touchPoints, mods);
+            new QWindowSystemInterfacePrivate::TouchEvent(w, timestamp, type, device, touchPoints, mods);
     QWindowSystemInterfacePrivate::handleWindowSystemEvent(e);
+}
+
+void QWindowSystemInterface::handleTouchEvent(QWindow *tlw, ulong timestamp, QTouchDevice *device,
+                                              const QList<TouchPoint> &points, Qt::KeyboardModifiers mods)
+{
+    for (int ii = 0; ii < QWindowSystemInterfacePrivate::touchEventFilters.count(); ++ii) {
+        TouchEventFilter *filter = QWindowSystemInterfacePrivate::touchEventFilters.at(ii);
+        if (filter->handleTouchEvent(tlw, timestamp, device, points, mods))
+            return;
+    }
+
+    TouchEventFilter::deliverTouchEvent(tlw, timestamp, device, points, mods);
 }
 
 void QWindowSystemInterface::handleTouchCancelEvent(QWindow *w, QTouchDevice *device,

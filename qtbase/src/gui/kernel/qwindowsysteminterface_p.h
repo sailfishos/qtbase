@@ -460,6 +460,8 @@ public:
     static QMutex flushEventMutex;
 
     static QList<QTouchEvent::TouchPoint> convertTouchPoints(const QList<QWindowSystemInterface::TouchPoint> &points, QEvent::Type *type);
+
+    static QList<QWindowSystemInterface::TouchEventFilter *> touchEventFilters;
 };
 
 QT_END_NAMESPACE
