@@ -54,10 +54,8 @@ QEglFSWindow::QEglFSWindow(QWindow *w)
     , m_surface(0)
     , m_window(0)
 {
-    static int serialNo = 0;
-    m_winid  = ++serialNo;
 #ifdef QEGL_EXTRA_DEBUG
-    qWarning("QEglWindow %p: %p 0x%x\n", this, w, uint(m_winid));
+    qWarning("QEglWindow %p: %p 0x%x\n", this, w, uint(m_window));
 #endif
 }
 
@@ -141,7 +139,7 @@ void QEglFSWindow::setWindowState(Qt::WindowState)
 
 WId QEglFSWindow::winId() const
 {
-    return m_winid;
+    return WId(m_window);
 }
 
 QSurfaceFormat QEglFSWindow::format() const

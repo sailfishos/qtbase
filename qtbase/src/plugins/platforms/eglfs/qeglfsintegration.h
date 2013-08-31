@@ -72,6 +72,7 @@ public:
 
     // QPlatformNativeInterface
     void *nativeResourceForIntegration(const QByteArray &resource);
+    void *nativeResourceForWindow(const QByteArray &resource, QWindow *window) Q_DECL_OVERRIDE;
     void *nativeResourceForContext(const QByteArray &resource, QOpenGLContext *context);
 
     QPlatformScreen *screen() const { return mScreen; }
