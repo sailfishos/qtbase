@@ -590,8 +590,8 @@ bool QDBusConnectionPrivate::handleMessage(const QDBusMessage &amsg)
 static void huntAndDestroy(QObject *needle, QDBusConnectionPrivate::ObjectTreeNode &haystack)
 {
     QDBusConnectionPrivate::ObjectTreeNode::DataList::Iterator it = haystack.children.begin();
-    QDBusConnectionPrivate::ObjectTreeNode::DataList::Iterator end = haystack.children.end();
-    while (it != end) {
+
+    while (it != haystack.children.end()) {
         huntAndDestroy(needle, *it);
         if (!it->isActive())
             it = haystack.children.erase(it);
