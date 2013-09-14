@@ -1596,6 +1596,12 @@ public:
         ScrollUpdate,
         ScrollEnd
     };
+
+    enum MouseEventSource {
+        MouseEventNotSynthesized,
+        MouseEventSynthesizedBySystem,
+        MouseEventSynthesizedByQt
+    };
 }
 #ifdef Q_MOC_RUN
  ;
