@@ -162,12 +162,12 @@ static void qEmergencyOut(QtMsgType msgType, const char *msg, va_list ap) Q_DECL
     if (usingWinMain) {
         OutputDebugStringA(emergency_buf);
     } else {
-        fprintf(stderr, "%s", emergency_buf);
+        fprintf(stderr, "%s\n", emergency_buf);
         fflush(stderr);
     }
 # endif
 #else
-    fprintf(stderr, "%s", emergency_buf);
+    fprintf(stderr, "%s\n", emergency_buf);
     fflush(stderr);
 #endif
 
