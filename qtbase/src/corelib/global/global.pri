@@ -44,6 +44,12 @@ linux*:!cross_compile:!static:!*-armcc* {
    QMAKE_LFLAGS += -Wl,-e,qt_core_boilerplate
    prog=$$quote(if (/program interpreter: (.*)]/) { print $1; })
    DEFINES += ELF_INTERPRETER=\\\"$$system(readelf -l /bin/ls | perl -n -e \'$$prog\')\\\"
+
+   CONFIG += link_pkgconfig
+   packagesExist(libsystemd-journal) {
+       PKGCONFIG += libsystemd-journal
+       DEFINES += QT_USE_JOURNALD
+   }
 }
 
 slog2 {
