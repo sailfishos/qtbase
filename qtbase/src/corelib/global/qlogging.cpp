@@ -61,6 +61,10 @@
 #include <android/log.h>
 #endif
 
+#if defined(QT_USE_JOURNALD) && !defined(QT_BOOTSTRAPPED)
+# include <systemd/sd-journal.h>
+#endif
+
 #include <stdio.h>
 
 QT_BEGIN_NAMESPACE
@@ -837,6 +841,40 @@ Q_CORE_EXPORT QtMsgHandler qInstallMsgHandler(QtMsgHandler);
 static QtMsgHandler msgHandler = 0;                // pointer to debug handler (without context)
 static QtMessageHandler messageHandler = 0;         // pointer to debug handler (with context)
 
+#if defined(QT_USE_JOURNALD) && !defined(QT_BOOTSTRAPPED)
+static void systemd_default_message_handler(QtMsgType type,
+                                            const QMessageLogContext &context,
+                                            const QString &message)
+{
+    int priority = LOG_INFO;
+    switch (type) {
+        case QtDebugMsg:
+            priority = LOG_DEBUG;
+            break;
+        case QtWarningMsg:
+            priority = LOG_WARNING;
+            break;
+        case QtCriticalMsg:
+            priority = LOG_ERR; // TODO: correct?
+            break;
+        case QtFatalMsg:
+            priority = LOG_CRIT; // TODO: correct?
+            break;
+    }
+
+    char filebuf[PATH_MAX + 20];
+    snprintf(filebuf, sizeof(filebuf), "CODE_FILE=%s", context.file ? context.file : "unknown");
+
+    char linebuf[20];
+    snprintf(linebuf, sizeof(linebuf), "CODE_LINE=%d", context.line);
+
+    // This is private API, but since we have the information available in
+    // QMessageLogContext, and thus need to communicate it - we must use it
+    // instead of sd_journal_print.
+    sd_journal_print_with_location(priority, filebuf, linebuf, context.function ? context.function : "unknown", "%s", message.toLocal8Bit().constData());
+}
+#endif
+
 #ifdef Q_OS_ANDROID
 static void android_default_message_handler(QtMsgType type,
                                   const QMessageLogContext &context,
@@ -875,6 +913,16 @@ static void qDefaultMessageHandler(QtMsgType type, const QMessageLogContext &con
 
 #if defined(QT_USE_SLOG2)
     slog2_default_handler(type, logMessage.toLocal8Bit().constData());
+#elif defined(QT_USE_JOURNALD) && !defined(QT_BOOTSTRAPPED)
+    static bool isTty = isatty(fileno(stdin));
+    if (Q_LIKELY(!isTty)) {
+        // remove trailing \n, systemd appears to want them newline-less
+        logMessage[logMessage.count() - 1] = '\0';
+        systemd_default_message_handler(type, context, logMessage);
+    } else {
+        fprintf(stderr, "%s", logMessage.toLocal8Bit().constData());
+        fflush(stderr);
+    }
 #elif defined(Q_OS_ANDROID)
     static bool logToAndroid = qEnvironmentVariableIsEmpty("QT_ANDROID_PLAIN_LOG");
     if (logToAndroid) {
