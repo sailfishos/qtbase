@@ -144,7 +144,11 @@ QString QCoreApplicationPrivate::macMenuBarName()
 #endif
 QString QCoreApplicationPrivate::appName() const
 {
-    static QString applName;
+    // Mer-specific patch: we don't want this to be static in case argv[0]
+    // changes, such is the case for boosters for instance. Unnecessary statics
+    // can also hurt in terms of binary size, and this does not seem to be
+    // something that would be on the hot path.
+    QString applName;
 #ifdef Q_OS_MAC
     applName = macMenuBarName();
 #endif
@@ -1932,6 +1936,18 @@ QString QCoreApplication::applicationFilePath()
     }
 
     QCoreApplicationPrivate *d = self->d_func();
+
+#if defined(Q_OS_LINUX)
+    // Mer-specific patch: invalidate application path if argv[0] changes for
+    // booster.
+    static char *procName = d->argv[0];
+    if (procName != d->argv[0]) {
+        d->cachedApplicationFilePath = QString();
+        procName = d->argv[0];
+    }
+    // end mer-specific patch
+#endif
+
     if (!d->cachedApplicationFilePath.isNull())
         return d->cachedApplicationFilePath;
 
@@ -1977,6 +1993,8 @@ QString QCoreApplication::applicationFilePath()
     }
 #endif
 #if defined( Q_OS_UNIX )
+#if 0
+// Mer-specific patching: we disable /proc lookup because it breaks boosters.
 #  ifdef Q_OS_LINUX
     // Try looking for a /proc/<pid>/exe symlink first which points to
     // the absolute path of the executable
@@ -1986,7 +2004,7 @@ QString QCoreApplication::applicationFilePath()
         return d->cachedApplicationFilePath;
     }
 #  endif
-
+#endif
     QString argv0 = QFile::decodeName(arguments().at(0).toLocal8Bit());
     QString absPath;
 
