@@ -797,6 +797,48 @@ void tst_QCoreApplication::QTBUG31606_QEventDestructorDeadLock()
     QVERIFY(spy.recordedEvents.contains(QEvent::User + 2));
 }
 
+class DeleterObject : public QObject
+{
+Q_OBJECT
+public:
+    DeleterObject(QObject *otherObj)
+        : obj(otherObj)
+    {
+        connect(QAbstractEventDispatcher::instance(), SIGNAL(aboutToBlock()), this, SLOT(objectDeleted()));
+        connect(QAbstractEventDispatcher::instance(), SIGNAL(awake()), this, SLOT(objectDeleted()));
+    }
+
+public slots:
+    void objectDeleted()
+    {
+        obj->deleteLater();
+        disconnect(QAbstractEventDispatcher::instance(), SIGNAL(aboutToBlock()), this, SLOT(objectDeleted()));
+        disconnect(QAbstractEventDispatcher::instance(), SIGNAL(awake()), this, SLOT(objectDeleted()));
+    }
+
+private:
+    QObject *obj;
+};
+
+void tst_QCoreApplication::testDeferredDeleteFromAboutToBlock()
+{
+    int argc = 1;
+    char *argv[] = { const_cast<char*>("tst_qcoreapplication") };
+    QCoreApplication app(argc, argv);
+
+    QObject *o = new QObject;
+    QPointer<QObject> p(o);
+    DeleterObject dobj(o);
+
+    QVERIFY(!p.isNull());
+    QCoreApplication::processEvents();
+
+    if (qstrcmp(QAbstractEventDispatcher::instance()->metaObject()->className(), "QEventDispatcherGlib"))
+        QEXPECT_FAIL("", "QTBUG-36434: Only the glib event dispatcher has been fixed and confirmed to work, so far", Abort);
+
+    QVERIFY(p.isNull());
+}
+
 
 static void createQObjectOnDestruction()
 {
