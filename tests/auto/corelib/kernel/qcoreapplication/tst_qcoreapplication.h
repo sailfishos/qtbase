@@ -68,6 +68,7 @@ private slots:
     void customEventDispatcher();
     void testQuitLock();
     void QTBUG31606_QEventDestructorDeadLock();
+    void testDeferredDeleteFromAboutToBlock();
 };
 
 #endif // TST_QCOREAPPLICATION_H
