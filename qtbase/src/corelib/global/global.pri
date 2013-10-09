@@ -47,7 +47,7 @@ linux*:!cross_compile:!static:!*-armcc* {
 
    CONFIG += link_pkgconfig
    packagesExist(libsystemd-journal) {
-       PKGCONFIG += libsystemd-journal
+       PKGCONFIG_PRIVATE += libsystemd-journal
        DEFINES += QT_USE_JOURNALD
    }
 }
