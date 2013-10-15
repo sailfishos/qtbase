@@ -77,8 +77,8 @@ QT_BEGIN_NAMESPACE
  *   0          monotonic clock might be supported, runtime check is needed
  *  >1          (such as 200809L) monotonic clock is always supported
  *
- * The unixCheckClockType() function will return the clock to use: either
- * CLOCK_MONOTONIC or CLOCK_REALTIME. In the case the POSIX option has a value
+ * The unixCheckClockType() function will return the clock type to use,
+ * depending on the system. In the case the POSIX option has a value
  * of zero, then this function stores a static that contains the clock to be
  * used.
  *
@@ -136,6 +136,22 @@ static int unixCheckClockType()
 
     // detect if the system supports monotonic timers
     clock = sysconf(_SC_MONOTONIC_CLOCK) > 0 ? CLOCK_MONOTONIC : CLOCK_REALTIME;
+
+#if defined(CLOCK_BOOTTIME)
+    // CLOCK_MONOTONIC is easier to use than CLOCK_REALTIME, but has the
+    // unfortunate characteristic of stopping when the system is suspended.
+    // Linux 2.6.39 added a CLOCK_BOOTTIME which addresses this: it is identical
+    // to CLOCK_MONOTONIC, but also includes any time spent in suspend.
+    if (clock == CLOCK_MONOTONIC) {
+        // Make sure it's supported. Just because the kernel headers have it don't
+        // mean that our running kernel has it.
+        struct timespec ts;
+        int retval = clock_gettime(CLOCK_BOOTTIME, &ts);
+        if (retval == 0)
+             clock = CLOCK_BOOTTIME;
+    }
+#endif
+
     clockToUse.storeRelease(clock);
     return clock;
 
