@@ -87,6 +87,7 @@ Summary:    The QtCore library
 Group:      Qt/Qt
 Requires(post):     /sbin/ldconfig
 Requires(postun):   /sbin/ldconfig
+Requires:   xdg-utils
 
 %description qtcore
 This package contains the QtCore library
