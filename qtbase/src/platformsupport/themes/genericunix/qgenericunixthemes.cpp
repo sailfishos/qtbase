@@ -149,6 +149,10 @@ QVariant QGenericUnixTheme::themeHint(ThemeHint hint) const
     }
     case QPlatformTheme::KeyboardScheme:
         return QVariant(int(X11KeyboardScheme));
+    case QPlatformTheme::PasswordMaskDelay:
+        return QVariant(1000);
+    case QPlatformTheme::StartDragDistance:
+        return QVariant(20);
     default:
         break;
     }
@@ -450,10 +454,6 @@ QVariant QGnomeTheme::themeHint(QPlatformTheme::ThemeHint hint) const
         return QVariant(int(GnomeKeyboardScheme));
     case QPlatformTheme::PasswordMaskCharacter:
         return QVariant(QChar(0x2022));
-    case QPlatformTheme::PasswordMaskDelay:
-        return QVariant(1000);
-    case QPlatformTheme::StartDragDistance:
-        return QVariant(20);
     default:
         break;
     }
