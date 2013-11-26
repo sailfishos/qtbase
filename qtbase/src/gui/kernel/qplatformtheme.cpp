@@ -78,6 +78,9 @@ QT_BEGIN_NAMESPACE
     \value MouseDoubleClickInterval (int) Mouse double click interval in ms,
                                     overriding QPlatformIntegration::styleHint.
 
+    \value MousePressAndHoldInterval (int) Mouse press and hold interval in ms,
+                                    overriding QPlatformIntegration::styleHint.
+
     \value StartDragDistance (int) Start drag distance,
                              overriding QPlatformIntegration::styleHint.
 
@@ -243,6 +246,8 @@ QVariant QPlatformTheme::themeHint(ThemeHint hint) const
         return QGuiApplicationPrivate::platformIntegration()->styleHint(QPlatformIntegration::PasswordMaskDelay);
     case QPlatformTheme::PasswordMaskCharacter:
         return QGuiApplicationPrivate::platformIntegration()->styleHint(QPlatformIntegration::PasswordMaskCharacter);
+    case QPlatformTheme::MousePressAndHoldInterval:
+        return QGuiApplicationPrivate::platformIntegration()->styleHint(QPlatformIntegration::MousePressAndHoldInterval);
     default:
         return QPlatformTheme::defaultThemeHint(hint);
     }
@@ -306,6 +311,8 @@ QVariant QPlatformTheme::defaultThemeHint(ThemeHint hint)
         return QVariant(true);
     case IconPixmapSizes:
         return QVariant::fromValue(QList<int>());
+    case MousePressAndHoldInterval:
+        return QVariant(800);
     }
     return QVariant();
 }

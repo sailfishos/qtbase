@@ -328,6 +328,8 @@ QVariant QPlatformIntegration::styleHint(StyleHint hint) const
         return QVariant(false);
     case SynthesizeMouseFromTouchEvents:
         return true;
+    case MousePressAndHoldInterval:
+        return QPlatformTheme::defaultThemeHint(QPlatformTheme::MousePressAndHoldInterval);
     }
 
     return 0;
