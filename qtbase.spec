@@ -35,6 +35,7 @@ Patch2:     0002-add-unicode-for-special-characters.patch
 Patch3:     hackeglfs.patch
 Patch4:     mtdev.patch
 Patch5:     bradius.patch
+Patch6:     gcc48_rename_qabs_function_for_timeval.patch
 BuildRequires:  pkgconfig(alsa)
 BuildRequires:  pkgconfig(dbus-1)
 BuildRequires:  pkgconfig(egl)
@@ -539,6 +540,7 @@ This package contains the Qt5 development defaults package
 %patch3 -p1
 %patch4 -p1
 %patch5 -p1
+%patch6 -p1
 
 %build
 MAKEFLAGS=%{?_smp_mflags} \

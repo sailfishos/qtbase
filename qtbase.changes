@@ -1,3 +1,6 @@
+* Thu Dec 12 2013 Davide Bettio <davide.bettio@ispirata.com> - 5.0.2
+- Added a fix to build Qt 5.0.2 with GCC 4.8 (https://codereview.qt-project.org/#change,48831)
+
 * Mon May 27 2013 Chris Leach <cxl000@hotmail.com> - 5.0.2
 - Configure libexec directory to libdir rather than default to datadir
 
