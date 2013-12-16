@@ -104,7 +104,8 @@ public:
         SpellCheckUnderlineStyle,
         TabAllWidgets,
         IconPixmapSizes,
-        PasswordMaskCharacter
+        PasswordMaskCharacter,
+        MousePressAndHoldInterval
     };
 
     enum DialogType {

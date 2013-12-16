@@ -49,6 +49,8 @@
 #include <qpalette.h>
 #include <qtextformat.h>
 #include <qiconloader_p.h>
+#include <private/qguiapplication_p.h>
+#include <qpa/qplatformintegration.h>
 
 QT_BEGIN_NAMESPACE
 
@@ -74,6 +76,9 @@ QT_BEGIN_NAMESPACE
                                  QPlatformIntegration::styleHint.
 
     \value MouseDoubleClickInterval (int) Mouse double click interval in ms,
+                                    overriding QPlatformIntegration::styleHint.
+
+    \value MousePressAndHoldInterval (int) Mouse press and hold interval in ms,
                                     overriding QPlatformIntegration::styleHint.
 
     \value StartDragDistance (int) Start drag distance,
@@ -218,7 +223,34 @@ QPixmap QPlatformTheme::fileIconPixmap(const QFileInfo &fileInfo, const QSizeF &
 
 QVariant QPlatformTheme::themeHint(ThemeHint hint) const
 {
-    return QPlatformTheme::defaultThemeHint(hint);
+    // For theme hints which mirror platform integration style hints, query
+    // the platform integration. The base QPlatformIntegration::styleHint()
+    // function will in turn query QPlatformTheme::defaultThemeHint() if there
+    // is no custom value.
+    switch (hint) {
+    case QPlatformTheme::CursorFlashTime:
+        return QGuiApplicationPrivate::platformIntegration()->styleHint(QPlatformIntegration::CursorFlashTime);
+    case QPlatformTheme::KeyboardInputInterval:
+        return QGuiApplicationPrivate::platformIntegration()->styleHint(QPlatformIntegration::KeyboardInputInterval);
+    case QPlatformTheme::KeyboardAutoRepeatRate:
+        return QGuiApplicationPrivate::platformIntegration()->styleHint(QPlatformIntegration::KeyboardAutoRepeatRate);
+    case QPlatformTheme::MouseDoubleClickInterval:
+        return QGuiApplicationPrivate::platformIntegration()->styleHint(QPlatformIntegration::MouseDoubleClickInterval);
+    case QPlatformTheme::StartDragDistance:
+        return QGuiApplicationPrivate::platformIntegration()->styleHint(QPlatformIntegration::StartDragDistance);
+    case QPlatformTheme::StartDragTime:
+        return QGuiApplicationPrivate::platformIntegration()->styleHint(QPlatformIntegration::StartDragTime);
+    case QPlatformTheme::StartDragVelocity:
+        return QGuiApplicationPrivate::platformIntegration()->styleHint(QPlatformIntegration::StartDragVelocity);
+    case QPlatformTheme::PasswordMaskDelay:
+        return QGuiApplicationPrivate::platformIntegration()->styleHint(QPlatformIntegration::PasswordMaskDelay);
+    case QPlatformTheme::PasswordMaskCharacter:
+        return QGuiApplicationPrivate::platformIntegration()->styleHint(QPlatformIntegration::PasswordMaskCharacter);
+    case QPlatformTheme::MousePressAndHoldInterval:
+        return QGuiApplicationPrivate::platformIntegration()->styleHint(QPlatformIntegration::MousePressAndHoldInterval);
+    default:
+        return QPlatformTheme::defaultThemeHint(hint);
+    }
 }
 
 QVariant QPlatformTheme::defaultThemeHint(ThemeHint hint)
@@ -279,6 +311,8 @@ QVariant QPlatformTheme::defaultThemeHint(ThemeHint hint)
         return QVariant(true);
     case IconPixmapSizes:
         return QVariant::fromValue(QList<int>());
+    case MousePressAndHoldInterval:
+        return QVariant(800);
     }
     return QVariant();
 }

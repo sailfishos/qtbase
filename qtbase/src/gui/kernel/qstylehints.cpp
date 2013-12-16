@@ -94,6 +94,17 @@ int QStyleHints::mouseDoubleClickInterval() const
 }
 
 /*!
+    Returns the time limit in milliseconds that activates
+    a press and hold.
+
+    \since 5.3
+*/
+int QStyleHints::mousePressAndHoldInterval() const
+{
+    return themeableHint(QPlatformTheme::MousePressAndHoldInterval, QPlatformIntegration::MousePressAndHoldInterval).toInt();
+}
+
+/*!
     Returns the distance, in pixels, that the mouse must be moved with a button
     held down before a drag and drop operation will begin.
 
