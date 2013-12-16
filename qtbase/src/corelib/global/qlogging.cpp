@@ -914,14 +914,14 @@ static void qDefaultMessageHandler(QtMsgType type, const QMessageLogContext &con
 #if defined(QT_USE_SLOG2)
     slog2_default_handler(type, logMessage.toLocal8Bit().constData());
 #elif defined(QT_USE_JOURNALD) && !defined(QT_BOOTSTRAPPED)
-    static bool isTty = isatty(fileno(stdin));
-    if (Q_LIKELY(!isTty)) {
+    static bool logToConsole = isatty(fileno(stdin)) || !qEnvironmentVariableIsEmpty("QT_NO_JOURNALD_LOG");
+    if (Q_UNLIKELY(logToConsole)) {
+        fprintf(stderr, "%s", logMessage.toLocal8Bit().constData());
+        fflush(stderr);
+    } else {
         // remove trailing \n, systemd appears to want them newline-less
         logMessage[logMessage.count() - 1] = '\0';
         systemd_default_message_handler(type, context, logMessage);
-    } else {
-        fprintf(stderr, "%s", logMessage.toLocal8Bit().constData());
-        fflush(stderr);
     }
 #elif defined(Q_OS_ANDROID)
     static bool logToAndroid = qEnvironmentVariableIsEmpty("QT_ANDROID_PLAIN_LOG");
