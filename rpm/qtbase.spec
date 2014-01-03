@@ -1,3 +1,6 @@
+# Conditional building of X11 related things
+%bcond_with X11
+
 # libQtPlatformSupport is not built as a shared library, only as a
 # static .a lib-archive. By default the OBS build removes all discovered
 # libFOO.a files and as such rpmlint never complains about
@@ -13,7 +16,7 @@
 
 Name:       qt5
 Summary:    Cross-platform application and UI framework
-Version:    5.0.2
+Version:    5.1.0
 Release:    1%{?dist}
 Group:      Qt/Qt
 License:    LGPLv2.1 with exception or GPLv3
@@ -28,28 +31,10 @@ BuildRequires:  pkgconfig(freetype2)
 BuildRequires:  pkgconfig(glesv2)
 BuildRequires:  pkgconfig(glib-2.0)
 BuildRequires:  pkgconfig(icu-uc)
-BuildRequires:  pkgconfig(ice)
 BuildRequires:  pkgconfig(libpng)
 BuildRequires:  pkgconfig(libxslt)
 BuildRequires:  pkgconfig(openssl)
-BuildRequires:  pkgconfig(sm)
 BuildRequires:  pkgconfig(sqlite3)
-BuildRequires:  pkgconfig(x11)
-BuildRequires:  pkgconfig(xcursor)
-BuildRequires:  pkgconfig(xcb-keysyms)
-BuildRequires:  pkgconfig(xcb-image)
-BuildRequires:  pkgconfig(xcb-icccm)
-BuildRequires:  pkgconfig(xcb-renderutil)
-BuildRequires:  pkgconfig(xcomposite)
-BuildRequires:  pkgconfig(xext)
-BuildRequires:  pkgconfig(xft)
-BuildRequires:  pkgconfig(xi)
-BuildRequires:  pkgconfig(xinerama)
-BuildRequires:  pkgconfig(xmu)
-BuildRequires:  pkgconfig(xrandr)
-BuildRequires:  pkgconfig(xt)
-BuildRequires:  pkgconfig(xtst)
-BuildRequires:  pkgconfig(xv)
 BuildRequires:  pkgconfig(zlib)
 BuildRequires:  pkgconfig(udev)
 BuildRequires:  pkgconfig(mtdev)
@@ -66,6 +51,28 @@ BuildRequires:  readline-devel
 BuildRequires:  sharutils
 #BuildRequires:  gdb
 BuildRequires:  python
+BuildRequires:  pkgconfig(fontconfig)
+
+%if %{with X11}
+BuildRequires:  pkgconfig(ice)
+BuildRequires:  pkgconfig(sm)
+BuildRequires:  pkgconfig(x11)
+BuildRequires:  pkgconfig(xcursor)
+BuildRequires:  pkgconfig(xcb-keysyms)
+BuildRequires:  pkgconfig(xcb-image)
+BuildRequires:  pkgconfig(xcb-icccm)
+BuildRequires:  pkgconfig(xcb-renderutil)
+BuildRequires:  pkgconfig(xcomposite)
+BuildRequires:  pkgconfig(xext)
+BuildRequires:  pkgconfig(xft)
+BuildRequires:  pkgconfig(xi)
+BuildRequires:  pkgconfig(xinerama)
+BuildRequires:  pkgconfig(xmu)
+BuildRequires:  pkgconfig(xrandr)
+BuildRequires:  pkgconfig(xt)
+BuildRequires:  pkgconfig(xtst)
+BuildRequires:  pkgconfig(xv)
+%endif
 
 %description
 Qt is a cross-platform application and UI framework. Using Qt, you can
@@ -192,7 +199,7 @@ Requires:   %{name}-qtcore = %{version}-%{release}
 %description plugin-platform-offscreen
 This package contains the offscreen platform plugin
 
-
+%if %{with X11}
 %package plugin-platform-inputcontext-compose
 Summary:    compose input context platform plugin
 Group:      Qt/Qt
@@ -200,7 +207,7 @@ Requires:   %{name}-qtcore = %{version}-%{release}
 
 %description plugin-platform-inputcontext-compose
 This package contains compose platform inputcontext plugin
-
+%endif
 
 %package plugin-platform-inputcontext-maliit
 Summary:    MALIIT input context platform plugin
@@ -235,6 +242,7 @@ Requires:   %{name}-qtcore = %{version}-%{release}
 %description plugin-platform-minimalegl
 This package contains the minimalegl platform plugin
 
+%if %{with X11}
 %package plugin-platform-xcb
 Summary:    XCB platform plugin
 Group:      Qt/Qt
@@ -242,6 +250,7 @@ Requires:   %{name}-qtcore = %{version}-%{release}
 
 %description plugin-platform-xcb
 This package contains the XCB platform plugin
+%endif
 
 %package plugin-platform-linuxfb
 Summary:    Linux framebuffer platform plugin
@@ -270,10 +279,9 @@ This package contains the access widgets plugin
 # %package plugin-platform-xlib
 # Summary:    Xlib platform plugin
 # Group:      Qt/Qt
-# 
+#
 # %description plugin-platform-xlib
 # This package contains the Xlib platform plugin
-
 
 
 %package plugin-sqldriver-sqlite
@@ -591,8 +599,10 @@ MAKEFLAGS=%{?_smp_mflags} \
     -nomake tests \
     -nomake examples \
     -nomake demos \
-    -no-xinput2 \
-    -xcb
+%if %{with X11}
+    -xcb \
+%endif
+    -no-xinput2
 #
 make %{?_smp_mflags}
 
@@ -935,9 +945,11 @@ ln -s %{_sysconfdir}/xdg/qtchooser/5.conf %{buildroot}%{_sysconfdir}/xdg/qtchoos
 %defattr(-,root,root,-)
 %{_libdir}/qt5/plugins/platforms/libqoffscreen.so
 
+%if %{with X11}
 %files plugin-platform-inputcontext-compose
 %defattr(-,root,root,-)
 %{_libdir}/qt5/plugins/platforminputcontexts/libcomposeplatforminputcontextplugin.so
+%endif
 
 %files plugin-platform-inputcontext-maliit
 %defattr(-,root,root,-)
@@ -951,9 +963,11 @@ ln -s %{_sysconfdir}/xdg/qtchooser/5.conf %{buildroot}%{_sysconfdir}/xdg/qtchoos
 %defattr(-,root,root,-)
 %{_libdir}/qt5/plugins/platforms/libqminimalegl.so
 
+%if %{with X11}
 %files plugin-platform-xcb
 %defattr(-,root,root,-)
 %{_libdir}/qt5/plugins/platforms/libqxcb.so
+%endif
 
 %files plugin-platform-linuxfb
 %defattr(-,root,root,-)
