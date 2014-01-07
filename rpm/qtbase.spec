@@ -609,6 +609,10 @@ find %{buildroot}%{_libdir}/pkgconfig -type f -name '*.pc' \
 find %{buildroot}%{_libdir} -type f -name '*.prl' \
 -exec sed -i -e "/^QMAKE_PRL_BUILD_DIR/d;s/\(QMAKE_PRL_LIBS =\).*/\1/" {} \;
 
+# these manage to really royally screw up cmake
+find %{buildroot}%{_libdir} -type f -name "*_*Plugin.cmake" \
+-exec rm {} \;
+
 find %{buildroot}%{_docdir}/qt5/ -type f -exec chmod ugo-x {} \;
 
 # Make sure these are around
