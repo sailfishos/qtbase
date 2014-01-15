@@ -42,6 +42,7 @@
 #include <qstringlist.h>
 #include <qtimer.h>
 #include <qthread.h>
+#include <QtCore/private/qsystrace_p.h>
 
 #include "qdbusargument.h"
 #include "qdbusconnection_p.h"
@@ -2017,6 +2018,7 @@ QDBusMessage QDBusConnectionPrivate::sendWithReply(const QDBusMessage &message,
                                                    int sendMode, int timeout)
 {
     QDBusBlockingCallWatcher watcher(message);
+    QSystraceEvent trace("dbus", "QDBusConnection::sendWithReply");
 
     checkThread();
     if ((sendMode == QDBus::BlockWithGui || sendMode == QDBus::Block)
@@ -2025,6 +2027,7 @@ QDBusMessage QDBusConnectionPrivate::sendWithReply(const QDBusMessage &message,
         return sendWithReplyLocal(message);
 
     if (!QCoreApplication::instance() || sendMode == QDBus::Block) {
+        QSystraceEvent trace("dbus", "QDBusConnection::sendWithReply");
         QDBusError err;
         DBusMessage *msg = QDBusMessagePrivate::toDBusMessage(message, capabilities, &err);
         if (!msg) {
@@ -2084,6 +2087,7 @@ QDBusMessage QDBusConnectionPrivate::sendWithReply(const QDBusMessage &message,
 
 QDBusMessage QDBusConnectionPrivate::sendWithReplyLocal(const QDBusMessage &message)
 {
+    QSystraceEvent trace("dbus", "QDBusConnection::sendWithReplyLocal");
     qDBusDebug() << this << "sending message via local-loop:" << message;
 
     QDBusMessage localCallMsg = QDBusMessagePrivate::makeLocal(*this, message);

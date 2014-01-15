@@ -318,6 +318,7 @@ QEvdevTouchScreenHandler::~QEvdevTouchScreenHandler()
 
 void QEvdevTouchScreenHandler::readData()
 {
+    QSystraceEvent systrace("touch", "QEvdevTouchScreenData::readData");
     ::input_event buffer[32];
     int events = 0;
 
@@ -403,6 +404,7 @@ void QEvdevTouchScreenData::addTouchPoint(const Contact &contact, Qt::TouchPoint
 
 void QEvdevTouchScreenData::processInputEvent(input_event *data)
 {
+    QSystraceEvent systrace("touch", "QEvdevTouchScreenData::processInputEvent");
     if (data->type == EV_ABS) {
 
         if (data->code == ABS_MT_POSITION_X || (m_singleTouch && data->code == ABS_X)) {
@@ -599,6 +601,7 @@ void QEvdevTouchScreenData::assignIds()
 
 void QEvdevTouchScreenData::reportPoints()
 {
+    QSystraceEvent systrace("touch", "QEvdevTouchScreenData::reportPoints");
     QRect winRect;
     if (m_forceToActiveWindow) {
         QWindow *win = QGuiApplication::focusWindow();
