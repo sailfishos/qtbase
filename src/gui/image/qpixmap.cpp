@@ -63,6 +63,7 @@
 #include "qthread.h"
 #include "qdebug.h"
 
+#include <private/qsystrace_p.h>
 #include <qpa/qplatformintegration.h>
 
 #include "qpixmap_raster_p.h"
@@ -828,6 +829,7 @@ bool QPixmap::loadFromData(const uchar *buf, uint len, const char *format, Qt::I
         return false;
     }
 
+    QSystraceEvent systrace("graphics", "QPixmap::loadFromData");
     if (!data)
         data = QPlatformPixmap::create(0, 0, QPlatformPixmap::PixmapType);
 

@@ -123,6 +123,8 @@
 #include <private/qgifhandler_p.h>
 #endif
 
+#include <private/qsystrace_p.h>
+
 #include <algorithm>
 
 QT_BEGIN_NAMESPACE
@@ -610,6 +612,7 @@ bool QImageWriter::write(const QImage &image)
     if (!canWrite())
         return false;
 
+    QSystraceEvent systrace("graphics", "QImageWriter::write");
     if (d->handler->supportsOption(QImageIOHandler::Quality))
         d->handler->setOption(QImageIOHandler::Quality, d->quality);
     if (d->handler->supportsOption(QImageIOHandler::CompressionRatio))

@@ -65,6 +65,7 @@
 #include <qhash.h>
 
 #include <private/qpaintengine_raster_p.h>
+#include <private/qsystrace_p.h>
 
 #include <private/qimage_p.h>
 #include <private/qfont_p.h>
@@ -1146,6 +1147,8 @@ QImage QImage::copy(const QRect& r) const
     if (!d)
         return QImage();
 
+    QSystraceEvent systrace("graphics", "QImage::copy");
+
     if (r.isNull()) {
         QImage image(d->width, d->height, d->format);
         if (image.isNull())
@@ -1669,6 +1672,7 @@ void QImage::fill(uint pixel)
     if (!d)
         return;
 
+    QSystraceEvent systrace("graphics", "QImage::fill(uint)");
     detach();
 
     // In case detach() ran out of memory
@@ -1747,6 +1751,8 @@ void QImage::fill(const QColor &color)
 {
     if (!d)
         return;
+
+    QSystraceEvent systrace("graphics", "QImage::fill(QColor)");
     detach();
 
     // In case we run out of memory
@@ -4008,6 +4014,7 @@ QImage QImage::convertToFormat(Format format, Qt::ImageConversionFlags flags) co
     if (format == Format_Invalid || d->format == Format_Invalid)
         return QImage();
 
+    QSystraceEvent systrace("graphics", "QImage::convertToFormat(format,flags)");
     const Image_Converter *converterPtr = &converter_map[d->format][format];
     Image_Converter converter = *converterPtr;
     if (converter) {
@@ -4127,6 +4134,7 @@ QImage QImage::convertToFormat(Format format, const QVector<QRgb> &colorTable, Q
     if (d->format == format)
         return *this;
 
+    QSystraceEvent systrace("graphics", "QImage::convertToFormat(format,colorTable,flags)");
     if (format <= QImage::Format_Indexed8 && depth() == 32) {
         return convertWithPalette(*this, format, colorTable);
     }

@@ -49,6 +49,7 @@
 #include "qsqldriver.h"
 #include "qsqldatabase.h"
 #include "private/qsqlnulldriver_p.h"
+#include <QtCore/private/qsystrace_p.h>
 #include "qvector.h"
 #include "qmap.h"
 
@@ -351,6 +352,7 @@ bool QSqlQuery::isNull(int field) const
 
 bool QSqlQuery::exec(const QString& query)
 {
+    QSystraceEvent trace("sql", "QSqlQuery::exec");
     if (d->ref.load() != 1) {
         bool fo = isForwardOnly();
         *this = QSqlQuery(driver()->createResult());
@@ -959,6 +961,7 @@ bool QSqlQuery::prepare(const QString& query)
 */
 bool QSqlQuery::exec()
 {
+    QSystraceEvent trace("sql", "QSqlQuery::execp");
     d->sqlResult->resetBindCount();
 
     if (d->sqlResult->lastError().isValid())
