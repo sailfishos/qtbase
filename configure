@@ -633,6 +633,7 @@ CFG_MTDEV=auto
 CFG_JOURNALD=no
 CFG_SYSLOG=no
 CFG_SQLITE=qt
+CFG_LIBSYSTRACE=auto
 CFG_GIF=auto
 CFG_PNG=yes
 CFG_LIBPNG=auto
@@ -1721,6 +1722,13 @@ while [ "$#" -gt 0 ]; do
     sqlite)
         if [ "$VAL" = "system" ]; then
             CFG_SQLITE=system
+        else
+            UNKNOWN_OPT=yes
+        fi
+        ;;
+    libsystrace)
+        if [ "$VAL" = "yes" ] || [ "$VAL" = "no" ]; then
+            CFG_LIBSYSTRACE="$VAL"
         else
             UNKNOWN_OPT=yes
         fi
@@ -4687,6 +4695,19 @@ if [ "$CFG_SYSLOG" != "no" ]; then
     fi
 fi
 
+if [ "$CFG_LIBSYSTRACE" != "no" ]; then
+    if compileTest unix/libsystrace "libsystrace"; then
+        CFG_LIBSYSTRACE=yes
+        QMAKE_CONFIG="$QMAKE_CONFIG libsystrace"
+        QMakeVar add DEFINES QT_USE_LIBSYSTRACE
+    else
+        if [ "$CFG_LIBSYSTRACE" != "auto" ] && [ "$CFG_CONFIGURE_EXIT_ON_ERROR" = "yes" ]; then
+            echo "libsystrace support cannot be enabled due to functionality tests!"
+            CFG_LIBSYSTRACE=no
+        fi
+    fi
+fi
+
 if [ "$CFG_LARGEFILE" = "auto" ]; then
     #Large files should be enabled for all Linux systems
     CFG_LARGEFILE=yes
@@ -7300,6 +7321,7 @@ report_support "  libinput................" "$CFG_LIBINPUT"
 report_support "  Logging backends:"
 report_support "    journald ..............." "$CFG_JOURNALD"
 report_support "    syslog   ..............." "$CFG_SYSLOG"
+report_support "    libsystrace ............" "$CFG_LIBSYSTRACE"
 report_support "  mtdev .................." "$CFG_MTDEV" yes "system library"
 report_support "  Networking:"
 [ "$XPLATFORM_MAC" = "yes" ] && \
