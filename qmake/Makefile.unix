@@ -19,7 +19,7 @@ QOBJS=qtextcodec.o qutfcodec.o qstring.o qstring_compat.o qstringbuilder.o qtext
       qbitarray.o qdir.o qdiriterator.o quuid.o qhash.o qfileinfo.o qdatetime.o qstringlist.o \
       qabstractfileengine.o qtemporaryfile.o qmap.o qmetatype.o qsettings.o qsystemerror.o qlibraryinfo.o \
       qvariant.o qvsnprintf.o qlocale.o qlocale_tools.o qlinkedlist.o qnumeric.o \
-      qcryptographichash.o qxmlstream.o qxmlutils.o qlogging.o \
+      qcryptographichash.o qxmlstream.o qxmlutils.o qsystrace.o qlogging.o \
       qjson.o qjsondocument.o qjsonparser.o qjsonarray.o qjsonobject.o qjsonvalue.o \
       $(QTOBJS)
 
@@ -83,6 +83,7 @@ DEPEND_SRC = \
 	   $(SOURCE_PATH)/src/corelib/xml/qxmlstream.cpp \
 	   $(SOURCE_PATH)/src/corelib/xml/qxmlutils.cpp \
 	   $(SOURCE_PATH)/src/corelib/kernel/qsystemerror.cpp \
+	   $(SOURCE_PATH)/src/corelib/global/qsystrace.cpp \
 	   $(SOURCE_PATH)/src/corelib/global/qlogging.cpp \
 	   $(SOURCE_PATH)/src/corelib/plugin/qsystemlibrary.cpp \
 	   $(SOURCE_PATH)/tools/shared/windows/registry.cpp \
@@ -399,6 +400,9 @@ qxmlstream.o: $(SOURCE_PATH)/src/corelib/xml/qxmlstream.cpp
 
 qxmlutils.o: $(SOURCE_PATH)/src/corelib/xml/qxmlutils.cpp
 	$(CXX) -c -o $@ $(CXXFLAGS) $(SOURCE_PATH)/src/corelib/xml/qxmlutils.cpp
+
+qsystrace.o: $(SOURCE_PATH)/src/corelib/global/qsystrace.cpp
+	$(CXX) -c -o $@ $(CXXFLAGS) $(SOURCE_PATH)/src/corelib/global/qsystrace.cpp
 
 qlogging.o: $(SOURCE_PATH)/src/corelib/global/qlogging.cpp
 	$(CXX) -c -o $@ $(CXXFLAGS) $(SOURCE_PATH)/src/corelib/global/qlogging.cpp

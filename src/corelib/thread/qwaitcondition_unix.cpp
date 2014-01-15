@@ -39,6 +39,7 @@
 #include "qstring.h"
 #include "qelapsedtimer.h"
 #include "private/qcore_unix_p.h"
+#include "private/qsystrace_p.h"
 
 #include "qmutex_p.h"
 #include "qreadwritelock_p.h"
@@ -194,6 +195,7 @@ void QWaitCondition::wakeAll()
 
 bool QWaitCondition::wait(QMutex *mutex, unsigned long time)
 {
+    QSystraceEvent systrace("io", "QWaitCondition::wait(QMutex)");
     if (! mutex)
         return false;
     if (mutex->isRecursive()) {
@@ -214,6 +216,7 @@ bool QWaitCondition::wait(QMutex *mutex, unsigned long time)
 
 bool QWaitCondition::wait(QReadWriteLock *readWriteLock, unsigned long time)
 {
+    QSystraceEvent systrace("io", "QWaitCondition::wait(QReadWriteLock)");
     if (!readWriteLock || readWriteLock->d->accessCount == 0)
         return false;
     if (readWriteLock->d->accessCount < -1) {

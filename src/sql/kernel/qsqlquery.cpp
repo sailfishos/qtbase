@@ -43,6 +43,7 @@
 #include "qsqldriver.h"
 #include "qsqldatabase.h"
 #include "private/qsqlnulldriver_p.h"
+#include <QtCore/private/qsystrace_p.h>
 #include "qvector.h"
 #include "qmap.h"
 
@@ -368,6 +369,7 @@ bool QSqlQuery::exec(const QString& query)
     QElapsedTimer t;
     t.start();
 #endif
+    QSystraceEvent trace("sql", "QSqlQuery::exec");
     if (d->ref.load() != 1) {
         bool fo = isForwardOnly();
         *this = QSqlQuery(driver()->createResult());
@@ -995,6 +997,7 @@ bool QSqlQuery::exec()
     QElapsedTimer t;
     t.start();
 #endif
+    QSystraceEvent trace("sql", "QSqlQuery::execp");
     d->sqlResult->resetBindCount();
 
     if (d->sqlResult->lastError().isValid())

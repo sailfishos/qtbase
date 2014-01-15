@@ -35,6 +35,7 @@
 #include "qeventdispatcher_unix_p.h"
 
 #include <private/qthread_p.h>
+#include <private/qsystrace_p.h>
 
 #include "qcoreapplication.h"
 #include "qsocketnotifier.h"
@@ -90,6 +91,7 @@ static gboolean socketNotifierSourceCheck(GSource *source)
 
 static gboolean socketNotifierSourceDispatch(GSource *source, GSourceFunc, gpointer)
 {
+    QSystraceEvent systrace("io", "QEventDispatcher::socketNotifierSourceDispatch");
     QEvent event(QEvent::SockAct);
 
     GSocketNotifierSource *src = reinterpret_cast<GSocketNotifierSource *>(source);
@@ -169,6 +171,7 @@ static gboolean timerSourceCheck(GSource *source)
 
 static gboolean timerSourceDispatch(GSource *source, GSourceFunc, gpointer)
 {
+    QSystraceEvent systrace("io", "QEventDispatcher::timerSourceDispatch");
     GTimerSource *timerSource = reinterpret_cast<GTimerSource *>(source);
     if (timerSource->processEventsFlags & QEventLoop::X11ExcludeTimers)
         return true;
@@ -219,6 +222,7 @@ static gboolean idleTimerSourceCheck(GSource *source)
 
 static gboolean idleTimerSourceDispatch(GSource *source, GSourceFunc, gpointer)
 {
+    QSystraceEvent systrace("io", "QEventDispatcher::idleTimerSourceDispatch");
     GTimerSource *timerSource = reinterpret_cast<GIdleTimerSource *>(source)->timerSource;
     (void) timerSourceDispatch(&timerSource->source, 0, 0);
     return true;
@@ -265,6 +269,7 @@ static gboolean postEventSourceCheck(GSource *source)
 
 static gboolean postEventSourceDispatch(GSource *s, GSourceFunc, gpointer)
 {
+    QSystraceEvent systrace("io", "QEventDispatcher::postEventSourceDispatch");
     GPostEventSource *source = reinterpret_cast<GPostEventSource *>(s);
     source->lastSerialNumber = source->serialNumber.load();
     QCoreApplication::sendPostedEvents();
@@ -398,6 +403,7 @@ QEventDispatcherGlib::~QEventDispatcherGlib()
 bool QEventDispatcherGlib::processEvents(QEventLoop::ProcessEventsFlags flags)
 {
     Q_D(QEventDispatcherGlib);
+    QSystraceEvent systrace("io", "QEventDispatcher::processEvents");
 
     const bool canWait = (flags & QEventLoop::WaitForMoreEvents);
     if (canWait)
