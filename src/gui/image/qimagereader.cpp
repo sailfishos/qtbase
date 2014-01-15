@@ -156,6 +156,8 @@
 #include <private/qgifhandler_p.h>
 #endif
 
+#include <private/qsystrace_p.h>
+
 #include <algorithm>
 
 QT_BEGIN_NAMESPACE
@@ -1309,6 +1311,8 @@ bool QImageReader::read(QImage *image)
 
     if (!d->handler && !d->initHandler())
         return false;
+
+    QSystraceEvent systrace("graphics", "QImageReader::read");
 
     // set the handler specific options.
     if (d->handler->supportsOption(QImageIOHandler::ScaledSize) && d->scaledSize.isValid()) {
