@@ -147,6 +147,16 @@
                 "-lrt"
             ]
         },
+        "libsystrace": {
+            "label": "libsystrace",
+            "test": {
+                "include": [ "systrace.h" ],
+                "main": "SYSTRACE_BEGIN(\"config.tests\", \"systrace_main\", \"testing\");"
+            },
+            "sources": [
+                { "type": "pkgConfig", "args": "systrace" }
+            ]
+        },
         "pcre2": {
             "label": "PCRE2",
             "test": {
@@ -454,6 +464,11 @@
             "label": "journald",
             "autoDetect": false,
             "condition": "libs.journald",
+            "output": [ "privateFeature" ]
+        },
+        "libsystrace": {
+            "label": "libsystrace",
+            "condition": "libs.libsystrace",
             "output": [ "privateFeature" ]
         },
         "std-atomic64": {

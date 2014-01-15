@@ -58,6 +58,8 @@
 # include <private/qcore_mac_p.h>
 #endif
 
+#include <private/qsystrace_p.h>
+
 QT_BEGIN_NAMESPACE
 
 #ifdef Q_OS_WIN
@@ -421,6 +423,7 @@ bool QFSFileEngine::syncToDisk()
     Q_D(QFSFileEngine);
     if ((d->openMode & QIODevice::WriteOnly) == 0)
         return true;
+    QSystraceEvent systrace("io", "QFSFileEngine::syncToDisk");
     return d->nativeSyncToDisk();
 }
 
@@ -569,6 +572,8 @@ qint64 QFSFileEngine::read(char *data, qint64 maxlen)
 {
     Q_D(QFSFileEngine);
 
+    QSystraceEvent systrace("io", "QFSFileEngine::read");
+
     // On Windows' stdlib implementation, the results of calling fread and
     // fwrite are undefined if not called either in sequence, or if preceded
     // with a call to fflush().
@@ -592,6 +597,7 @@ qint64 QFSFileEnginePrivate::readFdFh(char *data, qint64 len)
         return -1;
     }
 
+    QSystraceEvent systrace("io", "QFSFileEngine::readFdFh");
     qint64 readBytes = 0;
     bool eof = false;
 
@@ -700,6 +706,8 @@ qint64 QFSFileEngine::write(const char *data, qint64 len)
 {
     Q_D(QFSFileEngine);
 
+    QSystraceEvent systrace("io", "QFSFileEngine::write");
+
     // On Windows' stdlib implementation, the results of calling fread and
     // fwrite are undefined if not called either in sequence, or if preceded
     // with a call to fflush().
@@ -724,6 +732,7 @@ qint64 QFSFileEnginePrivate::writeFdFh(const char *data, qint64 len)
     }
 
     qint64 writtenBytes = 0;
+    QSystraceEvent systrace("io", "QFSFileEngine::writeFdFh");
 
     if (len) { // avoid passing nullptr to fwrite() or QT_WRITE() (UB)
 

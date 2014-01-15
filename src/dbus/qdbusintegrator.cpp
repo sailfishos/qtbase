@@ -49,6 +49,7 @@
 #include <qstringlist.h>
 #include <qtimer.h>
 #include <qthread.h>
+#include <QtCore/private/qsystrace_p.h>
 
 #include "qdbusargument.h"
 #include "qdbusconnection_p.h"
@@ -2042,6 +2043,7 @@ QDBusMessage QDBusConnectionPrivate::sendWithReply(const QDBusMessage &message,
                                                    int sendMode, int timeout)
 {
     QDBusBlockingCallWatcher watcher(message);
+    QSystraceEvent trace("dbus", "QDBusConnection::sendWithReply");
 
     QDBusPendingCallPrivate *pcall = sendWithReplyAsync(message, 0, 0, 0, timeout);
     Q_ASSERT(pcall);
@@ -2071,6 +2073,7 @@ QDBusMessage QDBusConnectionPrivate::sendWithReply(const QDBusMessage &message,
 
 QDBusMessage QDBusConnectionPrivate::sendWithReplyLocal(const QDBusMessage &message)
 {
+    QSystraceEvent trace("dbus", "QDBusConnection::sendWithReplyLocal");
     qDBusDebug() << this << "sending message via local-loop:" << message;
 
     QDBusMessage localCallMsg = QDBusMessagePrivate::makeLocal(*this, message);
@@ -2140,6 +2143,7 @@ QDBusPendingCallPrivate *QDBusConnectionPrivate::sendWithReplyAsync(const QDBusM
 
     QDBusError error;
     DBusMessage *msg = QDBusMessagePrivate::toDBusMessage(message, capabilities, &error);
+    QSystraceEvent trace("dbus", "QDBusConnection::sendWithReplyAsync");
     if (!msg) {
         qWarning("QDBusConnection: error: could not send message to service \"%s\" path \"%s\" interface \"%s\" member \"%s\": %s",
                  qPrintable(message.service()), qPrintable(message.path()),

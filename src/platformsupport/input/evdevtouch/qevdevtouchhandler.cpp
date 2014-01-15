@@ -63,6 +63,8 @@ extern "C" {
 }
 #endif
 
+#include <private/qsystrace_p.h>
+
 QT_BEGIN_NAMESPACE
 
 Q_LOGGING_CATEGORY(qLcEvdevTouch, "qt.qpa.input")
@@ -378,6 +380,7 @@ QTouchDevice *QEvdevTouchScreenHandler::touchDevice() const
 
 void QEvdevTouchScreenHandler::readData()
 {
+    QSystraceEvent systrace("touch", "QEvdevTouchScreenData::readData");
     ::input_event buffer[32];
     int events = 0;
 
@@ -496,6 +499,7 @@ void QEvdevTouchScreenData::addTouchPoint(const Contact &contact, Qt::TouchPoint
 
 void QEvdevTouchScreenData::processInputEvent(input_event *data)
 {
+    QSystraceEvent systrace("touch", "QEvdevTouchScreenData::processInputEvent");
     if (data->type == EV_ABS) {
 
         if (data->code == ABS_MT_POSITION_X || (m_singleTouch && data->code == ABS_X)) {
@@ -711,6 +715,7 @@ void QEvdevTouchScreenData::assignIds()
 
 QRect QEvdevTouchScreenData::screenGeometry() const
 {
+    QSystraceEvent systrace("touch", "QEvdevTouchScreenData::reportPoints");
     if (m_forceToActiveWindow) {
         QWindow *win = QGuiApplication::focusWindow();
         return win ? QHighDpi::toNativePixels(win->geometry(), win) : QRect();

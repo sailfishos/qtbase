@@ -33,7 +33,8 @@ SOURCES += \
         global/qfloat16.cpp \
         global/qoperatingsystemversion.cpp \
         global/qlogging.cpp \
-        global/qhooks.cpp
+        global/qhooks.cpp \
+        global/qsystrace.cpp
 
 VERSIONTAGGING_SOURCES = global/qversiontagging.cpp
 
@@ -56,6 +57,9 @@ if(linux*|hurd*):!cross_compile:!static:!*-armcc* {
    QMAKE_LFLAGS += -Wl,-e,qt_core_boilerplate
    prog=$$quote(if (/program interpreter: (.*)]/) { print $1; })
    DEFINES += ELF_INTERPRETER=\\\"$$system(LC_ALL=C readelf -l /bin/ls | perl -n -e \'$$prog\')\\\"
+
+   CONFIG += link_pkgconfig
+   libsystrace: PKGCONFIG_PRIVATE += systrace
 }
 
 qtConfig(slog2): \
