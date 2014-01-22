@@ -52,6 +52,7 @@ QT_BEGIN_NAMESPACE
 
 class QSocketNotifier;
 class QEvdevTouchScreenData;
+class QEvdevReader;
 #ifdef USE_MTDEV
 struct mtdev;
 #endif
@@ -71,6 +72,7 @@ private:
     QSocketNotifier *m_notify;
     int m_fd;
     QEvdevTouchScreenData *d;
+    QEvdevReader *reader;
 #ifdef USE_MTDEV
     mtdev *m_mtdev;
 #endif
@@ -81,7 +83,6 @@ class QEvdevTouchScreenHandlerThread : public QThread
 public:
     explicit QEvdevTouchScreenHandlerThread(const QString &spec, QObject *parent = 0);
     ~QEvdevTouchScreenHandlerThread();
-    void run();
     QEvdevTouchScreenHandler *handler() { return m_handler; }
 
 private:
