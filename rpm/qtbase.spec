@@ -542,8 +542,6 @@ This package contains the Qt5 development defaults package
 
 
 
-##### Build section
-
 %prep
 %setup -q -n qt5-%{version}/qtbase
 
@@ -645,8 +643,6 @@ ln -s %{_sysconfdir}/xdg/qtchooser/5.conf %{buildroot}%{_sysconfdir}/xdg/qtchoos
 %fdupes %{buildroot}/%{_datadir}
 
 
-#### Pre/Post section
-
 %post qtcore -p /sbin/ldconfig
 %postun qtcore -p /sbin/ldconfig
 
@@ -679,11 +675,6 @@ ln -s %{_sysconfdir}/xdg/qtchooser/5.conf %{buildroot}%{_sysconfdir}/xdg/qtchoos
 
 %post qtconcurrent -p /sbin/ldconfig
 %postun qtconcurrent -p /sbin/ldconfig
-
-#### File section
-
-# There is no naked qt5 package
-#%files
 
 
 
@@ -1001,4 +992,3 @@ ln -s %{_sysconfdir}/xdg/qtchooser/5.conf %{buildroot}%{_sysconfdir}/xdg/qtchoos
 %defattr(-,root,root,-)
 %{_sysconfdir}/xdg/qtchooser/default.conf
 
-#### No changelog section, separate $pkg.changes contains the history
