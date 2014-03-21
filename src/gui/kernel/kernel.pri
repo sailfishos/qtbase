@@ -68,7 +68,8 @@ HEADERS += \
         kernel/qplatformservices.h \
         kernel/qplatformscreenpageflipper.h \
         kernel/qplatformsystemtrayicon.h \
-        kernel/qplatformsessionmanager.h
+        kernel/qplatformsessionmanager.h \
+        kernel/qpixelformat.h
 
 SOURCES += \
         kernel/qclipboard_qpa.cpp \
@@ -121,7 +122,8 @@ SOURCES += \
         kernel/qplatformservices.cpp \
         kernel/qplatformscreenpageflipper.cpp \
         kernel/qplatformsystemtrayicon_qpa.cpp \
-        kernel/qplatformsessionmanager.cpp
+        kernel/qplatformsessionmanager.cpp \
+        kernel/qpixelformat.cpp
 
 contains(QT_CONFIG, opengl)|contains(QT_CONFIG, opengles2) {
     HEADERS += \

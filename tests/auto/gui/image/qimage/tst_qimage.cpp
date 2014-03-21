@@ -152,6 +152,14 @@ private slots:
     void deepCopyWhenPaintingActive();
     void scaled_QTBUG19157();
 
+    void convertOverUnPreMul();
+
+    void scaled_QTBUG35972();
+
+    void convertToPixelFormat();
+    void convertToImageFormat_data();
+    void convertToImageFormat();
+
     void cleanupFunctions();
 };
 
@@ -2125,6 +2133,85 @@ void tst_QImage::scaled_QTBUG19157()
     QImage foo(5000, 1, QImage::Format_RGB32);
     foo = foo.scaled(1024, 1024, Qt::KeepAspectRatio);
     QVERIFY(!foo.isNull());
+}
+
+void tst_QImage::convertOverUnPreMul()
+{
+    QImage image(256, 256, QImage::Format_ARGB32_Premultiplied);
+
+    for (int j = 0; j < 256; j++) {
+        for (int i = 0; i <= j; i++) {
+            image.setPixel(i, j, qRgba(i, i, i, j));
+        }
+    }
+
+    QImage image2 = image.convertToFormat(QImage::Format_ARGB32).convertToFormat(QImage::Format_ARGB32_Premultiplied);
+
+    for (int j = 0; j < 256; j++) {
+        for (int i = 0; i <= j; i++) {
+            QCOMPARE(qAlpha(image2.pixel(i, j)), qAlpha(image.pixel(i, j)));
+            QCOMPARE(qGray(image2.pixel(i, j)), qGray(image.pixel(i, j)));
+        }
+    }
+}
+
+void tst_QImage::scaled_QTBUG35972()
+{
+    QImage src(532,519,QImage::Format_ARGB32_Premultiplied);
+    src.fill(QColor(Qt::white));
+    QImage dest(1000,1000,QImage::Format_ARGB32_Premultiplied);
+    dest.fill(QColor(Qt::white));
+    QPainter painter1(&dest);
+    const QTransform trf(1.25, 0,
+                         0, 1.25,
+                         /*dx */ 15.900000000000034, /* dy */ 72.749999999999986);
+    painter1.setTransform(trf);
+    painter1.drawImage(QRectF(-2.6, -2.6, 425.6, 415.20000000000005), src, QRectF(0,0,532,519));
+
+    const quint32 *pixels = reinterpret_cast<const quint32 *>(dest.constBits());
+    int size = dest.width()*dest.height();
+    for (int i = 0; i < size; ++i)
+        QCOMPARE(pixels[i], 0xffffffff);
+}
+
+void tst_QImage::convertToPixelFormat()
+{
+    QPixelFormat rgb565 = qPixelFormatRgba(5,6,5,0,QPixelFormat::IgnoresAlpha, QPixelFormat::AtBeginning, QPixelFormat::NotPremultiplied, QPixelFormat::UnsignedShort);
+    QPixelFormat rgb565ImageFormat = QImage::toPixelFormat(QImage::Format_RGB16);
+    QCOMPARE(rgb565, rgb565ImageFormat);
+}
+
+void tst_QImage::convertToImageFormat_data()
+{
+    QTest::addColumn<QImage::Format>("image_format");
+    QTest::newRow("Convert Format_Invalid") << QImage::Format_Invalid;
+    QTest::newRow("Convert Format_Mono") << QImage::Format_Mono;
+    //This ends up being a QImage::Format_Mono since we cant specify LSB in QPixelFormat
+    //QTest::newRow("Convert Format_MonoLSB") << QImage::Format_MonoLSB;
+    QTest::newRow("Convert Format_Indexed8") << QImage::Format_Indexed8;
+    QTest::newRow("Convert Format_RGB32") << QImage::Format_RGB32;
+    QTest::newRow("Convert Format_ARGB32") << QImage::Format_ARGB32;
+    QTest::newRow("Convert Format_ARGB32_Premultiplied") << QImage::Format_ARGB32_Premultiplied;
+    QTest::newRow("Convert Format_RGB16") << QImage::Format_RGB16;
+    QTest::newRow("Convert Format_ARGB8565_Premultiplied") << QImage::Format_ARGB8565_Premultiplied;
+    QTest::newRow("Convert Format_RGB666") << QImage::Format_RGB666;
+    QTest::newRow("Convert Format_ARGB6666_Premultiplied") << QImage::Format_ARGB6666_Premultiplied;
+    QTest::newRow("Convert Format_RGB555") << QImage::Format_RGB555;
+    QTest::newRow("Convert Format_ARGB8555_Premultiplied") << QImage::Format_ARGB8555_Premultiplied;
+    QTest::newRow("Convert Format_RGB888") << QImage::Format_RGB888;
+    QTest::newRow("Convert Format_RGB444") << QImage::Format_RGB444;
+    QTest::newRow("Convert Format_ARGB4444_Premultiplied") << QImage::Format_ARGB4444_Premultiplied;
+    QTest::newRow("Convert Format_RGBX8888") << QImage::Format_RGBX8888;
+    QTest::newRow("Convert Format_RGBA8888") << QImage::Format_RGBA8888;
+    QTest::newRow("Convert Format_RGBA8888_Premultiplied") << QImage::Format_RGBA8888_Premultiplied;
+}
+void tst_QImage::convertToImageFormat()
+{
+    QFETCH(QImage::Format, image_format);
+
+    QPixelFormat pixel_format = QImage::toPixelFormat(image_format);
+    QImage::Format format = QImage::toImageFormat(pixel_format);
+    QCOMPARE(format, image_format);
 }
 
 static void cleanupFunction(void* info)
