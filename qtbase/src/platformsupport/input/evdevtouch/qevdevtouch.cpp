@@ -373,14 +373,12 @@ QEvdevTouchScreenHandler::QEvdevTouchScreenHandler(const QString &specification,
 
     d->registerDevice();
 
-    if (grabSuccess) {
-        QThread *readerThread = qobject_cast<QThread *>(parent);
-	Q_ASSERT(readerThread);
-        readerThread->start();
-        reader = new QEvdevReader(m_fd, m_mtdev);
-        QObject::connect(reader, SIGNAL(dataAvailable()), this, SLOT(readData()), Qt::QueuedConnection);
-        reader->moveToThread(readerThread);
-    }
+    QThread *readerThread = qobject_cast<QThread *>(parent);
+    Q_ASSERT(readerThread);
+    readerThread->start();
+    reader = new QEvdevReader(m_fd, m_mtdev);
+    QObject::connect(reader, SIGNAL(dataAvailable()), this, SLOT(readData()), Qt::QueuedConnection);
+    reader->moveToThread(readerThread);
 }
 
 QEvdevTouchScreenHandler::~QEvdevTouchScreenHandler()
