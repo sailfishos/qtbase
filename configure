@@ -3786,7 +3786,11 @@ static const char qt_configure_licensee_str          [256 + 12] = "qt_lcnsuser=$
 static const char qt_configure_licensed_products_str [256 + 12] = "qt_lcnsprod=$Edition";
 
 /* Installation date */
-static const char qt_configure_installation          [12+11]    = "qt_instdate=`date +%Y-%m-%d`";
+/* MER: hardcode to %Y-01-01 to avoid constant rebuild cascades.
+ * One per year is probably OK. We can't just remove this because of
+ * QLibraryInfo::buildDate relying on it.
+ */
+static const char qt_configure_installation          [12+11]    = "qt_instdate=`date +%Y-01-01`";
 
 /* Installation Info */
 static const char qt_configure_prefix_path_strs[][256 + 12] = {
