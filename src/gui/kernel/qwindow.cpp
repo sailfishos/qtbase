@@ -1487,6 +1487,9 @@ void QWindow::resize(const QSize &newSize)
 void QWindow::destroy()
 {
     Q_D(QWindow);
+    if (!d->platformWindow)
+        return;
+
     QObjectList childrenWindows = children();
     for (int i = 0; i < childrenWindows.size(); i++) {
         QObject *object = childrenWindows.at(i);
@@ -1753,6 +1756,9 @@ bool QWindow::close()
     if (parent())
         return false;
 
+    if (!d->platformWindow)
+        return true;
+
     if (QGuiApplicationPrivate::focus_window == this)
         QGuiApplicationPrivate::focus_window = 0;
     if (QGuiApplicationPrivate::currentMouseWindow == this)
@@ -1907,15 +1913,10 @@ bool QWindow::event(QEvent *ev)
         break;
 #endif
 
-    case QEvent::Close: {
-        Q_D(QWindow);
-        bool wasVisible = isVisible();
-        if (ev->isAccepted()) {
-            destroy();
-            if (wasVisible)
-                d->maybeQuitOnLastWindowClosed();
-        }
-        break; }
+    case QEvent::Close:
+        if (ev->isAccepted())
+            close();
+        break;
 
     case QEvent::Expose:
         exposeEvent(static_cast<QExposeEvent *>(ev));
