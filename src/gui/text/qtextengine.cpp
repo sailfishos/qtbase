@@ -1014,7 +1014,7 @@ void QTextEngine::shapeText(int item) const
                 itemBoundaries.append(glyph_pos);
                 itemBoundaries.append(engineIdx);
 
-                if (engineIdx != 0) {
+                if (engineIdx != 0 && QChar::category(string[i]) != QChar::Separator_Line && QChar::category(string[i]) != QChar::Other_Format) {
                     QFontEngine *actualFontEngine = static_cast<QFontEngineMulti *>(fontEngine)->engine(engineIdx);
                     si.ascent = qMax(actualFontEngine->ascent(), si.ascent);
                     si.descent = qMax(actualFontEngine->descent(), si.descent);
