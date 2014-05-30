@@ -1102,9 +1102,13 @@ void QTextEngine::shapeTextWithHarfbuzz(int item) const
         QFontEngine *actualFontEngine = font;
         uint engineIdx = 0;
         if (font->type() == QFontEngine::Multi) {
-            engineIdx = uint(availableGlyphs(&si).glyphs[glyph_pos] >> 24);
-
-            actualFontEngine = static_cast<QFontEngineMulti *>(font)->engine(engineIdx);
+            for (uint i = 0; i < shaper_item.item.length; i++) {
+                if (QChar::category(shaper_item.string[shaper_item.item.pos + i]) != QChar::Separator_Line && QChar::category(shaper_item.string[shaper_item.item.pos + i]) != QChar::Other_Format) {
+                    engineIdx = uint(availableGlyphs(&si).glyphs[glyph_pos] >> 24);
+                    actualFontEngine = static_cast<QFontEngineMulti *>(font)->engine(engineIdx);
+                    break;
+                }
+            }
         }
 
         si.ascent = qMax(actualFontEngine->ascent(), si.ascent);
