@@ -569,6 +569,7 @@ MAKEFLAGS=%{?_smp_mflags} \
     -system-zlib \
     -system-libpng \
     -system-libjpeg \
+    -no-xkbcommon \
     -no-rpath \
     -optimized-qmake \
     -dbus-linked \
