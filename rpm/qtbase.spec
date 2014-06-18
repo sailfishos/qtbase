@@ -332,7 +332,6 @@ This package contains the QtGui library
 Summary:    Development files for QtGui
 Group:      Qt/Qt
 Requires:   %{name}-qtgui = %{version}-%{release}
-Requires:   %{name}-qtopengl-devel
 
 %description qtgui-devel
 This package contains the files necessary to develop
@@ -570,6 +569,7 @@ MAKEFLAGS=%{?_smp_mflags} \
     -system-zlib \
     -system-libpng \
     -system-libjpeg \
+    -no-xkbcommon \
     -no-rpath \
     -optimized-qmake \
     -dbus-linked \
