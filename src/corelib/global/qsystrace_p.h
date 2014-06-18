@@ -61,6 +61,8 @@ namespace QSystrace
 {
     void Q_CORE_EXPORT begin(const char *module, const char *tracepoint, const char *message, ...);
     void Q_CORE_EXPORT end(const char *module, const char *tracepoint, const char *message, ...);
+    void Q_CORE_EXPORT asyncBegin(const char *module, const char *tracepoint, void *cookie, const char *message, ...);
+    void Q_CORE_EXPORT asyncEnd(const char *module, const char *tracepoint, void *cookie, const char *message, ...);
     void Q_CORE_EXPORT counter(const char *module, const char *tracepoint, const char *message, ...);
 };
 

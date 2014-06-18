@@ -53,7 +53,7 @@ void QSystrace::begin(const char *module, const char *tracepoint, const char *me
     va_start(args, message);
     vsprintf(buffer, message, args);
     va_end(args);
-    SYSTRACE_BEGIN(module, tracepoint, buffer);
+    systrace_duration_begin(module, tracepoint, buffer);
 #else
     Q_UNUSED(module)
     Q_UNUSED(tracepoint)
@@ -69,13 +69,48 @@ void QSystrace::end(const char *module, const char *tracepoint, const char *mess
     va_start(args, message);
     vsprintf(buffer, message, args);
     va_end(args);
-    SYSTRACE_END(module, tracepoint, message);
+    systrace_duration_end(module, tracepoint, message);
 #else
     Q_UNUSED(module)
     Q_UNUSED(tracepoint)
     Q_UNUSED(message)
 #endif
 }
+
+void QSystrace::asyncBegin(const char *module, const char *tracepoint, void *cookie, const char *message, ...)
+{
+#if !defined(QT_BOOTSTRAPPED) && !defined(QT_NO_DEBUG) && defined(QT_USE_LIBSYSTRACE)
+    char buffer[1024];
+    va_list args;
+    va_start(args, message);
+    vsprintf(buffer, message, args);
+    va_end(args);
+    systrace_async_begin(module, tracepoint, cookie, buffer);
+#else
+    Q_UNUSED(module)
+    Q_UNUSED(tracepoint)
+    Q_UNUSED(message)
+    Q_UNUSED(cookie)
+#endif
+}
+
+void QSystrace::asyncEnd(const char *module, const char *tracepoint, void *cookie, const char *message, ...)
+{
+#if !defined(QT_BOOTSTRAPPED) && !defined(QT_NO_DEBUG) && defined(QT_USE_LIBSYSTRACE)
+    char buffer[1024];
+    va_list args;
+    va_start(args, message);
+    vsprintf(buffer, message, args);
+    va_end(args);
+    systrace_async_end(module, tracepoint, cookie, message);
+#else
+    Q_UNUSED(module)
+    Q_UNUSED(tracepoint)
+    Q_UNUSED(message)
+    Q_UNUSED(cookie)
+#endif
+}
+
 
 void QSystrace::counter(const char *module, const char *tracepoint, const char *message, ...)
 {
@@ -85,7 +120,7 @@ void QSystrace::counter(const char *module, const char *tracepoint, const char *
     va_start(args, message);
     vsprintf(buffer, message, args);
     va_end(args);
-    SYSTRACE_COUNTER(module, tracepoint, message);
+    systrace_record_counter(module, tracepoint, message);
 #else
     Q_UNUSED(module)
     Q_UNUSED(tracepoint)
