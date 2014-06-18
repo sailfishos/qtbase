@@ -43,7 +43,7 @@
 
 int main(int argc, char **argv)
 {
-    SYSTRACE_BEGIN("config.tests", "systrace_main", "testing");
+    systrace_duration_begin("config.tests", "systrace_main", "testing");
     return 0;
 }
 
