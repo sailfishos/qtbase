@@ -332,6 +332,8 @@ This package contains the QtGui library
 Summary:    Development files for QtGui
 Group:      Qt/Qt
 Requires:   %{name}-qtgui = %{version}-%{release}
+Requires:   libGLESv2-devel
+Requires:   libEGL-devel
 
 %description qtgui-devel
 This package contains the files necessary to develop
