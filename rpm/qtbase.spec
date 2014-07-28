@@ -536,6 +536,9 @@ This package contains the Qt5 development defaults package
 %build
 touch .git
 
+if [ -f "./config.status" ]; then
+    echo "config.status already exists, not running configure to save time";
+else
 MAKEFLAGS=%{?_smp_mflags} \
 ./configure --disable-static \
     -confirm-license \
@@ -593,6 +596,7 @@ MAKEFLAGS=%{?_smp_mflags} \
     -no-xinput2 \
     -qreal float \
     -journald
+fi # config.status check
 
 make %{?_smp_mflags}
 
