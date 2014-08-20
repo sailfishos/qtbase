@@ -160,6 +160,10 @@ QVariant QGenericUnixTheme::themeHint(ThemeHint hint) const
     }
     case QPlatformTheme::KeyboardScheme:
         return QVariant(int(X11KeyboardScheme));
+    case QPlatformTheme::PasswordMaskDelay:
+        return QVariant(1000);
+    case QPlatformTheme::StartDragDistance:
+        return QVariant(20);
     default:
         break;
     }
