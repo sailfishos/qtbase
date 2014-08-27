@@ -54,9 +54,11 @@
 #include <QtDBus/QDBusInterface>
 #include <QtDBus/QDBusMessage>
 #include <QtDBus/QDBusReply>
+#ifdef QT_HAS_CONNECTIONAGENT
 #include <sys/inotify.h>
 #include <fcntl.h>
-#include <private/qcore_unix_p.h>
+#include <qcore_unix_p.h>
+#endif
 #ifndef QT_NO_BEARERMANAGEMENT
 #ifndef QT_NO_DBUS
 
@@ -76,7 +78,9 @@ QConnmanEngine::QConnmanEngine(QObject *parent)
 
 QConnmanEngine::~QConnmanEngine()
 {
+#ifdef QT_HAS_CONNECTIONAGENT
     qt_safe_close(inotifyFileDescriptor);
+#endif
 }
 
 bool QConnmanEngine::connmanAvailable() const
@@ -104,6 +108,7 @@ void QConnmanEngine::initialize()
         addServiceConfiguration(servPath);
     }
     Q_EMIT updateCompleted();
+#ifdef QT_HAS_CONNECTIONAGENT
     QSettings confFile(QStringLiteral("nemomobile"),QStringLiteral("connectionagent"));
 
     inotifyFileDescriptor = ::inotify_init();
@@ -112,6 +117,7 @@ void QConnmanEngine::initialize()
         QSocketNotifier *notifier = new QSocketNotifier(inotifyFileDescriptor, QSocketNotifier::Read, this);
         connect(notifier, SIGNAL(activated(int)), this, SLOT(inotifyActivated()));
     }
+#endif
 }
 
 void QConnmanEngine::changedModem()
@@ -572,9 +578,13 @@ bool QConnmanEngine::requiresPolling() const
 
 bool QConnmanEngine::isAlwaysAskRoaming()
 {
+#ifdef QT_HAS_CONNECTIONAGENT
     QSettings confFile(QStringLiteral("nemomobile"),QStringLiteral("connectionagent"));
     confFile.beginGroup(QStringLiteral("Connectionagent"));
     return confFile.value(QStringLiteral("askForRoaming")).toBool();
+#else
+    return false;
+#endif
 }
 
 void QConnmanEngine::reEvaluateCellular()
@@ -588,6 +598,8 @@ void QConnmanEngine::reEvaluateCellular()
 
 void QConnmanEngine::inotifyActivated()
 {
+#ifdef QT_HAS_CONNECTIONAGENT
+
     char buffer[1024];
     int len = qt_safe_read(inotifyFileDescriptor, (void *)buffer, sizeof(buffer));
     if (len > 0) {
@@ -596,6 +608,7 @@ void QConnmanEngine::inotifyActivated()
             QTimer::singleShot(1000, this, SLOT(reEvaluateCellular())); //give this time to finish write
         }
     }
+#endif
 }
 
 QT_END_NAMESPACE
