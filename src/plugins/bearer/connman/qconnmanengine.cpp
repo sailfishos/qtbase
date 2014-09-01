@@ -177,10 +177,6 @@ void QConnmanEngine::connectToId(const QString &id)
                     emit connectionError(id, QBearerEngineImpl::OperationNotSupported);
                     return;
                 }
-                if (isAlwaysAskRoaming()) {
-                    emit connectionError(id, QBearerEngineImpl::OperationNotSupported);
-                    return;
-                }
             }
         }
         if (serv->autoConnect())
