@@ -466,4 +466,9 @@ void QPlatformIntegration::sync()
 
 }
 
+QPlatformHardwareCompositor *QPlatformIntegration::hardwareCompositor(QScreen *) const
+{
+    return 0;
+}
+
 QT_END_NAMESPACE
