@@ -78,6 +78,7 @@ class QPlatformSessionManager;
 class QKeyEvent;
 class QPlatformOffscreenSurface;
 class QOffscreenSurface;
+class QPlatformHardwareCompositor;
 
 class Q_GUI_EXPORT QPlatformIntegration
 {
@@ -167,6 +168,8 @@ public:
 #endif
 
     virtual void sync();
+    virtual QPlatformHardwareCompositor *hardwareCompositor(QScreen *) const;
+
 protected:
     void screenAdded(QPlatformScreen *screen);
 };
