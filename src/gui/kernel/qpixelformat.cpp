@@ -49,6 +49,7 @@ QT_BEGIN_NAMESPACE
     \since 5.4
     \brief QPixelFormat is a class for describing different pixel
     layouts in graphics buffers
+    \internal
 
     In Qt there is a often a need to represent the layout of the pixels in a
     graphics buffer. Internally QPixelFormat stores everything in a 64 bit
