@@ -94,8 +94,6 @@ public:
         , maximumSize(QWINDOWSIZE_MAX, QWINDOWSIZE_MAX)
         , modality(Qt::NonModal)
         , blockedByModalWindow(false)
-        , updateRequestPending(false)
-        , updateTimer(0)
         , transientParent(0)
         , screen(0)
 #ifndef QT_NO_CURSOR
@@ -115,8 +113,6 @@ public:
     void setCursor(const QCursor *c = 0);
     void applyCursor();
 #endif
-
-    void deliverUpdateRequest();
 
     QPoint globalPosition() const {
         Q_Q(const QWindow);
@@ -163,9 +159,6 @@ public:
 
     Qt::WindowModality modality;
     bool blockedByModalWindow;
-
-    bool updateRequestPending;
-    int updateTimer;
 
     QPointer<QWindow> transientParent;
     QScreen *screen;
