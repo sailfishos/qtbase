@@ -192,7 +192,6 @@ void QOpenGLTextureGlyphCache::resizeTextureData(int width, int height)
     glBindTexture(GL_TEXTURE_2D, 0);
     funcs.glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0,
                            GL_TEXTURE_2D, tmp_texture, 0);
-
     funcs.glActiveTexture(GL_TEXTURE0 + QT_IMAGE_TEXTURE_UNIT);
     glBindTexture(GL_TEXTURE_2D, oldTexture);
 
@@ -263,6 +262,8 @@ void QOpenGLTextureGlyphCache::resizeTextureData(int width, int height)
 
     glBindTexture(GL_TEXTURE_2D, m_textureResource->m_texture);
 
+    glFlush();
+
     glCopyTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, 0, 0, oldWidth, oldHeight);
 
     funcs.glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0,
@@ -316,6 +317,10 @@ void QOpenGLTextureGlyphCache::fillTexture(const Coord &c, glyph_t glyph, QFixed
     }
     const int maskWidth = mask.width();
     const int maskHeight = mask.height();
+    if (maskWidth == 0 || maskHeight == 0 || mask.format() == QImage::Format_Invalid) {
+        qWarning() << "Failed to acquire glyph alpha mask. Characters will be missing during rendering!";
+        return;
+    }
 
     if (mask.format() == QImage::Format_Mono) {
         mask = mask.convertToFormat(QImage::Format_Indexed8);
