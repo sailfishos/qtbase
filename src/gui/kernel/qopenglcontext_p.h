@@ -200,7 +200,7 @@ public:
         , functions(0)
         , textureFunctions(0)
         , max_texture_size(-1)
-        , workaround_brokenFBOReadBack(false)
+        , workaround_brokenFBOReadBack(true)
         , workaround_brokenTexSubImage(false)
         , workaround_missingPrecisionQualifiers(false)
         , active_engine(0)
