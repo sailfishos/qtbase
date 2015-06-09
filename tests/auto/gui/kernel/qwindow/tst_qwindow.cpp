@@ -62,6 +62,7 @@ private slots:
     void resizeEventAfterResize();
     void mapGlobal();
     void positioning();
+    void platformSurface();
     void isExposed();
     void isActive();
     void testInputEvents();
@@ -131,6 +132,14 @@ public:
     {
         m_received[event->type()]++;
         m_order << event->type();
+        switch (event->type()) {
+        case QEvent::PlatformSurface:
+            m_surfaceventType = static_cast<QPlatformSurfaceEvent *>(event)->surfaceEventType();
+            break;
+
+        default:
+            break;
+        }
 
         return QWindow::event(event);
     }
@@ -145,9 +154,15 @@ public:
         return m_order.indexOf(type);
     }
 
+    QPlatformSurfaceEvent::SurfaceEventType surfaceEventType() const
+    {
+        return m_surfaceventType;
+    }
+
 private:
     QHash<QEvent::Type, int> m_received;
     QVector<QEvent::Type> m_order;
+    QPlatformSurfaceEvent::SurfaceEventType m_surfaceventType;
 };
 
 void tst_QWindow::eventOrderOnShow()
@@ -256,6 +271,63 @@ void tst_QWindow::positioning()
         QTRY_VERIFY(window.received(QEvent::Move));
         QTRY_COMPARE(originalPos, window.position());
     }
+}
+
+class PlatformWindowFilter : public QObject
+{
+    Q_OBJECT
+public:
+    PlatformWindowFilter(QObject *parent = 0)
+        : QObject(parent)
+        , m_window(Q_NULLPTR)
+        , m_alwaysExisted(true)
+    {}
+
+    void setWindow(Window *window) { m_window = window; }
+
+    bool eventFilter(QObject *o, QEvent *e)
+    {
+        // Check that the platform surface events are delivered synchronously.
+        // If they are, the native platform surface should always exist when we
+        // receive a QPlatformSurfaceEvent
+        if (e->type() == QEvent::PlatformSurface && o == m_window) {
+            m_alwaysExisted &= (m_window->handle() != Q_NULLPTR);
+        }
+        return false;
+    }
+
+    bool surfaceExisted() const { return m_alwaysExisted; }
+
+private:
+    Window *m_window;
+    bool m_alwaysExisted;
+};
+
+void tst_QWindow::platformSurface()
+{
+    QRect geometry(80, 80, 40, 40);
+
+    Window window;
+    PlatformWindowFilter filter;
+    filter.setWindow(&window);
+    window.installEventFilter(&filter);
+
+    window.setGeometry(geometry);
+    QCOMPARE(window.geometry(), geometry);
+    window.create();
+
+    QTRY_VERIFY(window.received(QEvent::PlatformSurface) == 1);
+    QTRY_VERIFY(window.surfaceEventType() == QPlatformSurfaceEvent::SurfaceCreated);
+    QTRY_VERIFY(window.handle() != Q_NULLPTR);
+
+    window.destroy();
+    QTRY_VERIFY(window.received(QEvent::PlatformSurface) == 2);
+    QTRY_VERIFY(window.surfaceEventType() == QPlatformSurfaceEvent::SurfaceAboutToBeDestroyed);
+    QTRY_VERIFY(window.handle() == Q_NULLPTR);
+
+    // Check for synchronous delivery of platform surface events and that the platform
+    // surface always existed upon event delivery
+    QTRY_VERIFY(filter.surfaceExisted());
 }
 
 void tst_QWindow::isExposed()

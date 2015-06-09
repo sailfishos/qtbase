@@ -168,6 +168,9 @@ void QOffscreenSurface::create()
             d->offscreenWindow->setGeometry(0, 0, d->size.width(), d->size.height());
             d->offscreenWindow->create();
         }
+
+        QPlatformSurfaceEvent e(QPlatformSurfaceEvent::SurfaceCreated);
+        QGuiApplication::sendEvent(this, &e);
     }
 }
 
@@ -179,6 +182,10 @@ void QOffscreenSurface::create()
 void QOffscreenSurface::destroy()
 {
     Q_D(QOffscreenSurface);
+
+    QPlatformSurfaceEvent e(QPlatformSurfaceEvent::SurfaceAboutToBeDestroyed);
+    QGuiApplication::sendEvent(this, &e);
+
     delete d->platformOffscreenSurface;
     d->platformOffscreenSurface = 0;
     if (d->offscreenWindow) {
