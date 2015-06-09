@@ -278,6 +278,8 @@ public:
         StyleAnimationUpdate = 213,             // style animation target should be updated
         ApplicationStateChange = 214,
 
+        PlatformSurface = 217,                  // Platform surface created or about to be destroyed
+
         // 512 reserved for Qt Jambi's MetaCall event
         // 513 reserved for Qt Jambi's DeleteOnMainThread event
 

@@ -487,6 +487,11 @@ void QWindow::create()
                     window->d_func()->platformWindow->setParent(d->platformWindow);
             }
         }
+
+        if (d->platformWindow) {
+            QPlatformSurfaceEvent e(QPlatformSurfaceEvent::SurfaceCreated);
+            QGuiApplication::sendEvent(this, &e);
+        }
     }
 }
 
@@ -1500,6 +1505,10 @@ void QWindow::destroy()
         }
     }
     setVisible(false);
+
+    QPlatformSurfaceEvent e(QPlatformSurfaceEvent::SurfaceAboutToBeDestroyed);
+    QGuiApplication::sendEvent(this, &e);
+
     delete d->platformWindow;
     d->resizeEventPending = true;
     d->receivedExpose = false;
