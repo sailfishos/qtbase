@@ -459,8 +459,8 @@ QNetworkAccessManager::QNetworkAccessManager(QObject *parent)
         // we would need all active configurations to check for
         // d->networkConfigurationManager.isOnline(), which is asynchronous
         // and potentially expensive. We can just check the configuration here
-        d->online = (d->networkConfiguration.state() & QNetworkConfiguration::Active);
     }
+    d->online = (d->networkConfiguration.state() & QNetworkConfiguration::Active);
 #endif
 }
 
@@ -930,7 +930,7 @@ QNetworkConfiguration QNetworkAccessManager::activeConfiguration() const
 void QNetworkAccessManager::setNetworkAccessible(QNetworkAccessManager::NetworkAccessibility accessible)
 {
     Q_D(QNetworkAccessManager);
-
+    d->defaultAccessControl = false;
     if (d->networkAccessible != accessible) {
         NetworkAccessibility previous = networkAccessible();
         d->networkAccessible = accessible;
@@ -959,7 +959,14 @@ QNetworkAccessManager::NetworkAccessibility QNetworkAccessManager::networkAccess
                 return NotAccessible;
         } else {
             // Network accessibility is either disabled or unknown.
-            return (d->networkAccessible == NotAccessible) ? NotAccessible : UnknownAccessibility;
+            //            return (d->networkAccessible == NotAccessible) ? NotAccessible : UnknownAccessibility;
+            if (d->defaultAccessControl) {
+                if (d->online)
+                    return d->networkAccessible;
+                else
+                    return NotAccessible;
+            }
+            return (d->networkAccessible);
         }
     } else {
         if (d->online)
@@ -1519,7 +1526,7 @@ void QNetworkAccessManagerPrivate::createSession(const QNetworkConfiguration &co
     if (!networkSessionStrongRef) {
         online = false;
 
-        if (networkAccessible == QNetworkAccessManager::NotAccessible)
+        if (networkAccessible == QNetworkAccessManager::NotAccessible || !online)
             emit q->networkAccessibleChanged(QNetworkAccessManager::NotAccessible);
         else
             emit q->networkAccessibleChanged(QNetworkAccessManager::UnknownAccessibility);
@@ -1567,11 +1574,14 @@ void QNetworkAccessManagerPrivate::_q_networkSessionStateChanged(QNetworkSession
     if (online) {
         if (state != QNetworkSession::Connected && state != QNetworkSession::Roaming) {
             online = false;
+            networkAccessible = QNetworkAccessManager::NotAccessible;
             emit q->networkAccessibleChanged(QNetworkAccessManager::NotAccessible);
         }
     } else {
         if (state == QNetworkSession::Connected || state == QNetworkSession::Roaming) {
             online = true;
+             if (defaultAccessControl)
+                 networkAccessible = QNetworkAccessManager::NotAccessible;
             emit q->networkAccessibleChanged(networkAccessible);
         }
     }
@@ -1579,19 +1589,32 @@ void QNetworkAccessManagerPrivate::_q_networkSessionStateChanged(QNetworkSession
 
 void QNetworkAccessManagerPrivate::_q_onlineStateChanged(bool isOnline)
 {
+    Q_Q(QNetworkAccessManager);
     // if the user set a config, we only care whether this one is active.
     // Otherwise, this QNAM is online if there is an online config.
+
     if (customNetworkConfiguration) {
         online = (networkConfiguration.state() & QNetworkConfiguration::Active);
     } else {
-        if (isOnline && online != isOnline) {
-            networkSessionStrongRef.clear();
-            networkSessionWeakRef.clear();
+        if (online != isOnline) {
+            if (isOnline) {
+                networkSessionStrongRef.clear();
+                networkSessionWeakRef.clear();
+            }
+            online = isOnline;
         }
-
-        online = isOnline;
+    }
+    if (online) {
+        if (defaultAccessControl) {
+            networkAccessible = QNetworkAccessManager::Accessible;
+            emit q->networkAccessibleChanged(networkAccessible);
+        }
+    } else {
+        networkAccessible = QNetworkAccessManager::NotAccessible;
+        emit q->networkAccessibleChanged(networkAccessible);
     }
 }
+
 
 #endif // QT_NO_BEARERMANAGEMENT
 

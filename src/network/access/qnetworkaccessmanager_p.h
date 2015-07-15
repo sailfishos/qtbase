@@ -92,7 +92,8 @@ public:
           initializeSession(true),
 #endif
           cookieJarCreated(false),
-          authenticationManager(new QNetworkAccessAuthenticationManager)
+          defaultAccessControl(true),
+      authenticationManager(new QNetworkAccessAuthenticationManager)
     { }
     ~QNetworkAccessManagerPrivate();
 
@@ -170,6 +171,7 @@ public:
 #endif
 
     bool cookieJarCreated;
+    bool defaultAccessControl;
 
     // The cache with authorization data:
     QSharedPointer<QNetworkAccessAuthenticationManager> authenticationManager;
