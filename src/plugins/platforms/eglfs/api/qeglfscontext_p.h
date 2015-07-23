@@ -58,21 +58,35 @@
 
 QT_BEGIN_NAMESPACE
 
+class QOpenGLFramebufferObject;
+class Blitter;
+
 class Q_EGLFS_EXPORT QEglFSContext : public QEGLPlatformContext
 {
 public:
     QEglFSContext(const QSurfaceFormat &format, QPlatformOpenGLContext *share, EGLDisplay display,
                   EGLConfig *config, const QVariant &nativeHandle);
+    ~QEglFSContext();
+    bool makeCurrent(QPlatformSurface *surface) override;
     EGLSurface eglSurfaceForPlatformSurface(QPlatformSurface *surface) override;
     EGLSurface createTemporaryOffscreenSurface() override;
     void destroyTemporaryOffscreenSurface(EGLSurface surface) override;
     void runGLChecks() override;
     void swapBuffers(QPlatformSurface *surface) override;
+    GLuint defaultFramebufferObject(QPlatformSurface *surface) const override;
 
     QEglFSCursorData cursorData;
 
 private:
+    QOpenGLFramebufferObject *fbo(QPlatformSurface *surface) const;
+
     EGLNativeWindowType m_tempWindow;
+    bool m_useNativeDefaultFbo;
+    mutable QOpenGLFramebufferObject *m_fbo;
+    Blitter *m_blitter;
+    int m_scale;
+
+    friend class Blitter;
 };
 
 QT_END_NAMESPACE
