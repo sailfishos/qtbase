@@ -96,14 +96,40 @@ class QGenericUnixThemePrivate : public QPlatformThemePrivate
 public:
     QGenericUnixThemePrivate()
         : QPlatformThemePrivate()
-        , systemFont(QLatin1String(defaultSystemFontNameC), defaultSystemFontSize)
-        , fixedFont(QStringLiteral("monospace"), systemFont.pointSize())
     {
+        const QSettings settings(QSettings::SystemScope, QStringLiteral("QtProject"), QStringLiteral("QPlatformTheme"));
+
+        const QString systemFontName(settings.value(QStringLiteral("GenericUnixTheme/SystemFont"), QLatin1String(defaultSystemFontNameC)).toString());
+        const int systemFontSize(settings.value(QStringLiteral("GenericUnixTheme/SystemFontSize"), static_cast<int>(defaultSystemFontSize)).toInt());
+        systemFont = QFont(systemFontName, systemFontSize);
+
+        const QString fixedFontName(settings.value(QStringLiteral("GenericUnixTheme/FixedFont"), QStringLiteral("monospace")).toString());
+        const int fixedFontSize(settings.value(QStringLiteral("GenericUnixTheme/FixedFontSize"), static_cast<int>(defaultSystemFontSize)).toInt());
+        fixedFont = QFont(fixedFontName, fixedFontSize);
         fixedFont.setStyleHint(QFont::TypeWriter);
+
+        systemIconFallbackThemeName = settings.value(QStringLiteral("GenericUnixTheme/SystemIconFallbackThemeName"), QStringLiteral("hicolor"));
+        iconThemeSearchPaths = settings.value(QStringLiteral("GenericUnixTheme/IconThemeSearchPaths"));
+        if (iconThemeSearchPaths.isNull()) {
+            iconThemeSearchPaths = QGenericUnixTheme::xdgIconThemePaths();
+        }
+
+        dialogButtonBoxButtonsHaveIcons = settings.value(QStringLiteral("GenericUnixTheme/DialogButtonBoxButtonsHaveIcons"), true);
+        styleNames = settings.value(QStringLiteral("GenericUnixTheme/StyleNames"), QStringList() << QStringLiteral("Fusion") << QStringLiteral("Windows"));
+        keyboardScheme = settings.value(QStringLiteral("GenericUnixTheme/KeyboardScheme"), static_cast<int>(QPlatformTheme::X11KeyboardScheme));
+        passwordMaskDelay = settings.value(QStringLiteral("GenericUnixTheme/PasswordMaskDelay"), 1000);
+        startDragDistance = settings.value(QStringLiteral("GenericUnixTheme/StartDragDistance"), 20);
     }
 
-    const QFont systemFont;
+    QFont systemFont;
     QFont fixedFont;
+    QVariant systemIconFallbackThemeName;
+    QVariant iconThemeSearchPaths;
+    QVariant dialogButtonBoxButtonsHaveIcons;
+    QVariant styleNames;
+    QVariant keyboardScheme;
+    QVariant passwordMaskDelay;
+    QVariant startDragDistance;
 };
 
 QGenericUnixTheme::QGenericUnixTheme()
@@ -146,24 +172,22 @@ QStringList QGenericUnixTheme::xdgIconThemePaths()
 
 QVariant QGenericUnixTheme::themeHint(ThemeHint hint) const
 {
+    Q_D(const QGenericUnixTheme);
     switch (hint) {
     case QPlatformTheme::SystemIconFallbackThemeName:
-        return QVariant(QString(QStringLiteral("hicolor")));
+        return d->systemIconFallbackThemeName;
     case QPlatformTheme::IconThemeSearchPaths:
-        return xdgIconThemePaths();
+        return d->iconThemeSearchPaths;
     case QPlatformTheme::DialogButtonBoxButtonsHaveIcons:
-        return QVariant(true);
-    case QPlatformTheme::StyleNames: {
-        QStringList styleNames;
-        styleNames << QStringLiteral("Fusion") << QStringLiteral("Windows");
-        return QVariant(styleNames);
-    }
+        return d->dialogButtonBoxButtonsHaveIcons;
+    case QPlatformTheme::StyleNames:
+        return d->styleNames;
     case QPlatformTheme::KeyboardScheme:
-        return QVariant(int(X11KeyboardScheme));
+        return d->keyboardScheme;
     case QPlatformTheme::PasswordMaskDelay:
-        return QVariant(1000);
+        return d->passwordMaskDelay;
     case QPlatformTheme::StartDragDistance:
-        return QVariant(20);
+        return d->startDragDistance;
     default:
         break;
     }
