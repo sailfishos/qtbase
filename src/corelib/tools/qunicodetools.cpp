@@ -688,6 +688,7 @@ Q_CORE_EXPORT void initScripts(const ushort *string, int length, uchar *scripts)
             script = QChar::Script(prop->script);
         }
 
+#if 0 // ### Disabled due to regressions. The font selection algorithm is not prepared for this change.
         if (Q_LIKELY(script != QChar::Script_Common)) {
             // override preceding Common-s
             while (sor > 0 && scripts[sor - 1] == QChar::Script_Common)
@@ -697,6 +698,7 @@ Q_CORE_EXPORT void initScripts(const ushort *string, int length, uchar *scripts)
             if (sor > 0)
                 script = scripts[sor - 1];
         }
+#endif
 
         while (sor < eor)
             scripts[sor++] = script;
@@ -704,6 +706,8 @@ Q_CORE_EXPORT void initScripts(const ushort *string, int length, uchar *scripts)
         script = prop->script;
     }
     eor = length;
+
+#if 0 // ### Disabled due to regressions. The font selection algorithm is not prepared for this change.
     if (Q_LIKELY(script != QChar::Script_Common)) {
         // override preceding Common-s
         while (sor > 0 && scripts[sor - 1] == QChar::Script_Common)
@@ -713,6 +717,8 @@ Q_CORE_EXPORT void initScripts(const ushort *string, int length, uchar *scripts)
         if (sor > 0)
             script = scripts[sor - 1];
     }
+#endif
+
     while (sor < eor)
         scripts[sor++] = script;
 }
