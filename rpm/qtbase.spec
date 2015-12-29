@@ -574,7 +574,6 @@ MAKEFLAGS=%{?_smp_mflags} \
     -system-zlib \
     -system-libpng \
     -system-libjpeg \
-    -no-xkbcommon \
     -no-rpath \
     -optimized-qmake \
     -dbus-linked \
@@ -591,6 +590,7 @@ MAKEFLAGS=%{?_smp_mflags} \
 %if %{with X11}
     -xcb \
 %else
+    -no-xkbcommon \
     -no-xcb \
 %endif
     -no-xinput2 \
