@@ -1610,7 +1610,16 @@ void QNetworkAccessManagerPrivate::_q_networkSessionClosed()
 void QNetworkAccessManagerPrivate::_q_networkSessionStateChanged(QNetworkSession::State state)
 {
     Q_Q(QNetworkAccessManager);
+
+    if (!networkSessionStrongRef) {
+        // The next stateChanged() may already be queued by the time we have
+        // received closed() signal and cleared the session reference.
+        lastSessionState = QNetworkSession::Invalid;
+        return;
+    }
+
     bool reallyOnline = false;
+
     //Do not emit the networkSessionConnected signal here, except for roaming -> connected
     //transition, otherwise it is emitted twice in a row when opening a connection.
     if (state == QNetworkSession::Connected && lastSessionState != QNetworkSession::Roaming)
