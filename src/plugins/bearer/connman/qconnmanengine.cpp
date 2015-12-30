@@ -236,14 +236,15 @@ QNetworkSession::State QConnmanEngine::sessionStateForId(const QString &id)
     if (!ptr || !ptr->isValid)
         return QNetworkSession::Invalid;
 
-    QString service = id;
-    QConnmanServiceInterface *serv = connmanServiceInterfaces.value(service);
+    QConnmanServiceInterface *serv = connmanServiceInterfaces.value(id);
     if (!serv)
         return QNetworkSession::Invalid;
 
     QString servState = serv->state();
 
-    if (serv->favorite() && (servState == QLatin1String("idle") || servState == QLatin1String("failure"))) {
+    if (servState == QLatin1String("idle") ||
+        servState == QLatin1String("failure") ||
+        servState == QLatin1String("disconnect")) {
         return QNetworkSession::Disconnected;
     }
 
