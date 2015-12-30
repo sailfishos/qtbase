@@ -369,6 +369,22 @@ void QConnmanEngine::configurationChange(QConnmanServiceInterface *serv)
 
         ptr->mutex.unlock();
 
+        if (!changed) {
+            const QNetworkSession::State curSessionState = sessionStateForId(id);
+            const QNetworkSession::State prevSessionState =
+                connmanLastKnownSessionState.contains(id) ?
+                    connmanLastKnownSessionState.value(id) :
+                    QNetworkSession::Invalid;
+            if (curSessionState != prevSessionState) {
+                if (curSessionState == QNetworkSession::Invalid) {
+                    connmanLastKnownSessionState.remove(id);
+                } else {
+                    connmanLastKnownSessionState.insert(id, curSessionState);
+                }
+                changed = true;
+            }
+        }
+
         if (changed) {
             locker.unlock();
             emit configurationChanged(ptr);
