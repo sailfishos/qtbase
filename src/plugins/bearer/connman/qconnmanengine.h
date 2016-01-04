@@ -117,15 +117,12 @@ private:
 
     QList<QNetworkConfigurationPrivate *> foundConfigurations;
 
-    QString networkFromId(const QString &id);
-
     QNetworkConfiguration::StateFlags getStateForService(const QString &service);
     QNetworkConfiguration::BearerType typeToBearer(const QString &type);
 
     void removeConfiguration(const QString &servicePath);
     void addServiceConfiguration(const QString &servicePath);
     QDateTime activeTime;
-
 
     QMap<QString,QConnmanTechnologyInterface *> technologies; // techpath, tech interface
     QMap<QString,QString> configInterfaces; // id, interface name
@@ -134,6 +131,7 @@ private:
     QNetworkConfiguration::BearerType ofonoTechToBearerType(const QString &type);
     bool isRoamingAllowed(const QString &context);
     QMap <QString,QConnmanServiceInterface *> connmanServiceInterfaces;
+    QMap <QString,QNetworkSession::State> connmanLastKnownSessionState;
 
 protected:
     bool requiresPolling() const;

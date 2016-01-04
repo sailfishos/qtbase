@@ -239,14 +239,15 @@ QNetworkSession::State QConnmanEngine::sessionStateForId(const QString &id)
     if (!ptr || !ptr->isValid)
         return QNetworkSession::Invalid;
 
-    QString service = id;
-    QConnmanServiceInterface *serv = connmanServiceInterfaces.value(service);
+    QConnmanServiceInterface *serv = connmanServiceInterfaces.value(id);
     if (!serv)
         return QNetworkSession::Invalid;
 
     QString servState = serv->state();
 
-    if (serv->favorite() && (servState == QLatin1String("idle") || servState == QLatin1String("failure"))) {
+    if (servState == QLatin1String("idle") ||
+        servState == QLatin1String("failure") ||
+        servState == QLatin1String("disconnect")) {
         return QNetworkSession::Disconnected;
     }
 
@@ -374,6 +375,22 @@ void QConnmanEngine::configurationChange(QConnmanServiceInterface *serv)
         }
 
         ptr->mutex.unlock();
+
+        if (!changed) {
+            const QNetworkSession::State curSessionState = sessionStateForId(id);
+            const QNetworkSession::State prevSessionState =
+                connmanLastKnownSessionState.contains(id) ?
+                    connmanLastKnownSessionState.value(id) :
+                    QNetworkSession::Invalid;
+            if (curSessionState != prevSessionState) {
+                if (curSessionState == QNetworkSession::Invalid) {
+                    connmanLastKnownSessionState.remove(id);
+                } else {
+                    connmanLastKnownSessionState.insert(id, curSessionState);
+                }
+                changed = true;
+            }
+        }
 
         if (changed) {
             locker.unlock();
