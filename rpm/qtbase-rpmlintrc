@@ -1,0 +1,16 @@
+from Config import *
+
+# rpmlint nags about *.app files under mkspecs/
+addFilter("qt5-qmake.* script-without-shebang")
+
+# Test suite, allow unorthodox behaviour
+addFilter("qt5-qttest.* shared-lib-calls-exit")
+
+# We manually install /etc/rpm/macros.qmake in spec here
+addFilter("qt5-qmake.* non-conffile-in-etc /etc/rpm/macros.qmake")
+
+# Input method plugin is supposed have all-lowercase summary
+addFilter("qt5-plugin-inputmethod-imsw-multi.* summary-not-capitalised.*")
+
+# Qmake package has generic mkspecs files, this is not an error
+addFilter("qt5-qmake.* devel-file-in-non-devel-package")
