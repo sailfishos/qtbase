@@ -48,6 +48,8 @@ extern "C" {
 }
 #endif
 
+#include <private/qsystrace_p.h>
+
 QT_BEGIN_NAMESPACE
 
 Q_LOGGING_CATEGORY(qLcEvdevTouch, "qt.qpa.input")
