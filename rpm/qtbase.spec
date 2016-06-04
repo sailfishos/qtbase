@@ -550,9 +550,6 @@ else
 MAKEFLAGS=%{?_smp_mflags} \
 ./configure --disable-static \
     -confirm-license \
-%if ! 0%{?qt5_release_build}
-    -developer-build \
-%endif
     -platform linux-g++ \
     -prefix "%{_prefix}" \
     -bindir "%{_libdir}/qt5/bin" \
@@ -605,6 +602,9 @@ MAKEFLAGS=%{?_smp_mflags} \
     -qreal float \
     -journald
 fi # config.status check
+#%if ! 0%{?qt5_release_build}
+#    -developer-build \
+#%endif
 
 make %{?_smp_mflags}
 
