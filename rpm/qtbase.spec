@@ -265,7 +265,7 @@ This package contains the CUPS print support plugin
 # %package plugin-platform-xlib
 # Summary:    Xlib platform plugin
 # Group:      Qt/Qt
-# 
+#
 # %description plugin-platform-xlib
 # This package contains the Xlib platform plugin
 
@@ -587,6 +587,7 @@ MAKEFLAGS=%{?_smp_mflags} \
     -verbose \
     -no-gtkstyle \
     -opengl es2 \
+    -no-opengles3 \
     -no-openvg \
     -lfontconfig \
     -I/usr/include/freetype2 \
