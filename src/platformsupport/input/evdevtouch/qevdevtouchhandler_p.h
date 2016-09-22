@@ -1,6 +1,7 @@
 /****************************************************************************
 **
 ** Copyright (C) 2015 The Qt Company Ltd.
+** Copyright (C) 2016 Jolla Ltd, author: <gunnar.sletta@jollamobile.com>
 ** Contact: http://www.qt.io/licensing/
 **
 ** This file is part of the plugins module of the Qt Toolkit.
@@ -71,10 +72,18 @@ public:
 
     QTouchDevice *touchDevice() const;
 
+    bool isFiltered() const;
+
 private slots:
     void readData();
 
+signals:
+    void touchPointsUpdated();
+
 private:
+    friend class QEvdevTouchScreenData;
+    friend class QEvdevTouchScreenHandlerThread;
+
     void registerTouchDevice();
     void unregisterTouchDevice();
 
@@ -97,16 +106,48 @@ public:
 
     bool isTouchDeviceRegistered() const;
 
+    bool eventFilter(QObject *object, QEvent *event) Q_DECL_OVERRIDE;
+
+public slots:
+    void scheduleTouchPointUpdate();
+
 signals:
     void touchDeviceRegistered();
 
 private:
     Q_INVOKABLE void notifyTouchDeviceRegistered();
 
+    void filterAndSendTouchPoints();
+
     QString m_device;
     QString m_spec;
     QEvdevTouchScreenHandler *m_handler;
     bool m_touchDeviceRegistered;
+
+    bool m_touchUpdatePending;
+    QWindow *m_filterWindow;
+
+    // A very simple 1D Kalman Filter
+    class Filter
+    {
+    public:
+        void initialize(float x, float q = 1, float r = 10, float p = 1);
+        void update(float x);
+        float value() const { return m_x; }
+    private:
+        float m_q;
+        float m_r;
+        float m_p;
+        float m_x;
+    };
+    struct FilteredTouchPoint {
+        Filter x;
+        Filter y;
+        Filter vx;
+        Filter vy;
+        QWindowSystemInterface::TouchPoint touchPoint;
+    };
+    QHash<int, FilteredTouchPoint> m_filteredPoints;
 };
 
 QT_END_NAMESPACE
