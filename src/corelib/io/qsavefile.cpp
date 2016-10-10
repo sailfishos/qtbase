@@ -192,7 +192,8 @@ bool QSaveFile::open(OpenMode mode)
 
     // check if existing file is writable
     QFileInfo existingFile(d->fileName);
-    if (existingFile.exists() && !existingFile.isWritable()) {
+    if (existingFile.exists() && !existingFile.permission(QFile::WriteUser)
+            && !existingFile.permission(QFile::WriteGroup)) {
         d->setError(QFileDevice::WriteError, QSaveFile::tr("Existing file %1 is not writable").arg(d->fileName));
         d->writeError = QFileDevice::WriteError;
         return false;
