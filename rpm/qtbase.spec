@@ -68,6 +68,14 @@ Summary:    The QtCore library
 Requires(post):     /sbin/ldconfig
 Requires(postun):   /sbin/ldconfig
 Requires:   xdg-utils
+#TODO: Remove these conflicts after we are pass next stop release.
+Conflicts:  qt5-qtdbus < %{version}
+Conflicts:  qt5-qtgui < %{version}
+Conflicts:  qt5-qtnetwork < %{version}
+Conflicts:  qt5-qtopengl < %{version}
+Conflicts:  qt5-qtsql < %{version}
+Conflicts:  qt5-qtwidgets < %{version}
+Conflicts:  qt5-qtconcurrent < %{version}
 
 %description qtcore
 This package contains the QtCore library
