@@ -308,6 +308,7 @@ This package contains tuio touch plugins
 %package qtdbus
 Summary:    The QtDBus library
 Group:      Qt/Qt
+Requires:   %{name}-qtcore = %{version}-%{release}
 Requires(post):     /sbin/ldconfig
 Requires(postun):   /sbin/ldconfig
 
@@ -329,6 +330,7 @@ applications that use QtDBus
 %package qtgui
 Summary:    The QtGui Library
 Group:      Qt/Qt
+Requires:   %{name}-qtcore = %{version}-%{release}
 Requires(post):     /sbin/ldconfig
 Requires(postun):   /sbin/ldconfig
 
@@ -351,6 +353,7 @@ applications that use QtGui
 %package qtnetwork
 Summary:    The QtNetwork library
 Group:      Qt/Qt
+Requires:   %{name}-qtcore = %{version}-%{release}
 Requires(post):     /sbin/ldconfig
 Requires(postun):   /sbin/ldconfig
 
@@ -372,6 +375,7 @@ applications that use QtNetwork
 %package qtopengl
 Summary:    The QtOpenGL library
 Group:      Qt/Qt
+Requires:   %{name}-qtcore = %{version}-%{release}
 Requires(post):     /sbin/ldconfig
 Requires(postun):   /sbin/ldconfig
 
@@ -394,6 +398,7 @@ applications that use QtOpenGL
 %package qtsql
 Summary:    The QtSql library
 Group:      Qt/Qt
+Requires:   %{name}-qtcore = %{version}-%{release}
 Requires(post):     /sbin/ldconfig
 Requires(postun):   /sbin/ldconfig
 
@@ -434,6 +439,7 @@ applications that use QtTest
 %package qtxml
 Summary:    The QtXml library
 Group:      Qt/Qt
+Requires:   %{name}-qtcore = %{version}-%{release}
 Requires(post):     /sbin/ldconfig
 Requires(postun):   /sbin/ldconfig
 
@@ -453,6 +459,7 @@ applications that use QtXml
 %package qtwidgets
 Summary:    The QtWidgets library
 Group:      Qt/Qt
+Requires:   %{name}-qtcore = %{version}-%{release}
 Requires(post):     /sbin/ldconfig
 Requires(postun):   /sbin/ldconfig
 
@@ -487,6 +494,7 @@ applications that use QtBootstrap
 %package qtprintsupport
 Summary:    The QtPrintSupport
 Group:      Qt/Qt
+Requires:   %{name}-qtcore = %{version}-%{release}
 Requires(post):     /sbin/ldconfig
 Requires(postun):   /sbin/ldconfig
 
