@@ -1,6 +1,3 @@
-# Conditional building of X11 related things
-%bcond_with X11
-
 # libQtPlatformSupport is not built as a shared library, only as a
 # static .a lib-archive. By default the OBS build removes all discovered
 # libFOO.a files and as such rpmlint never complains about
@@ -52,27 +49,6 @@ BuildRequires:  sharutils
 #BuildRequires:  gdb
 BuildRequires:  python
 BuildRequires:  pkgconfig(fontconfig)
-
-%if %{with X11}
-BuildRequires:  pkgconfig(ice)
-BuildRequires:  pkgconfig(sm)
-BuildRequires:  pkgconfig(x11)
-BuildRequires:  pkgconfig(xcursor)
-BuildRequires:  pkgconfig(xcb-keysyms)
-BuildRequires:  pkgconfig(xcb-image)
-BuildRequires:  pkgconfig(xcb-icccm)
-BuildRequires:  pkgconfig(xcb-renderutil)
-BuildRequires:  pkgconfig(xcomposite)
-BuildRequires:  pkgconfig(xext)
-BuildRequires:  pkgconfig(xft)
-BuildRequires:  pkgconfig(xi)
-BuildRequires:  pkgconfig(xinerama)
-BuildRequires:  pkgconfig(xmu)
-BuildRequires:  pkgconfig(xrandr)
-BuildRequires:  pkgconfig(xt)
-BuildRequires:  pkgconfig(xtst)
-BuildRequires:  pkgconfig(xv)
-%endif
 
 %description
 Qt is a cross-platform application and UI framework. Using Qt, you can
@@ -199,17 +175,6 @@ Requires:   %{name}-qtcore = %{version}-%{release}
 %description plugin-platform-offscreen
 This package contains the offscreen platform plugin
 
-
-%if %{with X11}
-%package plugin-platform-inputcontext-compose
-Summary:    compose input context platform plugin
-Group:      Qt/Qt
-Requires:   %{name}-qtcore = %{version}-%{release}
-
-%description plugin-platform-inputcontext-compose
-This package contains compose platform inputcontext plugin
-%endif
-
 %package plugin-platform-eglfs
 Summary:    Eglfs platform plugin
 Group:      Qt/Qt
@@ -228,16 +193,6 @@ Requires:   %{name}-qtcore = %{version}-%{release}
 %description plugin-platform-minimalegl
 This package contains the minimalegl platform plugin
 
-%if %{with X11}
-%package plugin-platform-xcb
-Summary:    XCB platform plugin
-Group:      Qt/Qt
-Requires:   %{name}-qtcore = %{version}-%{release}
-
-%description plugin-platform-xcb
-This package contains the XCB platform plugin
-%endif
-
 %package plugin-platform-linuxfb
 Summary:    Linux framebuffer platform plugin
 Group:      Qt/Qt
@@ -253,23 +208,6 @@ Requires:   %{name}-qtcore = %{version}-%{release}
 
 %description plugin-printsupport-cups
 This package contains the CUPS print support plugin
-
-#%package plugin-accessible-widgets
-#Summary:     Accessible widgets plugin
-#Group:       Qt/Qt
-#Requires:    %{name}-qtcore = %{version}-%{release}
-
-#%description plugin-accessible-widgets
-#This package contains the access widgets plugin
-
-# %package plugin-platform-xlib
-# Summary:    Xlib platform plugin
-# Group:      Qt/Qt
-#
-# %description plugin-platform-xlib
-# This package contains the Xlib platform plugin
-
-
 
 %package plugin-sqldriver-sqlite
 Summary:    Sqlite sql driver plugin
@@ -601,12 +539,8 @@ MAKEFLAGS=%{?_smp_mflags} \
     -I/usr/include/freetype2 \
     -nomake tests \
     -nomake examples \
-%if %{with X11}
-    -xcb \
-%else
     -no-xkbcommon \
     -no-xcb \
-%endif
     -no-xinput2 \
     -qreal float \
     -journald
@@ -981,12 +915,6 @@ ln -s %{_sysconfdir}/xdg/qtchooser/5.conf %{buildroot}%{_sysconfdir}/xdg/qtchoos
 %defattr(-,root,root,-)
 %{_libdir}/qt5/plugins/platforms/libqoffscreen.so
 
-%if %{with X11}
-%files plugin-platform-inputcontext-compose
-%defattr(-,root,root,-)
-%{_libdir}/qt5/plugins/platforminputcontexts/libcomposeplatforminputcontextplugin.so
-%endif
-
 %files plugin-platform-eglfs
 %defattr(-,root,root,-)
 %{_libdir}/libQt5EglDeviceIntegration.so*
@@ -998,12 +926,6 @@ ln -s %{_sysconfdir}/xdg/qtchooser/5.conf %{buildroot}%{_sysconfdir}/xdg/qtchoos
 %defattr(-,root,root,-)
 %{_libdir}/qt5/plugins/platforms/libqminimalegl.so
 
-%if %{with X11}
-%files plugin-platform-xcb
-%defattr(-,root,root,-)
-%{_libdir}/qt5/plugins/platforms/libqxcb.so
-%endif
-
 %files plugin-platform-linuxfb
 %defattr(-,root,root,-)
 %{_libdir}/qt5/plugins/platforms/libqlinuxfb.so
@@ -1011,14 +933,6 @@ ln -s %{_sysconfdir}/xdg/qtchooser/5.conf %{buildroot}%{_sysconfdir}/xdg/qtchoos
 %files plugin-printsupport-cups
 %defattr(-,root,root,-)
 %{_libdir}/qt5/plugins/printsupport/libcupsprintersupport.so
-
-#%files plugin-accessible-widgets
-#%defattr(-,root,root,-)
-#%{_libdir}/qt5/plugins/accessible/libqtaccessiblewidgets.so
-
-# %files plugin-platform-xlib
-# %defattr(-,root,root,-)
-# %{_libdir}/qt5/plugins/platforms/libqxlib.so
 
 %files plugin-sqldriver-sqlite
 %defattr(-,root,root,-)
