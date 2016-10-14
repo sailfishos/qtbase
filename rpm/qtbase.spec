@@ -611,7 +611,10 @@ ln -s %{_sysconfdir}/xdg/qtchooser/5.conf %{buildroot}%{_sysconfdir}/xdg/qtchoos
 %defattr(-,root,root,-)
 %dir %{_includedir}/qt5/
 %dir %{_datadir}/qt5/
+%dir %{_libdir}/qt5/
+%dir %{_libdir}/qt5/bin/
 %dir %{_libdir}/qt5/plugins/
+%dir %{_libdir}/qt5/plugins/platforms/
 %dir %{_libdir}/qt5/imports/
 %dir %{_libdir}/qt5/translations/
 %dir %{_libdir}/qt5/examples/
@@ -686,6 +689,8 @@ ln -s %{_sysconfdir}/xdg/qtchooser/5.conf %{buildroot}%{_sysconfdir}/xdg/qtchoos
 
 %files qtgui
 %defattr(-,root,root,-)
+%dir %{_libdir}/qt5/plugins/imageformats/
+%dir %{_libdir}/qt5/plugins/platforminputcontexts/
 %{_libdir}/libQt5Gui.so.*
 
 
@@ -702,6 +707,7 @@ ln -s %{_sysconfdir}/xdg/qtchooser/5.conf %{buildroot}%{_sysconfdir}/xdg/qtchoos
 
 %files qtnetwork
 %defattr(-,root,root,-)
+%dir %{_libdir}/qt5/plugins/bearer/
 %{_libdir}/libQt5Network.so.*
 
 
@@ -740,6 +746,7 @@ ln -s %{_sysconfdir}/xdg/qtchooser/5.conf %{buildroot}%{_sysconfdir}/xdg/qtchoos
 
 %files qtsql
 %defattr(-,root,root,-)
+%dir %{_libdir}/qt5/plugins/sqldrivers/
 %{_libdir}/libQt5Sql.so.*
 
 
