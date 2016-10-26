@@ -131,8 +131,6 @@ public:
     bool m_filtered;
 
     int m_prediction;
-    int m_smoothness;
-    int m_velocitySmoothness;
 
     QMutex m_mutex;
 };
@@ -146,7 +144,7 @@ QEvdevTouchScreenData::QEvdevTouchScreenData(QEvdevTouchScreenHandler *q_ptr, co
       hw_range_y_min(0), hw_range_y_max(0),
       hw_pressure_min(0), hw_pressure_max(0),
       m_forceToActiveWindow(false), m_typeB(false), m_singleTouch(false),
-      m_filtered(false), m_prediction(0), m_smoothness(5), m_velocitySmoothness(50)
+      m_filtered(false), m_prediction(0)
 {
     for (int i=0; i<args.size(); ++i) {
         const QString &arg = args.at(i);
@@ -156,10 +154,6 @@ QEvdevTouchScreenData::QEvdevTouchScreenData(QEvdevTouchScreenHandler *q_ptr, co
             m_filtered = true;
         else if (arg.startsWith(QStringLiteral("prediction=")))
             m_prediction = arg.mid(11).toInt();
-        else if (arg.startsWith(QStringLiteral("smooth=")))
-            m_smoothness = arg.mid(7).toInt();
-        else if (arg.startsWith(QStringLiteral("vsmooth=")))
-            m_velocitySmoothness = arg.mid(8).toInt();
     }
 }
 
@@ -250,7 +244,7 @@ QEvdevTouchScreenHandler::QEvdevTouchScreenHandler(const QString &device, const 
             d->m_singleTouch ? "single" : "multi",
             d->m_filtered ? "yes" : "no");
     if (d->m_filtered)
-        qCDebug(qLcEvdevTouch, " - prediction=%d, smooth=%d, vsmooth=%d", d->m_prediction, d->m_smoothness, d->m_velocitySmoothness);
+        qCDebug(qLcEvdevTouch, " - prediction=%d", d->m_prediction);
 
     input_absinfo absInfo;
     memset(&absInfo, 0, sizeof(input_absinfo));
@@ -734,6 +728,7 @@ QEvdevTouchScreenHandlerThread::QEvdevTouchScreenHandlerThread(const QString &de
     : QDaemonThread(parent), m_device(device), m_spec(spec), m_handler(Q_NULLPTR), m_touchDeviceRegistered(false)
     , m_touchUpdatePending(false)
     , m_filterWindow(0)
+    , m_touchRate(-1)
 {
     start();
 }
@@ -798,13 +793,36 @@ bool QEvdevTouchScreenHandlerThread::eventFilter(QObject *object, QEvent *event)
 
 void QEvdevTouchScreenHandlerThread::filterAndSendTouchPoints()
 {
+    float vsyncDelta = 1.0f / QGuiApplication::primaryScreen()->refreshRate();
+
     QHash<int, FilteredTouchPoint> filteredPoints;
 
     m_handler->d->m_mutex.lock();
+
     double time = m_handler->d->m_timeStamp;
     double lastTime = m_handler->d->m_lastTimeStamp;
+    double touchDelta = time - lastTime;
+    if (m_touchRate < 0 || touchDelta > vsyncDelta) {
+        // We're at the very start, with nothing to go on, so make a guess
+        // that the touch rate will be somewhere in the range of half a vsync.
+        // This doesn't have to be accurate as we will calibrate it over time,
+        // but it gives us a better starting point so calibration will be
+        // slightly quicker. If, on the other hand, we already have an
+        // estimate, we'll leave it as is and keep it.
+        if (m_touchRate < 0)
+            m_touchRate = (1.0 / QGuiApplication::primaryScreen()->refreshRate()) / 2.0;
+
+    } else {
+        // Update our estimate for the touch rate. We're making the assumption
+        // that this value will be mostly accurate with the occational bump,
+        // so we're weighting the existing value high compared to the update.
+        const double ratio = 0.9;
+        m_touchRate = sqrt(m_touchRate * m_touchRate * ratio + touchDelta * touchDelta * (1.0 - ratio));
+    }
+
     QList<QWindowSystemInterface::TouchPoint> points = m_handler->d->m_touchPoints;
     QList<QWindowSystemInterface::TouchPoint> lastPoints = m_handler->d->m_lastTouchPoints;
+
     m_handler->d->m_mutex.unlock();
 
     for (int i=0; i<points.size(); ++i) {
@@ -823,30 +841,25 @@ void QEvdevTouchScreenHandlerThread::filterAndSendTouchPoints()
 
         QPointF velocity;
         if (lastTime != 0 && ltp.id >= 0)
-            velocity = (rawPos - ltp.rawPositions[0]) / (time - lastTime);
+            velocity = (rawPos - ltp.rawPositions[0]) / m_touchRate;
         if (m_filteredPoints.contains(tp.id)) {
             f = m_filteredPoints.take(tp.id);
-            f.x.update(rawPos.x());
-            f.y.update(rawPos.y());
-            f.vx.update(velocity.x());
-            f.vy.update(velocity.y());
-            rawPos = QPointF(f.x.value(), f.y.value());
+            f.x.update(rawPos.x(), velocity.x(), vsyncDelta);
+            f.y.update(rawPos.y(), velocity.y(), vsyncDelta);
+            rawPos = QPointF(f.x.position(), f.y.position());
         } else {
-            f.x.initialize(rawPos.x(), 1, m_handler->d->m_smoothness, 1);
-            f.y.initialize(rawPos.y(), 1, m_handler->d->m_smoothness, 1);
-            f.vx.initialize(velocity.x(), 1, m_handler->d->m_velocitySmoothness, 1);
-            f.vy.initialize(velocity.y(), 1, m_handler->d->m_velocitySmoothness, 1);
+            f.x.initialize(rawPos.x(), velocity.x());
+            f.y.initialize(rawPos.y(), velocity.y());
             // Make sure the first instance of a touch point we send has the
             // 'pressed' state.
             if (tp.state != Qt::TouchPointPressed)
                 tp.state = Qt::TouchPointPressed;
         }
 
-        tp.velocity = QVector2D(f.vx.value(), f.vy.value());
+        tp.velocity = QVector2D(f.x.velocity(), f.y.velocity());
 
-        // Then use current
-        rawPos.setX(f.x.value() + f.vx.value() * m_handler->d->m_prediction / 1000.0);
-        rawPos.setY(f.y.value() + f.vy.value() * m_handler->d->m_prediction / 1000.0);
+        rawPos.setX(f.x.position() + f.x.velocity() * m_handler->d->m_prediction / 1000.0);
+        rawPos.setY(f.y.position() + f.y.velocity() * m_handler->d->m_prediction / 1000.0);
 
         tp.area.moveCenter(rawPos);
 
@@ -870,22 +883,6 @@ void QEvdevTouchScreenHandlerThread::filterAndSendTouchPoints()
                                              m_handler->touchDevice(),
                                              points);
 }
-
-void QEvdevTouchScreenHandlerThread::Filter::initialize(float x, float q, float r, float p)
-{
-    m_x = x;
-    m_q = q;
-    m_r = r;
-    m_p = p;
-}
-
-void QEvdevTouchScreenHandlerThread::Filter::update(float x)
-{
-    m_p = m_p + m_q;
-    float k = m_p / (m_p + m_r);
-    m_x = m_x + k * (x - m_x);
-    m_p = (1.0f - k) * m_p;
-    }
 
 
 QT_END_NAMESPACE

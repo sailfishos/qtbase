@@ -53,6 +53,8 @@
 #include <QtCore/private/qthread_p.h>
 #include <qpa/qwindowsysteminterface.h>
 
+#include "qevdevtouchfilter_p.h"
+
 #if !defined(QT_NO_MTDEV)
 struct mtdev;
 #endif
@@ -127,27 +129,14 @@ private:
     bool m_touchUpdatePending;
     QWindow *m_filterWindow;
 
-    // A very simple 1D Kalman Filter
-    class Filter
-    {
-    public:
-        void initialize(float x, float q = 1, float r = 10, float p = 1);
-        void update(float x);
-        float value() const { return m_x; }
-    private:
-        float m_q;
-        float m_r;
-        float m_p;
-        float m_x;
-    };
     struct FilteredTouchPoint {
-        Filter x;
-        Filter y;
-        Filter vx;
-        Filter vy;
+        QEvdevTouchFilter x;
+        QEvdevTouchFilter y;
         QWindowSystemInterface::TouchPoint touchPoint;
     };
     QHash<int, FilteredTouchPoint> m_filteredPoints;
+
+    float m_touchRate;
 };
 
 QT_END_NAMESPACE
