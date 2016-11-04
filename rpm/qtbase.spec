@@ -507,6 +507,9 @@ MAKEFLAGS=%{?_smp_mflags} \
     -no-xkbcommon \
     -no-xcb \
     -no-xinput2 \
+%ifarch aarch64
+	-no-pch \
+%endif
     -qreal float \
     -journald
 fi # config.status check
@@ -892,6 +895,9 @@ ln -s %{_sysconfdir}/xdg/qtchooser/5.conf %{buildroot}%{_sysconfdir}/xdg/qtchoos
 %{_libdir}/libQt5EglDeviceIntegration.so*
 %{_libdir}/libQt5EglDeviceIntegration.prl
 %{_libdir}/qt5/plugins/platforms/libqeglfs.so
+%if %{with X11}
+%{_libdir}/qt5/plugins/egldeviceintegrations/libqeglfs-x11-integration.so
+%endif
 %{_datadir}/qt5/mkspecs/modules/qt_lib_eglfs_device_lib_private.pri
 
 %files plugin-platform-minimalegl
