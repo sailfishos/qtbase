@@ -17,7 +17,7 @@ Version:    5.6.2
 Release:    1%{?dist}
 Group:      Qt/Qt
 License:    LGPLv2.1 with exception or GPLv3
-URL:        http://qt.nokia.com
+URL:        https://www.qt.io/
 Source0:    %{name}-%{version}.tar.bz2
 Source1:    macros.qt5-default
 Source100:  qtbase-rpmlintrc
