@@ -120,6 +120,7 @@ private:
     Q_INVOKABLE void notifyTouchDeviceRegistered();
 
     void filterAndSendTouchPoints();
+    QRect targetScreenGeometry() const;
 
     QString m_device;
     QString m_spec;

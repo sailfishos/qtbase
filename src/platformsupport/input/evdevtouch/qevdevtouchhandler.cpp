@@ -117,6 +117,8 @@ public:
     void addTouchPoint(const Contact &contact, Qt::TouchPointStates *combinedStates);
     void reportPoints();
 
+    QRect screenGeometry() const;
+
     int hw_range_x_min;
     int hw_range_x_max;
     int hw_range_y_min;
@@ -128,10 +130,17 @@ public:
     bool m_typeB;
     QTransform m_rotate;
     bool m_singleTouch;
-    bool m_filtered;
 
+    // Touch filtering and prediction are part of the same thing. The default
+    // prediction is 0ms, but sensible results can be acheived by setting it
+    // to, for instance, 16ms.
+    // For filtering to work well, the QPA plugin should provide a dead-steady
+    // implementation of QPlatformWindow::requestUpdate().
+    bool m_filtered;
     int m_prediction;
 
+    // When filtering is enabled, protect the access to current and last
+    // timeStamp and touchPoints, as these are being read on the gui thread.
     QMutex m_mutex;
 };
 
@@ -529,7 +538,8 @@ void QEvdevTouchScreenData::processInputEvent(input_event *data)
         if (!m_contacts.isEmpty() && m_contacts.constBegin().value().trackingId == -1)
             assignIds();
 
-        m_mutex.lock();
+        if (m_filtered)
+            m_mutex.lock();
 
         // update timestamps
         m_lastTimeStamp = m_timeStamp;
@@ -614,10 +624,12 @@ void QEvdevTouchScreenData::processInputEvent(input_event *data)
         if (!m_typeB && !m_singleTouch)
             m_contacts.clear();
 
-        m_mutex.unlock();
 
         if (!m_touchPoints.isEmpty() && combinedStates != Qt::TouchPointStationary)
             reportPoints();
+
+        if (m_filtered)
+            m_mutex.unlock();
     }
 
     m_lastEventType = data->type;
@@ -676,19 +688,23 @@ void QEvdevTouchScreenData::assignIds()
     m_contacts = newContacts;
 }
 
+QRect QEvdevTouchScreenData::screenGeometry() const
+{
+    if (m_forceToActiveWindow) {
+        QWindow *win = QGuiApplication::focusWindow();
+        return win ? QHighDpi::toNativePixels(win->geometry(), win) : QRect();
+    }
+    QScreen *primary = QGuiApplication::primaryScreen();
+    return QHighDpi::toNativePixels(primary->geometry(), primary);
+}
+
 void QEvdevTouchScreenData::reportPoints()
 {
     QSystraceEvent systrace("touch", "QEvdevTouchScreenData::reportPoints");
-    QRect winRect;
-    if (m_forceToActiveWindow) {
-        QWindow *win = QGuiApplication::focusWindow();
-        if (!win)
-            return;
-        winRect = QHighDpi::toNativePixels(win->geometry(), win);
-    } else {
-        QScreen *primary = QGuiApplication::primaryScreen();
-        winRect = QHighDpi::toNativePixels(primary->geometry(), primary);
-    }
+
+    QRect winRect = screenGeometry();
+    if (winRect.isNull())
+        return;
 
     const int hw_w = hw_range_x_max - hw_range_x_min;
     const int hw_h = hw_range_y_max - hw_range_y_min;
@@ -793,6 +809,10 @@ bool QEvdevTouchScreenHandlerThread::eventFilter(QObject *object, QEvent *event)
 
 void QEvdevTouchScreenHandlerThread::filterAndSendTouchPoints()
 {
+    QRect winRect = m_handler->d->screenGeometry();
+    if (winRect.isNull())
+        return;
+
     float vsyncDelta = 1.0f / QGuiApplication::primaryScreen()->refreshRate();
 
     QHash<int, FilteredTouchPoint> filteredPoints;
@@ -821,13 +841,13 @@ void QEvdevTouchScreenHandlerThread::filterAndSendTouchPoints()
     }
 
     QList<QWindowSystemInterface::TouchPoint> points = m_handler->d->m_touchPoints;
-    QList<QWindowSystemInterface::TouchPoint> lastPoints = m_handler->d->m_lastTouchPoints;
+    const QList<QWindowSystemInterface::TouchPoint> &lastPoints = m_handler->d->m_lastTouchPoints;
 
     m_handler->d->m_mutex.unlock();
 
     for (int i=0; i<points.size(); ++i) {
         QWindowSystemInterface::TouchPoint &tp = points[i];
-        QPointF &rawPos = tp.rawPositions[0];
+        QPointF pos = tp.normalPosition;
         FilteredTouchPoint f;
 
         QWindowSystemInterface::TouchPoint ltp;
@@ -841,27 +861,30 @@ void QEvdevTouchScreenHandlerThread::filterAndSendTouchPoints()
 
         QPointF velocity;
         if (lastTime != 0 && ltp.id >= 0)
-            velocity = (rawPos - ltp.rawPositions[0]) / m_touchRate;
+            velocity = (pos - ltp.normalPosition) / m_touchRate;
         if (m_filteredPoints.contains(tp.id)) {
             f = m_filteredPoints.take(tp.id);
-            f.x.update(rawPos.x(), velocity.x(), vsyncDelta);
-            f.y.update(rawPos.y(), velocity.y(), vsyncDelta);
-            rawPos = QPointF(f.x.position(), f.y.position());
+            f.x.update(pos.x(), velocity.x(), vsyncDelta);
+            f.y.update(pos.y(), velocity.y(), vsyncDelta);
+            pos = QPointF(f.x.position(), f.y.position());
         } else {
-            f.x.initialize(rawPos.x(), velocity.x());
-            f.y.initialize(rawPos.y(), velocity.y());
+            f.x.initialize(pos.x(), velocity.x());
+            f.y.initialize(pos.y(), velocity.y());
             // Make sure the first instance of a touch point we send has the
             // 'pressed' state.
             if (tp.state != Qt::TouchPointPressed)
                 tp.state = Qt::TouchPointPressed;
         }
 
-        tp.velocity = QVector2D(f.x.velocity(), f.y.velocity());
+        tp.velocity = QVector2D(f.x.velocity() * winRect.width(), f.y.velocity() * winRect.height());
 
-        rawPos.setX(f.x.position() + f.x.velocity() * m_handler->d->m_prediction / 1000.0);
-        rawPos.setY(f.y.position() + f.y.velocity() * m_handler->d->m_prediction / 1000.0);
+        tp.normalPosition = QPointF(f.x.position() + f.x.velocity() * m_handler->d->m_prediction / 1000.0,
+                                    f.y.position() + f.y.velocity() * m_handler->d->m_prediction / 1000.0);
 
-        tp.area.moveCenter(rawPos);
+        qreal x = winRect.x() + (tp.normalPosition.x() * (winRect.width() - 1));
+        qreal y = winRect.y() + (tp.normalPosition.y() * (winRect.height() - 1));
+
+        tp.area.moveCenter(QPointF(x, y));
 
         // Store the touch point for later so we can release it if we've
         // missed the actual release between our last update and this.
