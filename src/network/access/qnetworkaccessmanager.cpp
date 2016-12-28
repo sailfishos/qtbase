@@ -1617,7 +1617,7 @@ void QNetworkAccessManagerPrivate::_q_networkSessionStateChanged(QNetworkSession
         emit q->networkSessionConnected();
     lastSessionState = state;
 
-    if (online && state == QNetworkSession::Disconnected) {
+    if (state == QNetworkSession::Disconnected) {
         Q_FOREACH (const QNetworkConfiguration &cfg, networkConfigurationManager.allConfigurations()) {
             if (cfg.state().testFlag(QNetworkConfiguration::Active)) {
                 reallyOnline = true;
