@@ -1845,8 +1845,7 @@ void QNetworkAccessManagerPrivate::_q_networkSessionStateChanged(QNetworkSession
         emit q->networkSessionConnected();
     lastSessionState = state;
 
-    if (online && (state == QNetworkSession::Disconnected
-                   || state == QNetworkSession::NotAvailable)) {
+    if (state == QNetworkSession::Disconnected || state == QNetworkSession::NotAvailable) {
         const auto cfgs = networkConfigurationManager.allConfigurations();
         for (const QNetworkConfiguration &cfg : cfgs) {
             if (cfg.state().testFlag(QNetworkConfiguration::Active)) {
