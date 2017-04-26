@@ -1299,9 +1299,8 @@ void QDBusConnectionPrivate::serviceOwnerChangedNoLock(const QString &name,
     WatchedServicesHash::Iterator it = watchedServices.find(name);
     if (it == watchedServices.end())
         return;
-    if (oldOwner != it->owner)
-        qWarning("QDBusConnection: name '%s' had owner '%s' but we thought it was '%s'",
-                 qPrintable(name), qPrintable(oldOwner), qPrintable(it->owner));
+    if (newOwner == it->owner)
+        return;
 
     qDBusDebug() << this << "Updating name" << name << "from" << oldOwner << "to" << newOwner;
     it->owner = newOwner;
