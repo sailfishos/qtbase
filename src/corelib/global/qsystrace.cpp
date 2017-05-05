@@ -48,12 +48,14 @@
 void QSystrace::begin(const char *module, const char *tracepoint, const char *message, ...)
 {
 #if !defined(QT_BOOTSTRAPPED) && !defined(QT_NO_DEBUG) && defined(QT_USE_LIBSYSTRACE)
+    if (!systrace_should_trace(module, tracepoint))
+        return;
     char buffer[1024];
     va_list args;
     va_start(args, message);
     vsprintf(buffer, message, args);
     va_end(args);
-    SYSTRACE_BEGIN(module, tracepoint, buffer);
+    systrace_duration_begin(module, tracepoint, buffer);
 #else
     Q_UNUSED(module)
     Q_UNUSED(tracepoint)
@@ -64,12 +66,14 @@ void QSystrace::begin(const char *module, const char *tracepoint, const char *me
 void QSystrace::end(const char *module, const char *tracepoint, const char *message, ...)
 {
 #if !defined(QT_BOOTSTRAPPED) && !defined(QT_NO_DEBUG) && defined(QT_USE_LIBSYSTRACE)
+    if (!systrace_should_trace(module, tracepoint))
+        return;
     char buffer[1024];
     va_list args;
     va_start(args, message);
     vsprintf(buffer, message, args);
     va_end(args);
-    SYSTRACE_END(module, tracepoint, message);
+    systrace_duration_end(module, tracepoint, message);
 #else
     Q_UNUSED(module)
     Q_UNUSED(tracepoint)
@@ -80,12 +84,14 @@ void QSystrace::end(const char *module, const char *tracepoint, const char *mess
 void QSystrace::counter(const char *module, const char *tracepoint, const char *message, ...)
 {
 #if !defined(QT_BOOTSTRAPPED) && !defined(QT_NO_DEBUG) && defined(QT_USE_LIBSYSTRACE)
+    if (!systrace_should_trace(module, tracepoint))
+        return;
     char buffer[1024];
     va_list args;
     va_start(args, message);
     vsprintf(buffer, message, args);
     va_end(args);
-    SYSTRACE_COUNTER(module, tracepoint, message);
+    systrace_record_counter(module, tracepoint, message);
 #else
     Q_UNUSED(module)
     Q_UNUSED(tracepoint)
