@@ -63,11 +63,7 @@ QConnmanEnginePlugin::~QConnmanEnginePlugin()
 QBearerEngine *QConnmanEnginePlugin::create(const QString &key) const
 {
     if (key == QLatin1String("connman")) {
-        QConnmanEngine *engine = new QConnmanEngine;
-        if (engine->connmanAvailable())
-            return engine;
-        else
-            delete engine;
+        return new QConnmanEngine;
     }
     return 0;
 }
