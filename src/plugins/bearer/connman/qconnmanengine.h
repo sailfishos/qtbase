@@ -123,7 +123,6 @@ private:
 
     QDateTime activeTime;
 
-    QMap<QString,QConnmanTechnologyInterface *> technologies; // techpath, tech interface
     QMap<QString,QString> configInterfaces; // id, interface name
     QList<QString> serviceNetworks; //servpath
 
