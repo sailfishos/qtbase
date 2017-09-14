@@ -56,30 +56,65 @@
 
 QT_BEGIN_NAMESPACE
 
+Q_LOGGING_CATEGORY(qLcLibBearer, "qt.qpa.bearer.connman", QtWarningMsg)
+
 QConnmanEngine::QConnmanEngine(QObject *parent)
 :   QBearerEngineImpl(parent),
-    connmanManager(new QConnmanManagerInterface(this)),
-    ofonoManager(new QOfonoManagerInterface(this)),
+    connmanManager(0),
+    ofonoManager(0),
     ofonoNetwork(0),
-    ofonoContextManager(0)
+    ofonoContextManager(0),
+    connmanAvailable(false)
+
 {
     qDBusRegisterMetaType<ConnmanMap>();
     qDBusRegisterMetaType<ConnmanMapList>();
     qRegisterMetaType<ConnmanMapList>("ConnmanMapList");
+
+    connmanWatcher = new QDBusServiceWatcher(QLatin1String(CONNMAN_SERVICE), QDBusConnection::systemBus(),
+            QDBusServiceWatcher::WatchForRegistration |
+            QDBusServiceWatcher::WatchForUnregistration, this);
+    connect(connmanWatcher, SIGNAL(serviceRegistered(QString)),
+            this, SLOT(connmanRegistered(QString)));
+    connect(connmanWatcher, SIGNAL(serviceUnregistered(QString)),
+            this, SLOT(connmanUnRegistered(QString)));
+
+    ofonoWatcher = new QDBusServiceWatcher(QLatin1String(OFONO_SERVICE), QDBusConnection::systemBus(),
+            QDBusServiceWatcher::WatchForRegistration |
+            QDBusServiceWatcher::WatchForUnregistration, this);
+    connect(ofonoWatcher, SIGNAL(serviceRegistered(QString)),
+            this, SLOT(ofonoRegistered(QString)));
+    connect(ofonoWatcher, SIGNAL(serviceUnregistered(QString)),
+            this, SLOT(ofonoUnRegistered(QString)));
+
+    QDBusConnectionInterface *interface = QDBusConnection::systemBus().interface();
+    if (!interface) {
+        qCCritical(qLcLibBearer) << "QConnmanEngine: something is badly wrong, no system bus interface.";
+        return;
+    }
+
+    if (interface->isServiceRegistered(QLatin1String(OFONO_SERVICE))) {
+        QMetaObject::invokeMethod(this, "ofonoRegistered", Qt::QueuedConnection, Q_ARG(QString, OFONO_SERVICE));
+    } else {
+        qCDebug(qLcLibBearer) << "QConnmanEngine:" << OFONO_SERVICE << "dbus service is not registered";
+    }
+
+    if (interface->isServiceRegistered(QLatin1String(CONNMAN_SERVICE))) {
+        QMetaObject::invokeMethod(this, "connmanRegistered", Qt::QueuedConnection, Q_ARG(QString, CONNMAN_SERVICE));
+    } else {
+        qCDebug(qLcLibBearer) << "QConnmanEngine:" << CONNMAN_SERVICE << "dbus service is not registered";
+    }
 }
 
 QConnmanEngine::~QConnmanEngine()
 {
-}
-
-bool QConnmanEngine::connmanAvailable() const
-{
-    QMutexLocker locker(&mutex);
-    return connmanManager->isValid();
+    qCDebug(qLcLibBearer) << "QConnmanEngine: destroyed";
 }
 
 void QConnmanEngine::initialize()
 {
+    qCDebug(qLcLibBearer) << "QConnmanEngine: initialize";
+
     QMutexLocker locker(&mutex);
     connect(ofonoManager,SIGNAL(modemChanged()),this,SLOT(changedModem()));
 
@@ -87,16 +122,9 @@ void QConnmanEngine::initialize()
     ofonoContextManager = new QOfonoDataConnectionManagerInterface(ofonoManager->currentModem(),this);
     connect(ofonoContextManager,SIGNAL(roamingAllowedChanged(bool)),this,SLOT(reEvaluateCellular()));
 
-    connect(connmanManager,SIGNAL(servicesChanged(ConnmanMapList,QList<QDBusObjectPath>)),
-            this, SLOT(updateServices(ConnmanMapList,QList<QDBusObjectPath>)));
-
-    connect(connmanManager,SIGNAL(servicesReady(QStringList)),this,SLOT(servicesReady(QStringList)));
-    connect(connmanManager,SIGNAL(scanFinished(bool)),this,SLOT(finishedScan(bool)));
-
-    const auto servPaths = connmanManager->getServices();
-    for (const QString &servPath : servPaths)
-        addServiceConfiguration(servPath);
-    Q_EMIT updateCompleted();
+    if (connmanAvailable) {
+        setupConfigurations();
+    }
 }
 
 void QConnmanEngine::changedModem()
@@ -202,8 +230,7 @@ void QConnmanEngine::requestUpdate()
 
 void QConnmanEngine::doRequestUpdate()
 {
-    bool scanned = connmanManager->requestScan("wifi");
-    if (!scanned)
+    if (connmanManager && connmanManager->requestScan("wifi"))
         Q_EMIT updateCompleted();
 }
 
@@ -329,11 +356,14 @@ QNetworkSessionPrivate *QConnmanEngine::createSessionBackend()
 QNetworkConfigurationPrivatePointer QConnmanEngine::defaultConfiguration()
 {
     const QMutexLocker locker(&mutex);
-    const auto servPaths = connmanManager->getServices();
-    for (const QString &servPath : servPaths) {
-        if (connmanServiceInterfaces.contains(servPath)) {
-            if (accessPointConfigurations.contains(servPath))
-                return accessPointConfigurations.value(servPath);
+
+    if (connmanManager) {
+        const auto servPaths = connmanManager->getServices();
+        for (const QString &servPath : servPaths) {
+            if (connmanServiceInterfaces.contains(servPath)) {
+                if (accessPointConfigurations.contains(servPath))
+                    return accessPointConfigurations.value(servPath);
+            }
         }
     }
     return QNetworkConfigurationPrivatePointer();
@@ -478,10 +508,12 @@ QNetworkConfiguration::BearerType QConnmanEngine::ofonoTechToBearerType(const QS
 
 bool QConnmanEngine::isRoamingAllowed(const QString &context)
 {
-    const auto dcPaths = ofonoContextManager->contexts();
-    for (const QString &dcPath : dcPaths) {
-        if (dcPath.contains(context.section("_",-1))) {
-            return ofonoContextManager->roamingAllowed();
+    if (ofonoContextManager) {
+        const auto dcPaths = ofonoContextManager->contexts();
+        for (const QString &dcPath : dcPaths) {
+            if (dcPath.contains(context.section("_",-1))) {
+                return ofonoContextManager->roamingAllowed();
+            }
         }
     }
     return false;
@@ -568,6 +600,29 @@ void QConnmanEngine::addServiceConfiguration(const QString &servicePath)
     }
 }
 
+void QConnmanEngine::setupConfigurations()
+{
+    QMutexLocker locker(&mutex);
+    qCDebug(qLcLibBearer) << "QConnmanEngine: setup connman configurations";
+
+    if (connmanManager) {
+        delete connmanManager;
+    }
+
+    connmanManager = new QConnmanManagerInterface(this);
+
+    connect(connmanManager,SIGNAL(servicesChanged(ConnmanMapList,QList<QDBusObjectPath>)),
+            this, SLOT(updateServices(ConnmanMapList,QList<QDBusObjectPath>)));
+
+    connect(connmanManager,SIGNAL(servicesReady(QStringList)),this,SLOT(servicesReady(QStringList)));
+    connect(connmanManager,SIGNAL(scanFinished(bool)),this,SLOT(finishedScan(bool)));
+
+    const auto servPaths = connmanManager->getServices();
+    for (const QString &servPath : servPaths)
+        addServiceConfiguration(servPath);
+    Q_EMIT updateCompleted();
+}
+
 bool QConnmanEngine::requiresPolling() const
 {
     return false;
@@ -575,10 +630,85 @@ bool QConnmanEngine::requiresPolling() const
 
 void QConnmanEngine::reEvaluateCellular()
 {
-    const auto servicePaths = connmanManager->getServices();
-    for (const QString &servicePath : servicePaths) {
-        if (servicePath.contains("cellular") && accessPointConfigurations.contains(servicePath)) {
-            configurationChange(connmanServiceInterfaces.value(servicePath));
+    if (connmanManager) {
+        const auto servicePaths = connmanManager->getServices();
+        for (const QString &servicePath : servicePaths) {
+            if (servicePath.contains("cellular") && accessPointConfigurations.contains(servicePath)) {
+                configurationChange(connmanServiceInterfaces.value(servicePath));
+            }
+        }
+    }
+}
+
+void QConnmanEngine::connmanRegistered(const QString &serviceName)
+{
+    qCDebug(qLcLibBearer) << "QConnmanEngine: connman dbus service registered:" << serviceName;
+    connmanAvailable = true;
+    setupConfigurations();
+}
+
+void QConnmanEngine::connmanUnRegistered(const QString &serviceName)
+{
+    qCDebug(qLcLibBearer) << "QConnmanEngine: connman dbus service unregistered:" << serviceName;
+
+    qDeleteAll(connmanServiceInterfaces);
+    connmanServiceInterfaces.clear();
+
+    // Remove all configurations.
+    QList<QString> keys = accessPointConfigurations.uniqueKeys();
+    for (const QString &key : keys) {
+        removeConfiguration(key);
+    }
+
+    serviceNetworks.clear();
+    connmanLastKnownSessionState.clear();
+    configInterfaces.clear();
+
+    delete connmanManager;
+    connmanManager = nullptr;
+    connmanAvailable = false;
+}
+
+void QConnmanEngine::ofonoRegistered(const QString &serviceName)
+{
+    qCDebug(qLcLibBearer) << "QConnmanEngine: ofono dbus service registered:" << serviceName;
+    if (ofonoManager) {
+        delete ofonoManager;
+    }
+
+    if (ofonoNetwork) {
+        delete ofonoNetwork;
+    }
+
+    if (ofonoContextManager) {
+        delete ofonoContextManager;
+    }
+
+    ofonoManager = new QOfonoManagerInterface(this);
+    ofonoNetwork = new QOfonoNetworkRegistrationInterface(ofonoManager->currentModem(),this);
+    ofonoContextManager = new QOfonoDataConnectionManagerInterface(ofonoManager->currentModem(),this);
+
+    connect(ofonoManager,SIGNAL(modemChanged()),this,SLOT(changedModem()));
+    connect(ofonoContextManager,SIGNAL(roamingAllowedChanged(bool)),this,SLOT(reEvaluateCellular()));
+}
+
+void QConnmanEngine::ofonoUnRegistered(const QString &serviceName)
+{
+    qCDebug(qLcLibBearer) << "QConnmanEngine: ofono dbus service unregistered:" << serviceName;
+    delete ofonoManager;
+    ofonoManager = nullptr;
+
+    delete ofonoNetwork;
+    ofonoNetwork = nullptr;
+
+    delete ofonoContextManager;
+    ofonoContextManager = nullptr;
+
+    // Remove all cellular configurations.
+    const auto keys = accessPointConfigurations.uniqueKeys();
+    for (const QString &key : keys) {
+        if (key.startsWith(QLatin1String("/net/connman/service/cellular"))) {
+            removeConfiguration(key);
         }
     }
 }
