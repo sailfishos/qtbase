@@ -65,8 +65,6 @@ public:
     QConnmanEngine(QObject *parent = 0);
     ~QConnmanEngine();
 
-    bool connmanAvailable() const;
-
     virtual QString getInterfaceFromId(const QString &id);
     bool hasIdentifier(const QString &id);
 
@@ -99,6 +97,13 @@ private Q_SLOTS:
     void serviceStateChanged(const QString &state);
     void configurationChange(QConnmanServiceInterface * service);
     void reEvaluateCellular();
+
+    void connmanRegistered(const QString &serviceName);
+    void connmanUnRegistered(const QString &serviceName);
+
+    void ofonoRegistered(const QString &serviceName);
+    void ofonoUnRegistered(const QString &serviceName);
+
 private:
     QConnmanManagerInterface *connmanManager;
 
@@ -113,9 +118,11 @@ private:
 
     void removeConfiguration(const QString &servicePath);
     void addServiceConfiguration(const QString &servicePath);
+
+    void setupConfigurations();
+
     QDateTime activeTime;
 
-    QMap<QString,QConnmanTechnologyInterface *> technologies; // techpath, tech interface
     QMap<QString,QString> configInterfaces; // id, interface name
     QList<QString> serviceNetworks; //servpath
 
@@ -123,6 +130,11 @@ private:
     bool isRoamingAllowed(const QString &context);
     QMap <QString,QConnmanServiceInterface *> connmanServiceInterfaces;
     QMap <QString,QNetworkSession::State> connmanLastKnownSessionState;
+
+    QDBusServiceWatcher *ofonoWatcher;
+    QDBusServiceWatcher *connmanWatcher;
+
+    bool connmanAvailable;
 
 protected:
     bool requiresPolling() const;
