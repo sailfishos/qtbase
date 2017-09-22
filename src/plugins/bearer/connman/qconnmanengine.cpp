@@ -217,7 +217,7 @@ void QConnmanEngine::requestUpdate()
 
 void QConnmanEngine::doRequestUpdate()
 {
-    if (connmanManager && connmanManager->requestScan("wifi"))
+    if (!connmanManager || !connmanManager->requestScan("wifi"))
         Q_EMIT updateCompleted();
 }
 
