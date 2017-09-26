@@ -600,12 +600,6 @@ ln -s %{_sysconfdir}/xdg/qtchooser/5.conf %{buildroot}%{_sysconfdir}/xdg/qtchoos
 %post plugin-platform-eglfs -p /sbin/ldconfig
 %postun plugin-platform-eglfs -p /sbin/ldconfig
 
-#### File section
-
-# There is no naked qt5 package
-#%files
-
-
 
 %files tools
 %defattr(-,root,root,-)
