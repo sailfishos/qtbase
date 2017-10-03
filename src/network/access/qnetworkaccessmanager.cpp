@@ -51,6 +51,7 @@
 #include "qnetworkreplyfileimpl_p.h"
 
 #include "QtCore/qbuffer.h"
+#include "QtCore/qloggingcategory.h"
 #include "QtCore/qurl.h"
 #include "QtCore/qvector.h"
 #include "QtNetwork/private/qauthenticator_p.h"
@@ -64,6 +65,8 @@
 #include "qthread.h"
 
 QT_BEGIN_NAMESPACE
+
+Q_LOGGING_CATEGORY(lcNetworkAccess, "qt.network.access", QtWarningMsg)
 
 Q_GLOBAL_STATIC(QNetworkAccessFileBackendFactory, fileBackend)
 #ifndef QT_NO_FTP
@@ -1009,6 +1012,37 @@ QSharedPointer<QNetworkSession> QNetworkAccessManagerPrivate::getNetworkSession(
     return networkSessionWeakRef.toStrongRef();
 }
 
+bool QNetworkAccessManagerPrivate::networkSessionCreationAllowed(const QNetworkConfiguration &configuration) const
+{
+    // Do not allow network session creation if changing to non Wlan when Wlan already active.
+    // cellular to WLAN        -> ok
+    // cellular to cellular    -> ok
+    // WLAN to cellular        -> not ok
+    // WLAN to WLAN            -> ok
+
+    bool wlanActive = false;
+    QList<QNetworkConfiguration> activeConfigurations = networkConfigurationManager.allConfigurations(QNetworkConfiguration::Active);
+    if (configuration.bearerTypeFamily() != QNetworkConfiguration::BearerWLAN) {
+        Q_FOREACH (const QNetworkConfiguration config, activeConfigurations) {
+            if (config.bearerType() == QNetworkConfiguration::BearerWLAN) {
+                wlanActive = true;
+                break;
+            }
+        }
+    }
+
+    QSharedPointer<QNetworkSession> session(getNetworkSession());
+    if (session) {
+        // Prevent moving from WLAN to mobile data.
+        return !((session->configuration().bearerTypeFamily() == QNetworkConfiguration::BearerWLAN && wlanActive) &&
+                 (configuration.bearerTypeFamily() == QNetworkConfiguration::Bearer2G ||
+                  configuration.bearerTypeFamily() == QNetworkConfiguration::Bearer3G ||
+                  configuration.bearerTypeFamily() == QNetworkConfiguration::Bearer4G));
+    }
+
+    return false;
+}
+
 #endif // QT_NO_BEARERMANAGEMENT
 
 
@@ -1158,6 +1192,7 @@ QNetworkReply *QNetworkAccessManager::createRequest(QNetworkAccessManager::Opera
     // Return a disabled network reply if network access is disabled.
     // Except if the scheme is empty or file://.
     if (d->networkAccessible == NotAccessible && !isLocalFile) {
+        qCWarning(lcNetworkAccess) << "QNAM: network not accessible, returning disabled network reply.";
         return new QDisabledNetworkReply(this, req, op);
     }
 
@@ -1545,8 +1580,10 @@ void QNetworkAccessManagerPrivate::createSession(const QNetworkConfiguration &co
     networkSessionStrongRef = networkSessionWeakRef.toStrongRef();
 
     QSharedPointer<QNetworkSession> newSession;
-    if (config.isValid())
+    if (config.isValid()) {
         newSession = QSharedNetworkSessionManager::getSession(config);
+        qCDebug(lcNetworkAccess) << "QNAM: get network session from network configuration.";
+    }
 
     if (networkSessionStrongRef) {
         //do nothing if new and old session are the same
@@ -1579,11 +1616,16 @@ void QNetworkAccessManagerPrivate::createSession(const QNetworkConfiguration &co
     QObject::connect(networkSessionStrongRef.data(), SIGNAL(opened()), q, SIGNAL(networkSessionConnected()), Qt::QueuedConnection);
     //QueuedConnection is used to avoid deleting the networkSession inside its closed signal
     QObject::connect(networkSessionStrongRef.data(), SIGNAL(closed()), q, SLOT(_q_networkSessionClosed()), Qt::QueuedConnection);
-    QObject::connect(networkSessionStrongRef.data(), SIGNAL(stateChanged(QNetworkSession::State)),
-                     q, SLOT(_q_networkSessionStateChanged(QNetworkSession::State)), Qt::QueuedConnection);
+    QObject::connect(networkSessionStrongRef.data(), &QNetworkSession::stateChanged,
+                     q, [this](QNetworkSession::State s) {
+        qCDebug(lcNetworkAccess) << "QNAM: network session state changed:" << s;
+        _q_networkSessionStateChanged(s);
+    }, Qt::QueuedConnection);
     QObject::connect(networkSessionStrongRef.data(), SIGNAL(error(QNetworkSession::SessionError)),
                         q, SLOT(_q_networkSessionFailed(QNetworkSession::SessionError)));
 
+
+    qCDebug(lcNetworkAccess) << "QNAM: initial network session" << networkSessionStrongRef->configuration().name() << "state:" << networkSessionStrongRef->state();
     _q_networkSessionStateChanged(networkSessionStrongRef->state());
 }
 
@@ -1683,17 +1725,20 @@ void QNetworkAccessManagerPrivate::_q_configurationChanged(const QNetworkConfigu
     const QString id = configuration.identifier();
     if (configuration.state().testFlag(QNetworkConfiguration::Active)) {
         if (!onlineConfigurations.contains(id)) {
-
             QSharedPointer<QNetworkSession> session(getNetworkSession());
             if (session) {
-                if (online && session->configuration().identifier()
-                        != networkConfigurationManager.defaultConfiguration().identifier()) {
-
+                bool canCreateNetworkSession = networkSessionCreationAllowed(configuration);
+                // Use the id of the configuration over here as the networkConfigurationManager.defaultConfiguration()
+                // points to previous default configuration i.e. not yet changed.
+                if (canCreateNetworkSession && online && session->configuration().identifier() != id) {
+                    qCDebug(lcNetworkAccess) << "QNAM: network session changing from" << session->configuration().name() << "to" << configuration.name();
                     onlineConfigurations.insert(id);
                     //this one disconnected but another one is online,
                     // close and create new session
                     _q_networkSessionClosed();
-                    createSession(networkConfigurationManager.defaultConfiguration());
+                    createSession(configuration);
+                } else if (!canCreateNetworkSession) {
+                    qCDebug(lcNetworkAccess) << "QNAM: network session changed prevented from" << session->configuration().name() << "to" << configuration.name() << "as WLAN access point already online.";
                 }
             }
         }

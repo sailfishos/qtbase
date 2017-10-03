@@ -137,6 +137,8 @@ public:
     void createSession(const QNetworkConfiguration &config);
     QSharedPointer<QNetworkSession> getNetworkSession() const;
 
+    bool networkSessionCreationAllowed(const QNetworkConfiguration &configuration) const;
+
     void _q_networkSessionClosed();
     void _q_networkSessionNewConfigurationActivated();
     void _q_networkSessionPreferredConfigurationChanged(const QNetworkConfiguration &config,
