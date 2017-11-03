@@ -409,14 +409,21 @@ void NmakeMakefileGenerator::init()
         project->values("QMAKE_DISTCLEAN").append(tgt + ".lib");
     }
     if (project->isActiveConfig("debug_info")) {
-        // Add the compiler's PDB file.
-        QString pdbfile = var("OBJECTS_DIR") + project->first("TARGET") + ".vc.pdb";
+        QString pdbfile;
+        QString distPdbFile = tgt + ".pdb";
+        if (project->isActiveConfig("staticlib")) {
+            // For static libraries, the compiler's pdb file and the dist pdb file are the same.
+            pdbfile = distPdbFile;
+        } else {
+            // Use $${TARGET}.vc.pdb in the OBJECTS_DIR for the compiler and
+            // $${TARGET}.pdb (the default) for the linker.
+            pdbfile = var("OBJECTS_DIR") + project->first("TARGET") + ".vc.pdb";
+        }
         QString escapedPdbFile = escapeFilePath(pdbfile);
         project->values("QMAKE_CFLAGS").append("/Fd" + escapedPdbFile);
         project->values("QMAKE_CXXFLAGS").append("/Fd" + escapedPdbFile);
         project->values("QMAKE_CLEAN").append(pdbfile);
-        // Add the linker's PDB file to the distclean target.
-        project->values("QMAKE_DISTCLEAN").append(tgt + ".pdb");
+        project->values("QMAKE_DISTCLEAN").append(distPdbFile);
     }
     if (project->isActiveConfig("debug")) {
         project->values("QMAKE_CLEAN").append(tgt + ".ilk");
@@ -547,6 +554,10 @@ void NmakeMakefileGenerator::writeBuildRulesPart(QTextStream &t)
     t << "all: " << escapeDependencyPath(fileFixify(Option::output.fileName()))
       << ' ' << depVar("ALL_DEPS") << " $(DESTDIR_TARGET)\n\n";
     t << "$(DESTDIR_TARGET): " << depVar("PRE_TARGETDEPS") << " $(OBJECTS) " << depVar("POST_TARGETDEPS");
+    if (templateName == "aux") {
+        t << "\n\n";
+        return;
+    }
 
     if(!project->isEmpty("QMAKE_PRE_LINK"))
         t << "\n\t" <<var("QMAKE_PRE_LINK");
@@ -554,7 +565,7 @@ void NmakeMakefileGenerator::writeBuildRulesPart(QTextStream &t)
         t << "\n\t$(LIBAPP) $(LIBFLAGS) " << var("QMAKE_LINK_O_FLAG") << "$(DESTDIR_TARGET) @<<\n\t  "
           << "$(OBJECTS)"
           << "\n<<";
-    } else if (templateName != "aux") {
+    } else {
         const bool embedManifest = ((templateName == "app" && project->isActiveConfig("embed_manifest_exe"))
                                     || (templateName == "lib" && project->isActiveConfig("embed_manifest_dll")
                                         && !(project->isActiveConfig("plugin") && project->isActiveConfig("no_plugin_manifest"))

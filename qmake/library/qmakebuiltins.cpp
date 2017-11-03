@@ -406,7 +406,9 @@ QByteArray QMakeEvaluator::getCommandOutput(const QString &args) const
     if (!errout.isEmpty()) {
         if (errout.endsWith('\n'))
             errout.chop(1);
-        m_handler->message(QMakeHandler::EvalError, QString::fromLocal8Bit(errout));
+        m_handler->message(
+            QMakeHandler::EvalError | (m_cumulative ? QMakeHandler::CumulativeEvalMessage : 0),
+            QString::fromLocal8Bit(errout));
     }
 # endif
     out = proc.readAllStandardOutput();
@@ -476,8 +478,7 @@ ProStringList QMakeEvaluator::evaluateBuiltinExpand(
         int end = -1;
         if (func_t == E_SECTION) {
             if (args.count() != 3 && args.count() != 4) {
-                evalError(fL1S("%1(var) section(var, sep, begin, end) requires"
-                               " three or four arguments.").arg(func.toQString(m_tmp1)));
+                evalError(fL1S("section(var, sep, begin, end) requires three or four arguments."));
             } else {
                 var = args[0];
                 sep = args.at(1).toQString();

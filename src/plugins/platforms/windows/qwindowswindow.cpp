@@ -37,7 +37,11 @@
 #include "qwindowsdrag.h"
 #include "qwindowsscreen.h"
 #include "qwindowsintegration.h"
-#include "qwindowsopenglcontext.h"
+#ifdef QT_OPENGL_DYNAMIC
+#  include "qwindowsglcontext.h"
+#else
+#  include "qwindowsopenglcontext.h"
+#endif
 #ifdef QT_NO_CURSOR
 #  include "qwindowscursor.h"
 #endif
@@ -668,7 +672,7 @@ QWindowsWindowData
                                  context->frameX, context->frameY,
                                  context->frameWidth, context->frameHeight,
                                  parentHandle, NULL, appinst, NULL);
-#ifdef Q_OS_WINCE
+#if defined(Q_OS_WINCE) && defined(QT_TOUCH_FROM_GESTURE)
     if (DisableGestures(result.hwnd, TGF_GID_ALL, TGF_SCOPE_WINDOW))
         EnableGestures(result.hwnd, TGF_GID_DIRECTMANIPULATION, TGF_SCOPE_WINDOW);
 #endif
@@ -1567,6 +1571,16 @@ bool QWindowsWindow::handleWmPaint(HWND hwnd, UINT message,
     if (!GetUpdateRect(m_data.hwnd, 0, FALSE))
         return false;
     PAINTSTRUCT ps;
+
+#ifdef QT_OPENGL_DYNAMIC
+    // QTBUG-58178: GL software rendering needs InvalidateRect() to suppress
+    // artifacts while resizing.
+    if (testFlag(OpenGLSurface)
+        && QOpenGLStaticContext::opengl32.moduleIsNotOpengl32()
+        && QOpenGLContext::openGLModuleType() == QOpenGLContext::LibGL) {
+        InvalidateRect(hwnd, 0, false);
+    }
+#endif // QT_OPENGL_DYNAMIC
 
     BeginPaint(hwnd, &ps);
 

@@ -1813,6 +1813,12 @@
     which qmake will replace with the actual executable name. Other variables
     include @ICON@, @TYPEINFO@, @LIBRARY@, and @SHORT_VERSION@.
 
+    If building for iOS, and the \c{.plist} file contains the key
+    \c NSPhotoLibraryUsageDescription, qmake will include an additional plugin
+    to the build that adds photo access support (to, e.g.,
+    \l{QFileDialog::setDirectory()}{QFile/QFileDialog}). See Info.plist
+    documentation from Apple for more information regarding this key.
+
     \note Most of the time, the default \c{Info.plist} is good enough.
 
     \section1 QMAKE_LFLAGS
@@ -2050,6 +2056,12 @@
     Specifies the command to execute when creating a link to a shared library. The
     value of this variable is typically handled by qmake or
      \l{#QMAKESPEC}{qmake.conf} and rarely needs to be modified.
+
+    \section1 QMAKE_OBJECTIVE_CFLAGS
+
+    Specifies the Objective C/C++ compiler flags for building
+    a project. These flags are used in addition to QMAKE_CFLAGS and
+    QMAKE_CXXFLAGS.
 
     \section1 QMAKE_POST_LINK
 

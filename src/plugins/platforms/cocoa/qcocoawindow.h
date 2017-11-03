@@ -236,6 +236,8 @@ public:
     void setMenubar(QCocoaMenuBar *mb);
     QCocoaMenuBar *menubar() const;
 
+    NSCursor *effectiveWindowCursor() const;
+    void applyEffectiveWindowCursor();
     void setWindowCursor(NSCursor *cursor);
 
     void registerTouch(bool enable);
@@ -275,6 +277,7 @@ public: // for QNSView
     friend class QCocoaBackingStore;
     friend class QCocoaNativeInterface;
 
+    bool alwaysShowToolWindow() const;
     void removeMonitor();
 
     NSView *m_contentView;
@@ -346,6 +349,7 @@ public: // for QNSView
     // This object is tracked by QCocoaWindowPointer,
     // preventing the use of dangling pointers.
     QObject sentinel;
+    bool m_hasWindowFilePath;
 };
 
 QT_END_NAMESPACE

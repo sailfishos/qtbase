@@ -267,6 +267,11 @@ QGraphicsWidget::~QGraphicsWidget()
 
     // Remove this graphics widget from widgetStyles
     widgetStyles()->setStyleForWidget(this, 0);
+
+    // Unset the parent here, when we're still a QGraphicsWidget.
+    // It is otherwise done in ~QGraphicsItem() where we'd be
+    // calling QGraphicsWidget members on an ex-QGraphicsWidget object
+    setParentItem(Q_NULLPTR);
 }
 
 /*!
@@ -1444,6 +1449,7 @@ bool QGraphicsWidget::event(QEvent *event)
     case QEvent::GraphicsSceneMousePress:
         if (d->hasDecoration() && windowFrameEvent(event))
             return true;
+        break;
     case QEvent::GraphicsSceneMouseMove:
     case QEvent::GraphicsSceneMouseRelease:
     case QEvent::GraphicsSceneMouseDoubleClick:

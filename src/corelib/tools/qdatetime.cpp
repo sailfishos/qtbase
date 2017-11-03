@@ -842,7 +842,7 @@ static QString toStringIsoDate(qint64 jd)
     range 0 to 9999. This restriction may apply to locale-aware
     formats as well, depending on the locale settings.
 
-    \sa shortDayName(), shortMonthName()
+    \sa fromString(), shortDayName(), shortMonthName(), QLocale::toString()
 */
 QString QDate::toString(Qt::DateFormat format) const
 {
@@ -918,7 +918,7 @@ QString QDate::toString(Qt::DateFormat format) const
 
     If the datetime is invalid, an empty string will be returned.
 
-    \sa QDateTime::toString(), QTime::toString(), QLocale::toString()
+    \sa fromString(), QDateTime::toString(), QTime::toString(), QLocale::toString()
 
 */
 QString QDate::toString(const QString& format) const
@@ -1185,6 +1185,8 @@ qint64 QDate::daysTo(const QDate &d) const
     Note for Qt::TextDate: It is recommended that you use the
     English short month names (e.g. "Jan"). Although localized month
     names can also be used, they depend on the user's locale settings.
+
+    \sa toString(), QLocale::toDate()
 */
 QDate QDate::fromString(const QString& string, Qt::DateFormat format)
 {
@@ -1303,8 +1305,8 @@ QDate QDate::fromString(const QString& string, Qt::DateFormat format)
 
     \snippet code/src_corelib_tools_qdatetime.cpp 3
 
-    \sa QDateTime::fromString(), QTime::fromString(), QDate::toString(),
-        QDateTime::toString(), QTime::toString()
+    \sa toString(), QDateTime::fromString(), QTime::fromString(),
+        QLocale::toDate()
 */
 
 QDate QDate::fromString(const QString &string, const QString &format)
@@ -1571,7 +1573,7 @@ int QTime::msec() const
 
     If the time is invalid, an empty string will be returned.
 
-    \sa QDate::toString(), QDateTime::toString()
+    \sa fromString(), QDate::toString(), QDateTime::toString(), QLocale::toString()
 */
 
 QString QTime::toString(Qt::DateFormat format) const
@@ -1621,9 +1623,11 @@ QString QTime::toString(Qt::DateFormat format) const
     \row \li z \li the milliseconds without leading zeroes (0 to 999)
     \row \li zzz \li the milliseconds with leading zeroes (000 to 999)
     \row \li AP or A
-         \li use AM/PM display. \e A/AP will be replaced by either "AM" or "PM".
+         \li use AM/PM display. \e A/AP will be replaced by either
+             QLocale::amText() or QLocale::pmText().
     \row \li ap or a
-         \li use am/pm display. \e a/ap will be replaced by either "am" or "pm".
+         \li use am/pm display. \e a/ap will be replaced by a lower-case version of
+             QLocale::amText() or QLocale::pmText().
     \row \li t \li the timezone (for example "CEST")
     \endtable
 
@@ -1632,7 +1636,8 @@ QString QTime::toString(Qt::DateFormat format) const
     expression. Two consecutive single quotes ("''") are replaced by a singlequote
     in the output. Formats without separators (e.g. "HHmm") are currently not supported.
 
-    Example format strings (assuming that the QTime is 14:13:09.042)
+    Example format strings (assuming that the QTime is 14:13:09.042 and the system
+    locale is \c{en_US})
 
     \table
     \header \li Format \li Result
@@ -1644,7 +1649,7 @@ QString QTime::toString(Qt::DateFormat format) const
     If the time is invalid, an empty string will be returned.
     If \a format is empty, the default format "hh:mm:ss" is used.
 
-    \sa QDate::toString(), QDateTime::toString(), QLocale::toString()
+    \sa fromString(), QDate::toString(), QDateTime::toString(), QLocale::toString()
 */
 QString QTime::toString(const QString& format) const
 {
@@ -1929,6 +1934,8 @@ static QTime fromIsoTimeString(const QStringRef &string, Qt::DateFormat format, 
     this may result in two conversion attempts (if the conversion
     fails for the default locale). This should be considered an
     implementation detail.
+
+    \sa toString(), QLocale::toTime()
 */
 QTime QTime::fromString(const QString& string, Qt::DateFormat format)
 {
@@ -2002,8 +2009,8 @@ QTime QTime::fromString(const QString& string, Qt::DateFormat format)
 
     \snippet code/src_corelib_tools_qdatetime.cpp 8
 
-    \sa QDateTime::fromString(), QDate::fromString(), QDate::toString(),
-    QDateTime::toString(), QTime::toString()
+    \sa toString(), QDateTime::fromString(), QDate::fromString(),
+    QLocale::toTime()
 */
 
 QTime QTime::fromString(const QString &string, const QString &format)
@@ -3520,7 +3527,8 @@ void QDateTime::setTime_t(uint secsSince1Jan1970UTC)
     range 0 to 9999. This restriction may apply to locale-aware
     formats as well, depending on the locale settings.
 
-    \sa QDate::toString(), QTime::toString(), Qt::DateFormat
+    \sa fromString(), QDate::toString(), QTime::toString(),
+    QLocale::toString()
 */
 
 QString QDateTime::toString(Qt::DateFormat format) const
@@ -3603,7 +3611,7 @@ QString QDateTime::toString(Qt::DateFormat format) const
             \li the abbreviated localized day name (e.g. 'Mon' to 'Sun').
             Uses the system locale to localize the name, i.e. QLocale::system().
     \row \li dddd
-            \li the long localized day name (e.g. 'Monday' to 'Qt::Sunday').
+            \li the long localized day name (e.g. 'Monday' to 'Sunday').
             Uses the system locale to localize the name, i.e. QLocale::system().
     \row \li M \li the month as number without a leading zero (1-12)
     \row \li MM \li the month as number with a leading zero (01-12)
@@ -3660,7 +3668,7 @@ QString QDateTime::toString(Qt::DateFormat format) const
 
     If the datetime is invalid, an empty string will be returned.
 
-    \sa QDate::toString(), QTime::toString(), QLocale::toString()
+    \sa fromString(), QDate::toString(), QTime::toString(), QLocale::toString()
 */
 QString QDateTime::toString(const QString& format) const
 {
@@ -4356,6 +4364,8 @@ int QDateTime::utcOffset() const
     Note for Qt::TextDate: It is recommended that you use the
     English short month names (e.g. "Jan"). Although localized month
     names can also be used, they depend on the user's locale settings.
+
+    \sa toString(), QLocale::toDateTime()
 */
 QDateTime QDateTime::fromString(const QString& string, Qt::DateFormat format)
 {
@@ -4657,8 +4667,8 @@ QDateTime QDateTime::fromString(const QString& string, Qt::DateFormat format)
 
     \snippet code/src_corelib_tools_qdatetime.cpp 14
 
-    \sa QDate::fromString(), QTime::fromString(), QDate::toString(),
-    QDateTime::toString(), QTime::toString()
+    \sa toString(), QDate::fromString(), QTime::fromString(),
+    QLocale::toDateTime()
 */
 
 QDateTime QDateTime::fromString(const QString &string, const QString &format)

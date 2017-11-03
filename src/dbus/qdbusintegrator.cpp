@@ -1258,6 +1258,7 @@ void QDBusConnectionPrivate::relaySignal(QObject *obj, const QMetaObject *mo, in
             break;
         }
 
+    checkThread();
     QDBusReadLocker locker(RelaySignalAction, this);
     QDBusMessage message = QDBusMessage::createSignal(QLatin1String("/"), interface,
                                                       QLatin1String(memberName));
@@ -2371,12 +2372,9 @@ void QDBusConnectionPrivate::registerObject(const ObjectTreeNode *node)
             connector->connectAllSignals(node->obj);
         }
 
-        // disconnect and reconnect to avoid duplicates
-        connector->disconnect(SIGNAL(relaySignal(QObject*,const QMetaObject*,int,QVariantList)),
-                              this, SLOT(relaySignal(QObject*,const QMetaObject*,int,QVariantList)));
         connect(connector, SIGNAL(relaySignal(QObject*,const QMetaObject*,int,QVariantList)),
                 this, SLOT(relaySignal(QObject*,const QMetaObject*,int,QVariantList)),
-                Qt::DirectConnection);
+                Qt::ConnectionType(Qt::QueuedConnection | Qt::UniqueConnection));
     }
 }
 

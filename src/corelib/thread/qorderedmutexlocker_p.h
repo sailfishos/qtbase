@@ -82,8 +82,8 @@ public:
     void unlock()
     {
         if (locked) {
-            if (mtx1) mtx1->unlock();
             if (mtx2) mtx2->unlock();
+            if (mtx1) mtx1->unlock();
             locked = false;
         }
     }
@@ -93,7 +93,7 @@ public:
         // mtx1 is already locked, mtx2 not... do we need to unlock and relock?
         if (mtx1 == mtx2)
             return false;
-        if (mtx1 < mtx2) {
+        if (std::less<QMutex *>()(mtx1, mtx2)) {
             mtx2->lock();
             return true;
         }

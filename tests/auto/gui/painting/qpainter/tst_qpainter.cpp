@@ -307,6 +307,10 @@ private slots:
 
     void QTBUG50153_drawImage_assert();
 
+    void QTBUG56252();
+
+    void toRGB64();
+
 private:
     void fillData();
     void setPenColor(QPainter& p);
@@ -5075,6 +5079,38 @@ void tst_QPainter::QTBUG50153_drawImage_assert()
         backingStorePainter.drawImage(0, 0, image);
 
         // No crash, all fine
+    }
+}
+
+void tst_QPainter::QTBUG56252()
+{
+    QImage sourceImage(1770, 1477, QImage::Format_RGB32);
+    QImage rotatedImage(1478, 1771, QImage::Format_RGB32);
+    QTransform transformCenter;
+    transformCenter.translate(739.0, 885.5);
+    transformCenter.rotate(270.0);
+    transformCenter.translate(-885.0, -738.5);
+    QPainter painter;
+    painter.begin(&rotatedImage);
+    painter.setTransform(transformCenter);
+    painter.drawImage(QPoint(0, 0),sourceImage);
+    painter.end();
+
+    // If no crash or illegal memory read, all is fine
+}
+
+void tst_QPainter::toRGB64()
+{
+    QImage dst(10, 1, QImage::Format_BGR30);
+    QImage src(10, 1, QImage::Format_RGB16);
+    src.fill(Qt::white);
+
+    QPainter paint(&dst);
+    paint.drawImage(0, 0, src);
+    paint.end();
+
+    for (int i=0; i < dst.width(); ++i) {
+        QVERIFY(dst.pixelColor(i,0) == QColor(Qt::white));
     }
 }
 

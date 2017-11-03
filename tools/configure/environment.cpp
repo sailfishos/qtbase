@@ -40,6 +40,7 @@
 #include <qfile.h>
 #include <qfileinfo.h>
 #include <qstandardpaths.h>
+#include <qtemporaryfile.h>
 
 #include <process.h>
 #include <errno.h>
@@ -75,6 +76,7 @@ struct CompilerInfo{
     {CC_MSVC2013, "Microsoft (R) Visual Studio 2013 C/C++ Compiler (12.0)",        "Software\\Microsoft\\VisualStudio\\SxS\\VC7\\12.0", "cl.exe"}, // link.exe, lib.exe
     // Microsoft skipped version 13
     {CC_MSVC2015, "Microsoft (R) Visual Studio 2015 C/C++ Compiler (14.0)",        "Software\\Microsoft\\VisualStudio\\SxS\\VS7\\14.0", "cl.exe"}, // link.exe, lib.exe
+    {CC_MSVC2017, "Microsoft (R) Visual Studio 2017 C/C++ Compiler (15.0)",        "Software\\Microsoft\\VisualStudio\\SxS\\VS7\\15.0", "cl.exe"}, // link.exe, lib.exe
     {CC_UNKNOWN, "Unknown", 0, 0},
 };
 
@@ -100,6 +102,9 @@ QString Environment::detectQMakeSpec()
 {
     QString spec;
     switch (detectCompiler()) {
+    case CC_MSVC2017:
+        spec = "win32-msvc2017";
+        break;
     case CC_MSVC2015:
         spec = "win32-msvc2015";
         break;
@@ -136,6 +141,8 @@ QString Environment::detectQMakeSpec()
 
 Compiler Environment::compilerFromQMakeSpec(const QString &qmakeSpec)
 {
+    if (qmakeSpec == QLatin1String("win32-msvc2017"))
+        return CC_MSVC2017;
     if (qmakeSpec == QLatin1String("win32-msvc2015"))
         return CC_MSVC2015;
     if (qmakeSpec == QLatin1String("win32-msvc2013"))
@@ -172,24 +179,23 @@ QString Environment::gccVersion()
 QString Environment::msvcVersion()
 {
     int returnValue = 0;
-    // Extract version from standard error output of "cl /?"
-    const QString command = QFile::decodeName(qgetenv("ComSpec"))
-        + QLatin1String(" /c ") + QLatin1String(compilerInfo(CC_MSVC2015)->executable)
-        + QLatin1String(" /? 2>&1");
-    QString version = execute(command, &returnValue);
-    if (returnValue != 0) {
-        cout << "Could not get cl version" << returnValue << qPrintable(version) << '\n';;
-        version.clear();
-    } else {
-        QRegExp versionRegexp(QStringLiteral("^.*Compiler Version ([0-9.]+) for.*$"));
-        Q_ASSERT(versionRegexp.isValid());
-        if (versionRegexp.exactMatch(version)) {
-            version = versionRegexp.cap(1);
-        } else {
-            cout << "Unable to determine cl version from the output of \""
-                << qPrintable(command) << "\"\n";
-        }
+    QString tempSourceName;
+    {   // QTemporaryFile needs to go out of scope, otherwise cl.exe refuses to open it.
+        QTemporaryFile tempSource(QDir::tempPath() + QLatin1String("/XXXXXX.cpp"));
+        tempSource.setAutoRemove(false);
+        if (!tempSource.open())
+            return QString();
+        tempSource.write("_MSC_FULL_VER\n");
+        tempSourceName = tempSource.fileName();
     }
+    QString version = execute(QLatin1String("cl /nologo /EP \"")
+                              + QDir::toNativeSeparators(tempSourceName) + QLatin1Char('"'),
+                              &returnValue).trimmed();
+    QFile::remove(tempSourceName);
+    if (returnValue || version.size() < 9 || !version.at(0).isDigit())
+        return QString();
+    version.insert(4, QLatin1Char('.'));
+    version.insert(2, QLatin1Char('.'));
     return version;
 }
 

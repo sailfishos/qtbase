@@ -302,6 +302,7 @@ QXcbWindow::QXcbWindow(QWindow *window)
     , m_lastWindowStateEvent(-1)
     , m_syncState(NoSyncNeeded)
     , m_pendingSyncRequest(0)
+    , m_currentBitmapCursor(XCB_CURSOR_NONE)
 {
     setConnection(xcbScreen()->connection());
 }
@@ -620,6 +621,9 @@ void QXcbWindow::create()
 
 QXcbWindow::~QXcbWindow()
 {
+    if (m_currentBitmapCursor != XCB_CURSOR_NONE) {
+        xcb_free_cursor(xcb_connection(), m_currentBitmapCursor);
+    }
     if (window()->type() != Qt::ForeignWindow)
         destroy();
     else {
@@ -875,7 +879,7 @@ void QXcbWindow::hide()
     Q_XCB_CALL(xcb_unmap_window(xcb_connection(), m_window));
 
     // send synthetic UnmapNotify event according to icccm 4.1.4
-    xcb_unmap_notify_event_t event;
+    Q_DECLARE_XCB_EVENT(event, xcb_unmap_notify_event_t);
     event.response_type = XCB_UNMAP_NOTIFY;
     event.event = xcbScreen()->root();
     event.window = m_window;
@@ -1694,9 +1698,11 @@ void QXcbWindow::requestActivateWindow()
     m_deferredActivation = false;
 
     updateNetWmUserTime(connection()->time());
+    QWindow *focusWindow = QGuiApplication::focusWindow();
 
     if (window()->isTopLevel()
         && !(window()->flags() & Qt::X11BypassWindowManagerHint)
+        && (!focusWindow || !window()->isAncestorOf(focusWindow))
         && connection()->wmSupport()->isSupportedByWM(atom(QXcbAtom::_NET_ACTIVE_WINDOW))) {
         xcb_client_message_event_t event;
 
@@ -1707,7 +1713,6 @@ void QXcbWindow::requestActivateWindow()
         event.type = atom(QXcbAtom::_NET_ACTIVE_WINDOW);
         event.data.data32[0] = 1;
         event.data.data32[1] = connection()->time();
-        QWindow *focusWindow = QGuiApplication::focusWindow();
         event.data.data32[2] = focusWindow ? focusWindow->winId() : XCB_NONE;
         event.data.data32[3] = 0;
         event.data.data32[4] = 0;
@@ -2543,8 +2548,13 @@ void QXcbWindow::handlePropertyNotifyEvent(const xcb_property_notify_event_t *ev
 
             if (reply && reply->format == 32 && reply->type == atom(QXcbAtom::WM_STATE)) {
                 const quint32 *data = (const quint32 *)xcb_get_property_value(reply);
-                if (reply->length != 0 && XCB_WM_STATE_ICONIC == data[0])
-                    newState = Qt::WindowMinimized;
+                if (reply->length != 0) {
+                    if (data[0] == XCB_WM_STATE_ICONIC
+                            || (data[0] == XCB_WM_STATE_WITHDRAWN
+                                && m_lastWindowStateEvent == Qt::WindowMinimized)) {
+                        newState = Qt::WindowMinimized;
+                    }
+                }
             }
             free(reply);
         } else { // _NET_WM_STATE can't change minimized state
@@ -2660,10 +2670,22 @@ bool QXcbWindow::setMouseGrabEnabled(bool grab)
     return result;
 }
 
-void QXcbWindow::setCursor(xcb_cursor_t cursor)
+void QXcbWindow::setCursor(xcb_cursor_t cursor, bool isBitmapCursor)
 {
-    xcb_change_window_attributes(xcb_connection(), m_window, XCB_CW_CURSOR, &cursor);
-    xcb_flush(xcb_connection());
+    xcb_connection_t *conn = xcb_connection();
+
+    xcb_change_window_attributes(conn, m_window, XCB_CW_CURSOR, &cursor);
+    xcb_flush(conn);
+
+    if (m_currentBitmapCursor != XCB_CURSOR_NONE) {
+        xcb_free_cursor(conn, m_currentBitmapCursor);
+    }
+
+    if (isBitmapCursor) {
+        m_currentBitmapCursor = cursor;
+    } else {
+        m_currentBitmapCursor = XCB_CURSOR_NONE;
+    }
 }
 
 void QXcbWindow::windowEvent(QEvent *event)

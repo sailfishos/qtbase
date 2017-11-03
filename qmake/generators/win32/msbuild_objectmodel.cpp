@@ -181,7 +181,7 @@ const char _Optimization[]                      = "Optimization";
 const char _OptimizeReferences[]                = "OptimizeReferences";
 const char _OutputDirectory[]                   = "OutputDirectory";
 const char _OutputFile[]                        = "OutputFile";
-const char _PlatformToolSet[]                   = "PlatformToolSet";
+const char _PlatformToolSet[]                   = "PlatformToolset";
 const char _PrecompiledHeader[]                 = "PrecompiledHeader";
 const char _PrecompiledHeaderFile[]             = "PrecompiledHeaderFile";
 const char _PrecompiledHeaderOutputFile[]       = "PrecompiledHeaderOutputFile";
@@ -1163,6 +1163,21 @@ static inline QString toString(subSystemOption option)
     return QString();
 }
 
+static inline QString toString(triState genDebugInfo, linkerDebugOption option)
+{
+    switch (genDebugInfo) {
+    case unset:
+        break;
+    case _False:
+        return "false";
+    case _True:
+        if (option == linkerDebugOptionFastLink)
+            return "DebugFastLink";
+        return "true";
+    }
+    return QString();
+}
+
 static inline QString toString(machineTypeOption option)
 {
     switch (option) {
@@ -1541,7 +1556,7 @@ void VCXProjectWriter::write(XmlOutput &xml, const VCLinkerTool &tool)
             << attrTagS(_EntryPointSymbol, tool.EntryPointSymbol)
             << attrTagX(_ForceSymbolReferences, tool.ForceSymbolReferences, ";")
             << attrTagS(_FunctionOrder, tool.FunctionOrder)
-            << attrTagT(_GenerateDebugInformation, tool.GenerateDebugInformation)
+            << attrTagS(_GenerateDebugInformation, toString(tool.GenerateDebugInformation, tool.DebugInfoOption))
             << attrTagT(_GenerateManifest, tool.GenerateManifest)
             << attrTagT(_GenerateWindowsMetadata, tool.GenerateWindowsMetadata)
             << attrTagS(_WindowsMetadataFile, tool.GenerateWindowsMetadata == _True ? tool.WindowsMetadataFile : QString())

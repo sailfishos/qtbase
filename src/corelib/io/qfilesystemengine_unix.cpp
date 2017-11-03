@@ -1,5 +1,6 @@
 /****************************************************************************
 **
+** Copyright (C) 2017 Intel Corporation.
 ** Copyright (C) 2015 The Qt Company Ltd.
 ** Copyright (C) 2013 Samuel Gaist <samuel.gaist@edeltech.ch>
 ** Contact: http://www.qt.io/licensing/
@@ -57,6 +58,13 @@
 
 #ifdef Q_OS_IOS
 #include <MobileCoreServices/MobileCoreServices.h>
+#endif
+
+#if defined(Q_OS_DARWIN)
+// We cannot include <Foundation/Foundation.h> (it's an Objective-C header), but
+// we need these declarations:
+Q_FORWARD_DECLARE_OBJC_CLASS(NSString);
+extern "C" NSString *NSTemporaryDirectory();
 #endif
 
 QT_BEGIN_NAMESPACE
@@ -276,7 +284,7 @@ QFileSystemEntry QFileSystemEngine::canonicalName(const QFileSystemEntry &entry,
     if (ret) {
         data.knownFlagsMask |= QFileSystemMetaData::ExistsAttribute;
         data.entryFlags |= QFileSystemMetaData::ExistsAttribute;
-        QString canonicalPath = QDir::cleanPath(QString::fromLocal8Bit(ret));
+        QString canonicalPath = QDir::cleanPath(QFile::decodeName(ret));
         free(ret);
         return QFileSystemEntry(canonicalPath);
     } else if (errno == ENOENT) { // file doesn't exist
@@ -542,45 +550,76 @@ bool QFileSystemEngine::fillMetaData(const QFileSystemEntry &entry, QFileSystemM
     return data.hasFlags(what);
 }
 
+static bool pathIsDir(const QByteArray &nativeName)
+{
+    // helper function to check if a given path is a directory, since mkdir can
+    // fail if the dir already exists (it may have been created by another
+    // thread or another process)
+    QT_STATBUF st;
+    return QT_STAT(nativeName.constData(), &st) == 0 && (st.st_mode & S_IFMT) == S_IFDIR;
+};
+
+// Note: if \a shouldMkdirFirst is false, we assume the caller did try to mkdir
+// before calling this function.
+static bool createDirectoryWithParents(const QByteArray &nativeName, bool shouldMkdirFirst = true)
+{
+    if (shouldMkdirFirst && QT_MKDIR(nativeName, 0777) == 0)
+        return true;
+    if (errno == EEXIST)
+        return pathIsDir(nativeName);
+    if (errno != ENOENT)
+        return false;
+
+    // mkdir failed because the parent dir doesn't exist, so try to create it
+    int slash = nativeName.lastIndexOf('/');
+    if (slash < 1)
+        return false;
+
+    QByteArray parentNativeName = nativeName.left(slash);
+    if (!createDirectoryWithParents(parentNativeName))
+        return false;
+
+    // try again
+    if (QT_MKDIR(nativeName, 0777) == 0)
+        return true;
+    return errno == EEXIST && pathIsDir(nativeName);
+}
+
 //static
 bool QFileSystemEngine::createDirectory(const QFileSystemEntry &entry, bool createParents)
 {
     QString dirName = entry.filePath();
-    if (createParents) {
-        dirName = QDir::cleanPath(dirName);
-        for (int oldslash = -1, slash=0; slash != -1; oldslash = slash) {
-            slash = dirName.indexOf(QDir::separator(), oldslash+1);
-            if (slash == -1) {
-                if (oldslash == dirName.length())
-                    break;
-                slash = dirName.length();
-            }
-            if (slash) {
-                const QByteArray chunk = QFile::encodeName(dirName.left(slash));
-                if (QT_MKDIR(chunk.constData(), 0777) != 0) {
-                    if (errno == EEXIST
-#if defined(Q_OS_QNX)
-                        // On QNX the QNet (VFS paths of other hosts mounted under a directory
-                        // such as /net) mountpoint returns ENOENT, despite existing. stat()
-                        // on the QNet mountpoint returns successfully and reports S_IFDIR.
-                        || errno == ENOENT
-#endif
-                    ) {
-                        QT_STATBUF st;
-                        if (QT_STAT(chunk.constData(), &st) == 0 && (st.st_mode & S_IFMT) == S_IFDIR)
-                            continue;
-                    }
-                    return false;
-                }
-            }
-        }
-        return true;
-    }
-#if defined(Q_OS_DARWIN)  // Mac X doesn't support trailing /'s
-    if (dirName.endsWith(QLatin1Char('/')))
+
+    // Darwin doesn't support trailing /'s, so remove for everyone
+    while (dirName.size() > 1 && dirName.endsWith(QLatin1Char('/')))
         dirName.chop(1);
-#endif
-    return (QT_MKDIR(QFile::encodeName(dirName).constData(), 0777) == 0);
+
+    // try to mkdir this directory
+    QByteArray nativeName = QFile::encodeName(dirName);
+    if (QT_MKDIR(nativeName, 0777) == 0)
+        return true;
+    if (!createParents)
+        return false;
+
+    // we need the cleaned path in order to create the parents
+    // and we save errno just in case encodeName needs to load codecs
+    int savedErrno = errno;
+    bool pathChanged;
+    {
+        QString cleanName = QDir::cleanPath(dirName);
+
+        // Check if the cleaned name is the same or not. If we were given a
+        // path with resolvable "../" sections, cleanPath will remove them, but
+        // this may change the target dir if one of those segments was a
+        // symlink. This operation depends on cleanPath's optimization of
+        // returning the original string if it didn't modify anything.
+        pathChanged = !dirName.isSharedWith(cleanName);
+        if (pathChanged)
+            nativeName = QFile::encodeName(cleanName);
+    }
+
+    errno = savedErrno;
+    return createDirectoryWithParents(nativeName, pathChanged);
 }
 
 //static
@@ -706,8 +745,17 @@ QString QFileSystemEngine::tempPath()
     return QDir::cleanPath(temp);
 #else
     QString temp = QFile::decodeName(qgetenv("TMPDIR"));
-    if (temp.isEmpty())
-        temp = QLatin1String("/tmp");
+    if (temp.isEmpty()) {
+#if defined(Q_OS_DARWIN) && !defined(QT_BOOTSTRAPPED)
+        if (NSString *nsPath = NSTemporaryDirectory()) {
+            temp = QString::fromCFString((CFStringRef)nsPath);
+        } else {
+#else
+        {
+#endif
+            temp = QLatin1String("/tmp");
+        }
+    }
     return QDir::cleanPath(temp);
 #endif
 }

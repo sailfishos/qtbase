@@ -71,6 +71,7 @@ private slots:
     void connectDisconnectNotify();
     void connectDisconnectNotifyPMF();
     void disconnectNotify_receiverDestroyed();
+    void disconnectNotify_metaObjConnection();
     void connectNotify_connectSlotsByName();
     void connectDisconnectNotify_shadowing();
     void emitInDefinedOrder();
@@ -926,8 +927,7 @@ void tst_QObject::connectDisconnectNotifyPMF()
 
     // Test disconnectNotify when disconnecting by QMetaObject::Connection
     QVERIFY(QObject::disconnect(conn));
-    // disconnectNotify() is not called, but it probably should be.
-    QVERIFY(s->disconnectedSignals.isEmpty());
+    QVERIFY(!s->disconnectedSignals.isEmpty());
 
     // Test connectNotify when connecting by function pointer
     s->clearNotifications();
@@ -968,6 +968,25 @@ void tst_QObject::disconnectNotify_receiverDestroyed()
     delete r;
     QCOMPARE(s->disconnectedSignals.count(), 1);
     QCOMPARE(s->disconnectedSignals.at(0), QMetaMethod::fromSignal(&QObject::destroyed));
+
+    delete s;
+}
+
+void tst_QObject::disconnectNotify_metaObjConnection()
+{
+    NotifyObject *s = new NotifyObject;
+    NotifyObject *r = new NotifyObject;
+
+    QMetaObject::Connection c = QObject::connect((SenderObject*)s, SIGNAL(signal1()),
+                                                 (ReceiverObject*)r, SLOT(slot1()));
+    QVERIFY(c);
+    QVERIFY(QObject::disconnect(c));
+
+    QCOMPARE(s->disconnectedSignals.count(), 1);
+    QCOMPARE(s->disconnectedSignals.at(0), QMetaMethod::fromSignal(&SenderObject::signal1));
+
+    delete r;
+    QCOMPARE(s->disconnectedSignals.count(), 1);
 
     delete s;
 }
@@ -6333,6 +6352,29 @@ signals:
     CountedStruct mySignal(const CountedStruct &s1, CountedStruct s2);
 };
 
+class CountedExceptionThrower : public QObject
+{
+    Q_OBJECT
+
+public:
+    explicit CountedExceptionThrower(bool throwException, QObject *parent = Q_NULLPTR)
+        : QObject(parent)
+    {
+        if (throwException)
+            throw ObjectException();
+        ++counter;
+    }
+
+    ~CountedExceptionThrower()
+    {
+        --counter;
+    }
+
+    static int counter;
+};
+
+int CountedExceptionThrower::counter = 0;
+
 void tst_QObject::exceptions()
 {
 #ifndef QT_NO_EXCEPTIONS
@@ -6394,6 +6436,59 @@ void tst_QObject::exceptions()
     }
     QCOMPARE(countedStructObjectsCount, 0);
 
+    // Child object reaping in case of exceptions thrown by constructors
+    {
+        QCOMPARE(CountedExceptionThrower::counter, 0);
+
+        try {
+            class ParentObject : public QObject {
+            public:
+                explicit ParentObject(QObject *parent = Q_NULLPTR)
+                    : QObject(parent)
+                {
+                    new CountedExceptionThrower(false, this);
+                    new CountedExceptionThrower(false, this);
+                    new CountedExceptionThrower(true, this); // throws
+                }
+            };
+
+            ParentObject p;
+            QFAIL("Exception not thrown");
+        } catch (const ObjectException &) {
+        } catch (...) {
+            QFAIL("Wrong exception thrown");
+        }
+
+        QCOMPARE(CountedExceptionThrower::counter, 0);
+
+        try {
+            QObject o;
+            new CountedExceptionThrower(false, &o);
+            new CountedExceptionThrower(false, &o);
+            new CountedExceptionThrower(true, &o); // throws
+
+            QFAIL("Exception not thrown");
+        } catch (const ObjectException &) {
+        } catch (...) {
+            QFAIL("Wrong exception thrown");
+        }
+
+        QCOMPARE(CountedExceptionThrower::counter, 0);
+
+        try {
+            QObject o;
+            CountedExceptionThrower c1(false, &o);
+            CountedExceptionThrower c2(false, &o);
+            CountedExceptionThrower c3(true, &o); // throws
+
+            QFAIL("Exception not thrown");
+        } catch (const ObjectException &) {
+        } catch (...) {
+            QFAIL("Wrong exception thrown");
+        }
+
+        QCOMPARE(CountedExceptionThrower::counter, 0);
+    }
 
 #else
     QSKIP("Needs exceptions");

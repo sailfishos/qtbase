@@ -170,7 +170,11 @@ void QTabBarPrivate::initBasicStyleOption(QStyleOptionTab *option, int tabIndex)
 
     if (tab.textColor.isValid())
         option->palette.setColor(q->foregroundRole(), tab.textColor);
-
+    else if (q->style()->inherits("QMacStyle")
+             && isCurrent && !documentMode
+             && (QSysInfo::MacintoshVersion < QSysInfo::MV_10_10 || q->isActiveWindow())) {
+        option->palette.setColor(QPalette::WindowText, Qt::white);
+    }
     option->icon = tab.icon;
     option->iconSize = q->iconSize();  // Will get the default value then.
 
@@ -1869,9 +1873,8 @@ void QTabBar::mouseMoveEvent(QMouseEvent *event)
             }
         }
 
-        int offset = (event->pos() - d->dragStartPosition).manhattanLength();
         if (event->buttons() == Qt::LeftButton
-            && offset > QApplication::startDragDistance()
+            && d->dragInProgress
             && d->validIndex(d->pressedIndex)) {
             bool vertical = verticalTabs(d->shape);
             int dragDistance;

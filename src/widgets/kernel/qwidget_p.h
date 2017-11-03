@@ -323,6 +323,7 @@ public:
     ~QWidgetPrivate();
 
     static QWidgetPrivate *get(QWidget *w) { return w->d_func(); }
+    static const QWidgetPrivate *get(const QWidget *w) { return w->d_func(); }
 
     QWExtra *extraData() const;
     QTLWExtra *topData() const;
@@ -394,9 +395,6 @@ public:
                                 const QRegion &rgn, const QPoint &offset, int flags,
                                 QPainter *sharedPainter, QWidgetBackingStore *backingStore);
 
-
-    QPainter *beginSharedPainter();
-    bool endSharedPainter();
 #ifndef QT_NO_GRAPHICSVIEW
     static QGraphicsProxyWidget * nearestGraphicsProxyWidget(const QWidget *origin);
 #endif
@@ -746,6 +744,8 @@ public:
     uint renderToTextureReallyDirty : 1;
     uint renderToTextureComposeActive : 1;
 #endif
+    uint childrenHiddenByWState : 1;
+    uint childrenShownByExpose : 1;
 
     // *************************** Platform specific ************************************
 #if defined(Q_OS_WIN)

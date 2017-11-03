@@ -200,8 +200,8 @@ static const QRgba64 *QT_FASTCALL convertToRGB64(QRgba64 *buffer, const uint *sr
         uint green = (src[i] >> greenShift<Format>()) & greenMask;
         uint blue = (src[i] >> blueShift<Format>()) & blueMask;
 
-        red = ((red << redLeftShift) | (red >> redRightShift)) << 16;
-        green = ((green << greenLeftShift) | (green >> greenRightShift)) << 8;
+        red = ((red << redLeftShift) | (red >> redRightShift));
+        green = ((green << greenLeftShift) | (green >> greenRightShift));
         blue = (blue << blueLeftShift) | (blue >> blueRightShift);
         buffer[i] = QRgba64::fromRgba(red, green, blue, 255);
     }
@@ -4509,8 +4509,10 @@ static void blend_tiled_argb(int count, const QSpan *spans, void *userData)
             uint *dest = ((uint *)data->rasterBuffer->scanLine(spans->y)) + x;
             op.func(dest, src, l, coverage);
             x += l;
+            sx += l;
             length -= l;
-            sx = 0;
+            if (sx >= image_width)
+                sx = 0;
         }
         ++spans;
     }
@@ -4568,7 +4570,9 @@ static void blend_tiled_rgb565(int count, const QSpan *spans, void *userData)
                 memcpy(dest, src, l * sizeof(quint16));
                 length -= l;
                 tx += l;
-                sx = 0;
+                sx += l;
+                if (sx >= image_width)
+                    sx = 0;
             }
 
             // Now use the rasterBuffer as the source of the texture,
@@ -4601,8 +4605,10 @@ static void blend_tiled_rgb565(int count, const QSpan *spans, void *userData)
                     const quint16 *src = (const quint16 *)data->texture.scanLine(sy) + sx;
                     blend_sourceOver_rgb16_rgb16(dest, src, l, alpha, ialpha);
                     x += l;
+                    sx += l;
                     length -= l;
-                    sx = 0;
+                    if (sx >= image_width)
+                        sx = 0;
                 }
             }
         }
@@ -5384,17 +5390,17 @@ static const ProcessSpans processTextureSpans[NBlendTypes][QImage::NImageFormats
         blend_src_generic, // ARGB32
         blend_transformed_argb, // ARGB32_Premultiplied
         blend_transformed_rgb565,
-        blend_src_generic,
-        blend_src_generic,
-        blend_src_generic,
-        blend_src_generic,
-        blend_src_generic,
-        blend_src_generic,
-        blend_src_generic,
-        blend_src_generic,
-        blend_src_generic,
-        blend_src_generic,
-        blend_src_generic,
+        blend_src_generic, // ARGB8565_Premultiplied
+        blend_src_generic, // RGB666
+        blend_src_generic, // ARGB6666_Premultiplied
+        blend_src_generic, // RGB555
+        blend_src_generic, // ARGB8555_Premultiplied
+        blend_src_generic, // RGB888
+        blend_src_generic, // RGB444
+        blend_src_generic, // ARGB4444_Premultiplied
+        blend_src_generic, // RGBX8888
+        blend_src_generic, // RGBA8888
+        blend_src_generic, // RGBA8888_Premultiplied
         blend_src_generic_rgb64,
         blend_src_generic_rgb64,
         blend_src_generic_rgb64,
@@ -5412,16 +5418,17 @@ static const ProcessSpans processTextureSpans[NBlendTypes][QImage::NImageFormats
         blend_src_generic, // ARGB32
         blend_transformed_tiled_argb, // ARGB32_Premultiplied
         blend_transformed_tiled_rgb565,
-        blend_src_generic,
-        blend_src_generic,
-        blend_src_generic,
-        blend_src_generic,
-        blend_src_generic,
-        blend_src_generic,
-        blend_src_generic,
-        blend_src_generic,
-        blend_src_generic,
-        blend_src_generic,
+        blend_src_generic, // ARGB8565_Premultiplied
+        blend_src_generic, // RGB666
+        blend_src_generic, // ARGB6666_Premultiplied
+        blend_src_generic, // RGB555
+        blend_src_generic, // ARGB8555_Premultiplied
+        blend_src_generic, // RGB888
+        blend_src_generic, // RGB444
+        blend_src_generic, // ARGB4444_Premultiplied
+        blend_src_generic, // RGBX8888
+        blend_src_generic, // RGBA8888
+        blend_src_generic, // RGBA8888_Premultiplied
         blend_src_generic_rgb64,
         blend_src_generic_rgb64,
         blend_src_generic_rgb64,
@@ -5439,17 +5446,17 @@ static const ProcessSpans processTextureSpans[NBlendTypes][QImage::NImageFormats
         blend_src_generic, // ARGB32
         blend_src_generic, // ARGB32_Premultiplied
         blend_transformed_bilinear_rgb565,
-        blend_src_generic,
-        blend_src_generic,
-        blend_src_generic,
-        blend_src_generic,
-        blend_src_generic,
-        blend_src_generic,
-        blend_src_generic,
-        blend_src_generic,
-        blend_src_generic,
-        blend_src_generic,
-        blend_src_generic,
+        blend_src_generic, // ARGB8565_Premultiplied
+        blend_src_generic, // RGB666
+        blend_src_generic, // ARGB6666_Premultiplied
+        blend_src_generic, // RGB555
+        blend_src_generic, // ARGB8555_Premultiplied
+        blend_src_generic, // RGB888
+        blend_src_generic, // RGB444
+        blend_src_generic, // ARGB4444_Premultiplied
+        blend_src_generic, // RGBX8888
+        blend_src_generic, // RGBA8888
+        blend_src_generic, // RGBA8888_Premultiplied
         blend_src_generic_rgb64,
         blend_src_generic_rgb64,
         blend_src_generic_rgb64,
@@ -5637,15 +5644,16 @@ static void qt_gradient_quint16(int count, const QSpan *spans, void *userData)
         int yinc = int((linear.dy * data->m22 * gss) * FIXPT_SIZE);
         int off = int((((linear.dy * (data->m22 * qreal(0.5) + data->dy) + linear.off) * gss) * FIXPT_SIZE));
 
-        QRgba64 oldColor = data->solid.color;
+        // Save the fillData since we overwrite it when setting solid.color.
+        QGradientData gradient = data->gradient;
         while (count--) {
             int y = spans->y;
 
-            data->solid.color = QRgba64::fromArgb32(qt_gradient_pixel_fixed(&data->gradient, yinc * y + off));
+            data->solid.color = QRgba64::fromArgb32(qt_gradient_pixel_fixed(&gradient, yinc * y + off));
             blend_color_rgb16(1, spans, userData);
             ++spans;
         }
-        data->solid.color = oldColor;
+        data->gradient = gradient;
 
     } else {
         blend_src_generic(count, spans, userData);

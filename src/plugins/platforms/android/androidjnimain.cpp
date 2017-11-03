@@ -392,16 +392,16 @@ namespace QtAndroid
         if (surfaceId == -1)
             return;
 
-        QMutexLocker lock(&m_surfacesMutex);
-        const auto &it = m_surfaces.find(surfaceId);
-        if (it != m_surfaces.end())
-            m_surfaces.remove(surfaceId);
+        {
+            QMutexLocker lock(&m_surfacesMutex);
+            const auto &it = m_surfaces.find(surfaceId);
+            if (it != m_surfaces.end())
+                m_surfaces.erase(it);
+        }
 
         QJNIEnvironmentPrivate env;
-        if (!env)
-            return;
-
-        env->CallStaticVoidMethod(m_applicationClass,
+        if (env)
+            env->CallStaticVoidMethod(m_applicationClass,
                                      m_destroySurfaceMethodID,
                                      surfaceId);
     }
@@ -572,14 +572,12 @@ static void setSurface(JNIEnv *env, jobject /*thiz*/, jint id, jobject jSurface,
 {
     QMutexLocker lock(&m_surfacesMutex);
     const auto &it = m_surfaces.find(id);
-    if (it.value() == nullptr) // This should never happen...
+    if (it == m_surfaces.end())
         return;
 
-    if (it == m_surfaces.end()) {
-        qWarning()<<"Can't find surface" << id;
-        return;
-    }
-    it.value()->surfaceChanged(env, jSurface, w, h);
+    auto surfaceClient = it.value();
+    if (surfaceClient)
+        surfaceClient->surfaceChanged(env, jSurface, w, h);
 }
 
 static void setDisplayMetrics(JNIEnv */*env*/, jclass /*clazz*/,
@@ -621,7 +619,12 @@ static void updateWindow(JNIEnv */*env*/, jobject /*thiz*/)
 
     if (QGuiApplication::instance() != nullptr) {
         foreach (QWindow *w, QGuiApplication::topLevelWindows()) {
-            QRect availableGeometry = w->screen()->availableGeometry();
+
+            // Skip non-platform windows, e.g., offscreen windows.
+            if (!w->handle())
+                continue;
+
+               QRect availableGeometry = w->screen()->availableGeometry();
             if (w->geometry().width() > 0 && w->geometry().height() > 0 && availableGeometry.width() > 0 && availableGeometry.height() > 0)
                 QWindowSystemInterface::handleExposeEvent(w, QRegion(QRect(QPoint(), w->geometry().size())));
         }

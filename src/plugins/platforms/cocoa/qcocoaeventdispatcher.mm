@@ -342,7 +342,7 @@ static inline void qt_mac_waitForMoreEvents(NSString *runLoopMode = NSDefaultRun
 bool QCocoaEventDispatcher::processEvents(QEventLoop::ProcessEventsFlags flags)
 {
     Q_D(QCocoaEventDispatcher);
-    d->interrupt = false;
+    QBoolBlocker interruptBlocker(d->interrupt, false);
 
     bool interruptLater = false;
     QtCocoaInterruptDispatcher::cancelInterruptLater();
@@ -959,6 +959,19 @@ void QCocoaEventDispatcher::interrupt()
 
 void QCocoaEventDispatcher::flush()
 { }
+
+// QTBUG-56746: The behavior of processEvents() has been changed to not clear
+// the interrupt flag. Use this function to clear it.
+ void QCocoaEventDispatcher::clearCurrentThreadCocoaEventDispatcherInterruptFlag()
+{
+    QCocoaEventDispatcher *cocoaEventDispatcher =
+            qobject_cast<QCocoaEventDispatcher *>(QThread::currentThread()->eventDispatcher());
+    if (!cocoaEventDispatcher)
+        return;
+    QCocoaEventDispatcherPrivate *cocoaEventDispatcherPrivate =
+            static_cast<QCocoaEventDispatcherPrivate *>(QObjectPrivate::get(cocoaEventDispatcher));
+    cocoaEventDispatcherPrivate->interrupt = false;
+}
 
 QCocoaEventDispatcher::~QCocoaEventDispatcher()
 {

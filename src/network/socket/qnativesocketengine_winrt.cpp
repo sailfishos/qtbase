@@ -252,19 +252,18 @@ bool QNativeSocketEngine::initialize(qintptr socketDescriptor, QAbstractSocket::
 
     // Start processing incoming data
     if (d->socketType == QAbstractSocket::TcpSocket) {
-        HRESULT hr;
-        QEventDispatcherWinRT::runOnXamlThread([d, &hr, socket, this]() {
+        HRESULT hr = QEventDispatcherWinRT::runOnXamlThread([d, socket, this]() {
             ComPtr<IBuffer> buffer;
             HRESULT hr = g->bufferFactory->Create(READ_BUFFER_SIZE, &buffer);
-            RETURN_OK_IF_FAILED("initialize(): Could not create buffer");
+            RETURN_HR_IF_FAILED("initialize(): Could not create buffer");
             ComPtr<IInputStream> stream;
             hr = socket->get_InputStream(&stream);
-            RETURN_OK_IF_FAILED("initialize(): Could not obtain input stream");
+            RETURN_HR_IF_FAILED("initialize(): Could not obtain input stream");
             hr = stream->ReadAsync(buffer.Get(), READ_BUFFER_SIZE, InputStreamOptions_Partial, d->readOp.GetAddressOf());
-            RETURN_OK_IF_FAILED_WITH_ARGS("initialize(): Failed to read from the socket buffer (%s).",
+            RETURN_HR_IF_FAILED_WITH_ARGS("initialize(): Failed to read from the socket buffer (%s).",
                               socketDescription(this).constData());
             hr = d->readOp->put_Completed(Callback<SocketReadCompletedHandler>(d, &QNativeSocketEnginePrivate::handleReadyRead).Get());
-            RETURN_OK_IF_FAILED_WITH_ARGS("initialize(): Failed to set socket read callback (%s).",
+            RETURN_HR_IF_FAILED_WITH_ARGS("initialize(): Failed to set socket read callback (%s).",
                               socketDescription(this).constData());
             return S_OK;
         });
@@ -492,10 +491,12 @@ void QNativeSocketEngine::close()
             ComPtr<IAsyncAction> action;
             hr = socket3->CancelIOAsync(&action);
             Q_ASSERT_SUCCEEDED(hr);
-            hr = QWinRTFunctions::await(action);
+            hr = QWinRTFunctions::await(action, QWinRTFunctions::YieldThread, 5000);
             // If there is no pending IO (no read established before) the function will fail with
             // "function was called at an unexpected time" which is fine.
-            if (hr != E_ILLEGAL_METHOD_CALL)
+            // Timeout is fine as well. The result will be the socket being hard reset instead of
+            // being closed gracefully
+            if (hr != E_ILLEGAL_METHOD_CALL && hr != ERROR_TIMEOUT)
                 Q_ASSERT_SUCCEEDED(hr);
             return S_OK;
         });
@@ -578,6 +579,7 @@ qint64 QNativeSocketEngine::bytesAvailable() const
     if (d->socketType != QAbstractSocket::TcpSocket)
         return -1;
 
+    QMutexLocker locker(&d->readMutex);
     return d->readBytes.size() - d->readBytes.pos();
 }
 
@@ -590,12 +592,12 @@ qint64 QNativeSocketEngine::read(char *data, qint64 maxlen)
     // There will be a read notification when the socket was closed by the remote host. If that
     // happens and there isn't anything left in the buffer, we have to return -1 in order to signal
     // the closing of the socket.
+    QMutexLocker mutexLocker(&d->readMutex);
     if (d->readBytes.pos() == d->readBytes.size() && d->socketState != QAbstractSocket::ConnectedState) {
         close();
         return -1;
     }
 
-    QMutexLocker mutexLocker(&d->readMutex);
     return d->readBytes.read(data, maxlen);
 }
 
@@ -626,6 +628,7 @@ qint64 QNativeSocketEngine::readDatagram(char *data, qint64 maxlen, QIpPacketHea
                                          PacketHeaderOptions)
 {
     Q_D(QNativeSocketEngine);
+    QMutexLocker locker(&d->readMutex);
     if (d->socketType != QAbstractSocket::UdpSocket || d->pendingDatagrams.isEmpty()) {
         if (header)
             header->clear();
@@ -639,12 +642,13 @@ qint64 QNativeSocketEngine::readDatagram(char *data, qint64 maxlen, QIpPacketHea
     QByteArray readOrigin;
     // Do not read the whole datagram. Put the rest of it back into the "queue"
     if (maxlen < datagram.data.length()) {
-        QByteArray readOrigin = datagram.data.left(maxlen);
+        readOrigin = datagram.data.left(maxlen);
         datagram.data = datagram.data.remove(0, maxlen);
         d->pendingDatagrams.prepend(datagram);
     } else {
         readOrigin = datagram.data;
     }
+    locker.unlock();
     memcpy(data, readOrigin, qMin(maxlen, qint64(datagram.data.length())));
     return readOrigin.length();
 }
@@ -682,12 +686,14 @@ qint64 QNativeSocketEngine::writeDatagram(const char *data, qint64 len, const QI
 bool QNativeSocketEngine::hasPendingDatagrams() const
 {
     Q_D(const QNativeSocketEngine);
+    QMutexLocker locker(&d->readMutex);
     return d->pendingDatagrams.length() > 0;
 }
 
 qint64 QNativeSocketEngine::pendingDatagramSize() const
 {
     Q_D(const QNativeSocketEngine);
+    QMutexLocker locker(&d->readMutex);
     if (d->pendingDatagrams.isEmpty())
         return -1;
 
@@ -1334,7 +1340,7 @@ HRESULT QNativeSocketEnginePrivate::handleReadyRead(IAsyncBufferOperation *async
     hr = byteArrayAccess->Buffer(&data);
     Q_ASSERT_SUCCEEDED(hr);
 
-    readMutex.lock();
+    QMutexLocker locker(&readMutex);
     if (readBytes.atEnd()) // Everything has been read; the buffer is safe to reset
         readBytes.close();
     if (!readBytes.isOpen())
@@ -1344,7 +1350,7 @@ HRESULT QNativeSocketEnginePrivate::handleReadyRead(IAsyncBufferOperation *async
     Q_ASSERT(readBytes.atEnd());
     readBytes.write(reinterpret_cast<const char*>(data), qint64(bufferLength));
     readBytes.seek(readPos);
-    readMutex.unlock();
+    locker.unlock();
 
     if (notifyOnRead)
         emit q->readReady();
@@ -1408,7 +1414,9 @@ HRESULT QNativeSocketEnginePrivate::handleNewDatagram(IDatagramSocket *socket, I
     datagram.data.resize(length);
     hr = reader->ReadBytes(length, reinterpret_cast<BYTE *>(datagram.data.data()));
     RETURN_OK_IF_FAILED("Could not read datagram");
+    QMutexLocker locker(&readMutex);
     pendingDatagrams.append(datagram);
+    locker.unlock();
     if (notifyOnRead)
         emit q->readReady();
 

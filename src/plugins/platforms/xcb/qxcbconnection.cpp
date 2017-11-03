@@ -110,6 +110,7 @@ Q_LOGGING_CATEGORY(lcQpaScreen, "qt.qpa.screen")
 #define XCB_GE_GENERIC 35
 #endif
 
+#if defined(XCB_USE_XINPUT2)
 // Starting from the xcb version 1.9.3 struct xcb_ge_event_t has changed:
 // - "pad0" became "extension"
 // - "pad1" and "pad" became "pad0"
@@ -127,6 +128,7 @@ static inline bool isXIEvent(xcb_generic_event_t *event, int opCode)
     qt_xcb_ge_event_t *e = (qt_xcb_ge_event_t *)event;
     return e->extension == opCode;
 }
+#endif // XCB_USE_XINPUT2
 
 #ifdef XCB_USE_XLIB
 static const char * const xcbConnectionErrors[] = {
@@ -622,7 +624,8 @@ QXcbConnection::QXcbConnection(QXcbNativeInterface *nativeInterface, bool canGra
     initializeXRender();
 #if defined(XCB_USE_XINPUT2)
     m_xi2Enabled = false;
-    initializeXInput2();
+    if (!qEnvironmentVariableIsSet("QT_XCB_NO_XI2"))
+        initializeXInput2();
 #endif
     initializeXShape();
     initializeXKB();

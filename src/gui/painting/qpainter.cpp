@@ -5964,7 +5964,7 @@ void QPainter::drawText(const QRect &r, int flags, const QString &str, QRect *br
     \snippet code/src_gui_painting_qpainter.cpp 17
     \endtable
 
-    The \a boundingRect (if not null) is set to the what the bounding rectangle
+    The \a boundingRect (if not null) is set to what the bounding rectangle
     should be in order to enclose the whole text. For example, in the following
     image, the dotted line represents \a boundingRect as calculated by the
     function, and the dashed line represents \a rectangle:
@@ -7561,7 +7561,6 @@ start_lengthVariant:
             lineWidth = qMax<qreal>(0, r.width());
         if(!wordwrap)
             tf |= Qt::TextIncludeTrailingSpaces;
-        textLayout.engine()->ignoreBidi = bool(tf & Qt::TextDontPrint);
         textLayout.beginLayout();
 
         qreal leading = fm.leading();

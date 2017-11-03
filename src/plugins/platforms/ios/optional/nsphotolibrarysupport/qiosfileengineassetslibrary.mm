@@ -1,6 +1,6 @@
 /****************************************************************************
 **
-** Copyright (C) 2015 The Qt Company Ltd.
+** Copyright (C) 2016 The Qt Company Ltd.
 ** Contact: http://www.qt.io/licensing/
 **
 ** This file is part of the plugins of the Qt Toolkit.
@@ -41,6 +41,8 @@
 #include <QtCore/qurl.h>
 #include <QtCore/qset.h>
 #include <QtCore/qthreadstorage.h>
+
+QT_BEGIN_NAMESPACE
 
 static QThreadStorage<QString> g_iteratorCurrentUrl;
 static QThreadStorage<QPointer<QIOSAssetData> > g_assetDataCache;
@@ -465,5 +467,7 @@ QAbstractFileEngine::Iterator *QIOSFileEngineAssetsLibrary::endEntryList()
 {
     return 0;
 }
+
+QT_END_NAMESPACE
 
 #endif
