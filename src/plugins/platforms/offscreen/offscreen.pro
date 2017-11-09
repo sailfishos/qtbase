@@ -21,6 +21,8 @@ contains(QT_CONFIG, xlib):contains(QT_CONFIG, opengl):!contains(QT_CONFIG, openg
     SOURCES += qoffscreenintegration_dummy.cpp
 }
 
+contains(QT_CONFIG, fontconfig) DEFINES += Q_FONTCONFIGDATABASE
+
 PLUGIN_TYPE = platforms
 PLUGIN_CLASS_NAME = QOffscreenIntegrationPlugin
 !equals(TARGET, $$QT_DEFAULT_QPA_PLUGIN): PLUGIN_EXTENDS = -
