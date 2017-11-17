@@ -1876,6 +1876,27 @@ void QMainWindowLayout::invalidate()
     minSize = szHint = QSize();
 }
 
+#ifndef QT_NO_DOCKWIDGET
+void QMainWindowLayout::setCurrentHoveredFloat(QWidget *w)
+{
+    if (currentHoveredFloat != w) {
+        if (currentHoveredFloat) {
+            disconnect(currentHoveredFloat.data(), &QObject::destroyed,
+                       this, &QMainWindowLayout::updateGapIndicator);
+        }
+
+        currentHoveredFloat = w;
+
+        if (w) {
+            connect(w, &QObject::destroyed,
+                    this, &QMainWindowLayout::updateGapIndicator, Qt::UniqueConnection);
+        }
+
+        updateGapIndicator();
+    }
+}
+#endif //QT_NO_DOCKWIDGET
+
 /******************************************************************************
 ** QMainWindowLayout - remaining stuff
 */
@@ -1962,7 +1983,7 @@ bool QMainWindowLayout::plug(QLayoutItem *widgetItem)
             dropTo->setParent(floatingTabs);
             dropTo->show();
             dropTo->d_func()->plug(QRect());
-            currentHoveredFloat = floatingTabs;
+            setCurrentHoveredFloat(floatingTabs);
         }
 
         QDockWidgetGroupWindow *dwgw = qobject_cast<QDockWidgetGroupWindow *>(currentHoveredFloat);
@@ -2091,10 +2112,8 @@ void QMainWindowLayout::animationFinished(QWidget *widget)
         }
 
         if (QDockWidget *dw = qobject_cast<QDockWidget*>(widget)) {
-            if (currentHoveredFloat) {
-                dw->setParent(currentHoveredFloat);
-                dw->show();
-            }
+            dw->setParent(currentHoveredFloat ? currentHoveredFloat.data() : parentWidget());
+            dw->show();
             dw->d_func()->plug(currentGapRect);
         }
 #endif
@@ -2106,7 +2125,7 @@ void QMainWindowLayout::animationFinished(QWidget *widget)
         savedState.clear();
         currentGapPos.clear();
         pluggingWidget = 0;
-        currentHoveredFloat = Q_NULLPTR;
+        setCurrentHoveredFloat(Q_NULLPTR);
         //applying the state will make sure that the currentGap is updated correctly
         //and all the geometries (especially the one from the central widget) is correct
         layoutState.apply(false);
@@ -2274,7 +2293,8 @@ QLayoutItem *QMainWindowLayout::unplug(QWidget *widget, bool group)
             // We are unplugging a dock widget from a floating window.
             if (QDockWidget *dw = qobject_cast<QDockWidget*>(widget)) {
                 dw->d_func()->unplug(widget->geometry());
-                return 0;
+                int index = widget->parentWidget()->layout()->indexOf(widget);
+                return widget->parentWidget()->layout()->itemAt(index);
             }
         }
     }
@@ -2400,12 +2420,12 @@ void QMainWindowLayout::hover(QLayoutItem *widgetItem, const QPoint &mousePos)
             if (!w->geometry().contains(mousePos))
                 continue;
 
-            currentHoveredFloat = w;
+            setCurrentHoveredFloat(w);
             restore(true);
             return;
         }
     }
-    currentHoveredFloat = Q_NULLPTR;
+    setCurrentHoveredFloat(Q_NULLPTR);
 #endif //QT_NO_DOCKWIDGET
 
     QPoint pos = parentWidget()->mapFromGlobal(mousePos);

@@ -315,6 +315,11 @@ void MingwMakefileGenerator::writeBuildRulesPart(QTextStream &t)
     t << "all: " << escapeDependencyPath(fileFixify(Option::output.fileName()))
       << ' ' << depVar("ALL_DEPS") << " $(DESTDIR_TARGET)\n\n";
     t << "$(DESTDIR_TARGET): " << depVar("PRE_TARGETDEPS") << " $(OBJECTS) " << depVar("POST_TARGETDEPS");
+    if (project->first("TEMPLATE") == "aux") {
+        t << "\n\n";
+        return;
+    }
+
     if(!project->isEmpty("QMAKE_PRE_LINK"))
         t << "\n\t" <<var("QMAKE_PRE_LINK");
     if(project->isActiveConfig("staticlib") && project->first("TEMPLATE") == "lib") {
@@ -323,7 +328,7 @@ void MingwMakefileGenerator::writeBuildRulesPart(QTextStream &t)
         } else {
             t << "\n\t" << objectsLinkLine << " " ;
         }
-    } else if (project->first("TEMPLATE") != "aux") {
+    } else {
         t << "\n\t$(LINKER) $(LFLAGS) " << var("QMAKE_LINK_O_FLAG") << "$(DESTDIR_TARGET) " << objectsLinkLine << "  $(LIBS)";
     }
     if(!project->isEmpty("QMAKE_POST_LINK"))

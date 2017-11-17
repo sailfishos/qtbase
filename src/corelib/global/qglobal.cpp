@@ -3395,7 +3395,7 @@ Q_GLOBAL_STATIC(AndroidRandomStorage, randomTLS)
     pseudo random integers to be returned by qrand().
 
     The sequence of random numbers generated is deterministic per thread. For example,
-    if two threads call qsrand(1) and subsequently calls qrand(), the threads will get
+    if two threads call qsrand(1) and subsequently call qrand(), the threads will get
     the same random number sequence.
 
     \sa qrand()
@@ -4109,8 +4109,10 @@ bool QInternal::activateCallbacks(Callback cb, void **parameters)
  Compares the floating point value \a p1 and \a p2 and
  returns \c true if they are considered equal, otherwise \c false.
 
- Note that comparing values where either \a p1 or \a p2 is 0.0 will not work.
- The solution to this is to compare against values greater than or equal to 1.0.
+ Note that comparing values where either \a p1 or \a p2 is 0.0 will not work,
+ nor does comparing values where one of the values is NaN or infinity.
+ If one of the values is always 0.0, use qFuzzyIsNull instead. If one of the
+ values is likely to be 0.0, one solution is to add 1.0 to both values.
 
  \snippet code/src_corelib_global_qglobal.cpp 46
 

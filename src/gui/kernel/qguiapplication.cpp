@@ -345,6 +345,16 @@ void QWindowGeometrySpecification::applyTo(QWindow *window) const
 static QWindowGeometrySpecification windowGeometrySpecification = Q_WINDOW_GEOMETRY_SPECIFICATION_INITIALIZER;
 
 /*!
+    \macro qGuiApp
+    \relates QGuiApplication
+
+    A global pointer referring to the unique application object.
+    Only valid for use when that object is a QGuiApplication.
+
+    \sa QCoreApplication::instance(), qApp
+*/
+
+/*!
     \class QGuiApplication
     \brief The QGuiApplication class manages the GUI application's control
     flow and main settings.
@@ -1864,7 +1874,7 @@ void QGuiApplicationPrivate::processMouseEvent(QWindowSystemInterfacePrivate::Mo
     QMouseEvent ev(type, localPoint, localPoint, globalPoint, button, buttons, e->modifiers, e->source);
     ev.setTimestamp(e->timestamp);
 
-    if (window->d_func()->blockedByModalWindow) {
+    if (window->d_func()->blockedByModalWindow && !qApp->d_func()->popupActive()) {
         // a modal window is blocking this window, don't allow mouse events through
         return;
     }

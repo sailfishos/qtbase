@@ -276,6 +276,8 @@ QWidgetPrivate::QWidgetPrivate(int version)
       , renderToTextureReallyDirty(1)
       , renderToTextureComposeActive(0)
 #endif
+      , childrenHiddenByWState(0)
+      , childrenShownByExpose(0)
 #if defined(Q_OS_WIN)
       , noPaintOnScreen(0)
 #endif
@@ -5199,8 +5201,10 @@ static void sendResizeEvents(QWidget *target)
 
     const QObjectList children = target->children();
     for (int i = 0; i < children.size(); ++i) {
+        if (!children.at(i)->isWidgetType())
+            continue;
         QWidget *child = static_cast<QWidget*>(children.at(i));
-        if (child->isWidgetType() && !child->isWindow() && child->testAttribute(Qt::WA_PendingResizeEvent))
+        if (!child->isWindow() && child->testAttribute(Qt::WA_PendingResizeEvent))
             sendResizeEvents(child);
     }
 }
@@ -5588,13 +5592,15 @@ void QWidgetPrivate::drawWidget(QPaintDevice *pdev, const QRegion &rgn, const QP
                 // punch a hole in the backingstore, so the texture will be visible.
                 if (!q->testAttribute(Qt::WA_AlwaysStackOnTop)) {
                     beginBackingStorePainting();
-                    QPainter p(q);
                     if (backingStore) {
+                        QPainter p(q);
                         p.setCompositionMode(QPainter::CompositionMode_Source);
                         p.fillRect(q->rect(), Qt::transparent);
                     } else {
+                        QImage img = grabFramebuffer();
+                        QPainter p(q);
                         // We are not drawing to a backingstore: fall back to QImage
-                        p.drawImage(q->rect(), grabFramebuffer());
+                        p.drawImage(q->rect(), img);
                         skipPaintEvent = true;
                     }
                     endBackingStorePainting();
@@ -9005,13 +9011,23 @@ bool QWidget::event(QEvent *event)
     case QEvent::WindowStateChange: {
         const bool wasMinimized = static_cast<const QWindowStateChangeEvent *>(event)->oldState() & Qt::WindowMinimized;
         if (wasMinimized != isMinimized()) {
+            QWidget *widget = const_cast<QWidget *>(this);
             if (wasMinimized) {
-                QShowEvent showEvent;
-                QCoreApplication::sendEvent(const_cast<QWidget *>(this), &showEvent);
+                // Always send the spontaneous events here, otherwise it can break the application!
+                if (!d->childrenShownByExpose) {
+                    // Show widgets only when they are not yet shown by the expose event
+                    d->showChildren(true);
+                    QShowEvent showEvent;
+                    QCoreApplication::sendSpontaneousEvent(widget, &showEvent);
+                }
+                d->childrenHiddenByWState = false; // Set it always to "false" when window is restored
             } else {
                 QHideEvent hideEvent;
-                QCoreApplication::sendEvent(const_cast<QWidget *>(this), &hideEvent);
+                QCoreApplication::sendSpontaneousEvent(widget, &hideEvent);
+                d->hideChildren(true);
+                d->childrenHiddenByWState = true;
             }
+            d->childrenShownByExpose = false; // Set it always to "false" when window state changes
         }
         changeEvent(event);
     }
@@ -9582,11 +9598,6 @@ void QWidget::leaveEvent(QEvent *)
 
     Since Qt 4.0, QWidget automatically double-buffers its painting, so there
     is no need to write double-buffering code in paintEvent() to avoid flicker.
-
-    \b{Note for the X11 platform}: It is possible to toggle global double
-    buffering by calling \c qt_x11_set_global_double_buffer(). For example,
-
-    \snippet code/src_gui_kernel_qwidget.cpp 14
 
     \note Generally, you should refrain from calling update() or repaint()
     \b{inside} a paintEvent(). For example, calling update() or repaint() on

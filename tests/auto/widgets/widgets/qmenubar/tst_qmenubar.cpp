@@ -133,6 +133,10 @@ private slots:
     void cornerWidgets_data();
     void cornerWidgets();
     void taskQTBUG53205_crashReparentNested();
+#ifdef Q_OS_MACOS
+    void taskQTBUG56275_reinsertMenuInParentlessQMenuBar();
+    void QTBUG_57404_existingMenuItemException();
+#endif
 
 protected slots:
     void onSimpleActivated( QAction*);
@@ -1495,7 +1499,54 @@ void tst_QMenuBar::slotForTaskQTBUG53205()
     taskQTBUG53205MenuBar->setParent(parent);
 }
 
+#ifdef Q_OS_MACOS
+extern bool tst_qmenubar_taskQTBUG56275(QMenuBar *);
 
+void tst_QMenuBar::taskQTBUG56275_reinsertMenuInParentlessQMenuBar()
+{
+    QMenuBar menubar;
+
+    QMenu *menu = new QMenu("menu", &menubar);
+    QMenu* submenu = menu->addMenu("submenu");
+    submenu->addAction("action1");
+    submenu->addAction("action2");
+    menu->addAction("action3");
+    menubar.addMenu(menu);
+
+    QTest::qWait(100);
+    menubar.clear();
+    menubar.addMenu(menu);
+    QTest::qWait(100);
+
+    QVERIFY(tst_qmenubar_taskQTBUG56275(&menubar));
+}
+
+void tst_QMenuBar::QTBUG_57404_existingMenuItemException()
+{
+    QMainWindow mw1;
+    QMainWindow mw2;
+    mw1.show();
+    mw2.show();
+
+    QMenuBar *mb = new QMenuBar(&mw1);
+    mw1.setMenuBar(mb);
+    mb->show();
+    QMenu *editMenu = new QMenu(QLatin1String("Edit"), &mw1);
+    mb->addMenu(editMenu);
+    QAction *copyAction = editMenu->addAction("&Copy");
+    copyAction->setShortcut(QKeySequence("Ctrl+C"));
+    QTest::ignoreMessage(QtWarningMsg, "Menu item \"&Copy\" has unsupported role QPlatformMenuItem::MenuRole(NoRole)");
+    copyAction->setMenuRole(QAction::NoRole);
+
+    QVERIFY(QTest::qWaitForWindowExposed(&mw2));
+    QTest::qWait(100);
+    QTest::ignoreMessage(QtWarningMsg, "Menu item \"&Copy\" already in menu \"Edit\"");
+    mw2.close();
+    mw1.activateWindow();
+    QTest::qWait(100);
+    // No crash, all fine.
+}
+#endif // Q_OS_MACOS
 
 QTEST_MAIN(tst_QMenuBar)
 #include "tst_qmenubar.moc"

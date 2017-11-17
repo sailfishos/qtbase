@@ -2357,7 +2357,7 @@ void QWindowPrivate::maybeQuitOnLastWindowClosed()
     bool lastWindowClosed = true;
     for (int i = 0; i < list.size(); ++i) {
         QWindow *w = list.at(i);
-        if (!w->isVisible() || w->transientParent())
+        if (!w->isVisible() || w->transientParent() || w->type() == Qt::ToolTip)
             continue;
         lastWindowClosed = false;
         break;
@@ -2462,6 +2462,9 @@ void QWindowPrivate::_q_clearAlert()
     See the \l{Qt::CursorShape}{list of predefined cursor objects} for a
     range of useful shapes.
 
+    If no cursor has been set, or after a call to unsetCursor(), the
+    parent window's cursor is used.
+
     By default, the cursor has the Qt::ArrowCursor shape.
 
     Some underlying window implementations will reset the cursor if it
@@ -2513,26 +2516,29 @@ void QWindowPrivate::setCursor(const QCursor *newCursor)
         cursor = QCursor(Qt::ArrowCursor);
         hasCursor = false;
     }
-    // Only attempt to set cursor and emit signal if there is an actual platform cursor
-    QScreen* screen = q->screen();
-    if (screen && screen->handle()->cursor()) {
-        applyCursor();
+    // Only attempt to emit signal if there is an actual platform cursor
+    if (applyCursor()) {
         QEvent event(QEvent::CursorChange);
         QGuiApplication::sendEvent(q, &event);
     }
 }
 
-void QWindowPrivate::applyCursor()
+// Apply the cursor and returns true iff the platform cursor exists
+bool QWindowPrivate::applyCursor()
 {
     Q_Q(QWindow);
-    if (platformWindow) {
-        if (QPlatformCursor *platformCursor = q->screen()->handle()->cursor()) {
+    if (QScreen *screen = q->screen()) {
+        if (QPlatformCursor *platformCursor = screen->handle()->cursor()) {
+            if (!platformWindow)
+                return true;
             QCursor *c = QGuiApplication::overrideCursor();
             if (!c && hasCursor)
                 c = &cursor;
             platformCursor->changeCursor(c, q);
+            return true;
         }
     }
+    return false;
 }
 #endif // QT_NO_CURSOR
 

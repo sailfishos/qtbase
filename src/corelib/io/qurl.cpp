@@ -149,7 +149,7 @@
     dealing with URLs and strings:
 
     \list
-    \li When creating an QString to contain a URL from a QByteArray or a
+    \li When creating a QString to contain a URL from a QByteArray or a
        char*, always use QString::fromUtf8().
     \endlist
 */
@@ -3702,6 +3702,9 @@ bool QUrl::matches(const QUrl &url, FormattingOptions options) const
 
     if ((d->sectionIsPresent & mask) != (url.d->sectionIsPresent & mask))
         return false;
+
+    if (options & QUrl::RemovePath)
+        return true;
 
     // Compare paths, after applying path-related options
     QString path1;

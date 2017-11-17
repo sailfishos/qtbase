@@ -1,6 +1,6 @@
 /****************************************************************************
 **
-** Copyright (C) 2015 The Qt Company Ltd.
+** Copyright (C) 2016 The Qt Company Ltd.
 ** Contact: http://www.qt.io/licensing/
 **
 ** This file is part of the plugins of the Qt Toolkit.
@@ -31,46 +31,34 @@
 **
 ****************************************************************************/
 
-#ifndef QIOSFILEENGINEASSETSLIBRARY_H
-#define QIOSFILEENGINEASSETSLIBRARY_H
+#include "../../qiosoptionalplugininterface.h"
+#include "../../qiosfiledialog.h"
 
-#include <QtCore/private/qabstractfileengine_p.h>
+#include "qiosimagepickercontroller.h"
+#include "qiosfileenginefactory.h"
 
-Q_FORWARD_DECLARE_OBJC_CLASS(ALAsset);
-class QIOSAssetData;
+QT_BEGIN_NAMESPACE
 
-class QIOSFileEngineAssetsLibrary : public QAbstractFileEngine
+class QIosOptionalPlugin_NSPhotoLibrary : public QObject, QIosOptionalPluginInterface
 {
+    Q_OBJECT
+    Q_PLUGIN_METADATA(IID QIosOptionalPluginInterface_iid FILE "plugin.json")
+    Q_INTERFACES(QIosOptionalPluginInterface)
+
 public:
-    QIOSFileEngineAssetsLibrary(const QString &fileName);
-    ~QIOSFileEngineAssetsLibrary();
+    explicit QIosOptionalPlugin_NSPhotoLibrary(QObject* = 0) {};
+    ~QIosOptionalPlugin_NSPhotoLibrary() {}
 
-    bool open(QIODevice::OpenMode openMode) Q_DECL_OVERRIDE;
-    bool close() Q_DECL_OVERRIDE;
-    FileFlags fileFlags(FileFlags type) const Q_DECL_OVERRIDE;
-    qint64 size() const Q_DECL_OVERRIDE;
-    qint64 read(char *data, qint64 maxlen) Q_DECL_OVERRIDE;
-    qint64 pos() const Q_DECL_OVERRIDE;
-    bool seek(qint64 pos) Q_DECL_OVERRIDE;
-    QString fileName(FileName file) const Q_DECL_OVERRIDE;
-    void setFileName(const QString &file) Q_DECL_OVERRIDE;
-    QStringList entryList(QDir::Filters filters, const QStringList &filterNames) const Q_DECL_OVERRIDE;
-
-#ifndef QT_NO_FILESYSTEMITERATOR
-    Iterator *beginEntryList(QDir::Filters filters, const QStringList &filterNames) Q_DECL_OVERRIDE;
-    Iterator *endEntryList() Q_DECL_OVERRIDE;
-#endif
-
-    void setError(QFile::FileError error, const QString &str) { QAbstractFileEngine::setError(error, str); }
+    UIViewController* createImagePickerController(QIOSFileDialog *fileDialog) const override
+    {
+        return [[[QIOSImagePickerController alloc] initWithQIOSFileDialog:fileDialog] autorelease];
+    }
 
 private:
-    QString m_fileName;
-    QString m_assetUrl;
-    qint64 m_offset;
-    mutable QIOSAssetData *m_data;
+    QIOSFileEngineFactory m_fileEngineFactory;
 
-    ALAsset *loadAsset() const;
 };
 
-#endif // QIOSFILEENGINEASSETSLIBRARY_H
+QT_END_NAMESPACE
 
+#include "plugin.moc"

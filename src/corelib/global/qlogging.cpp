@@ -1133,6 +1133,7 @@ void QMessagePattern::setPattern(const QString &pattern)
                 backtraceArgs.append(backtraceParams);
 #else
                 error += QStringLiteral("QT_MESSAGE_PATTERN: %{backtrace} is not supported by this Qt build\n");
+                tokens[i] = "";
 #endif
             }
 
@@ -1747,7 +1748,7 @@ void qErrnoWarning(int code, const char *msg, ...)
 
     \snippet code/src_corelib_global_qglobal.cpp 23
 
-    \sa QtMessageHandler, QtMsgType, qDebug(), qWarning(), qCritical(), qFatal(),
+    \sa QtMessageHandler, QtMsgType, qDebug(), qInfo(), qWarning(), qCritical(), qFatal(),
     {Debugging Techniques}
 */
 

@@ -176,7 +176,7 @@ QPlatformBackingStore *QEglFSIntegration::createPlatformBackingStore(QWindow *wi
 
 QPlatformWindow *QEglFSIntegration::createPlatformWindow(QWindow *window) const
 {
-    QWindowSystemInterface::flushWindowSystemEvents();
+    QWindowSystemInterface::flushWindowSystemEvents(QEventLoop::ExcludeUserInputEvents);
     QEglFSWindow *w = qt_egl_device_integration()->createWindow(window);
     w->create();
     if (window->type() != Qt::ToolTip)
@@ -406,15 +406,17 @@ void QEglFSIntegration::createInputHandlers()
     }
 #endif
 
+    bool useTslib = false;
+#ifndef QT_NO_TSLIB
+    useTslib = qEnvironmentVariableIntValue("QT_QPA_EGLFS_TSLIB");
+    if (useTslib)
+        new QTsLibMouseHandler(QLatin1String("TsLib"), QString() /* spec */);
+#endif
+
 #if !defined(QT_NO_EVDEV) && (!defined(Q_OS_ANDROID) || defined(Q_OS_ANDROID_NO_SDK))
     m_kbdMgr = new QEvdevKeyboardManager(QLatin1String("EvdevKeyboard"), QString() /* spec */, this);
     new QEvdevMouseManager(QLatin1String("EvdevMouse"), QString() /* spec */, this);
-#ifndef QT_NO_TSLIB
-    const bool useTslib = qEnvironmentVariableIntValue("QT_QPA_EGLFS_TSLIB");
-    if (useTslib)
-        new QTsLibMouseHandler(QLatin1String("TsLib"), QString() /* spec */);
-    else
-#endif // QT_NO_TSLIB
+    if (!useTslib)
         new QEvdevTouchManager(QLatin1String("EvdevTouch"), QString() /* spec */, this);
 #endif
 }

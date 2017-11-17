@@ -52,12 +52,12 @@ warnings_are_errors:warning_clean {
     # If the module declares that it has does its clean-up of warnings, enable -Werror.
     # This setting is compiler-dependent anyway because it depends on the version of the
     # compiler.
-    clang:!ios {
-        # Apple clang 4.0-4.2,5.0-5.1,6.0-6.4
+    clang {
+        # Apple clang 4.0-4.2,5.0-5.1,6.0-6.4,7.0-7.3
         # Regular clang 3.3-3.9
         apple_ver = $${QT_APPLE_CLANG_MAJOR_VERSION}.$${QT_APPLE_CLANG_MINOR_VERSION}
         reg_ver = $${QT_CLANG_MAJOR_VERSION}.$${QT_CLANG_MINOR_VERSION}
-        contains(apple_ver, "4\\.[012]|5\\.[01]|6\\.[01234]")|contains(reg_ver, "3\\.[3-9]") {
+        contains(apple_ver, "4\\.[012]|5\\.[01]|6\\.[01234]|7\\.[0123]")|contains(reg_ver, "3\\.[3-9]") {
             QMAKE_CXXFLAGS_WARN_ON += -Werror -Wno-error=\\$${LITERAL_HASH}warnings -Wno-error=deprecated-declarations $$WERROR
         }
     } else:intel_icc:linux {
@@ -81,6 +81,9 @@ warnings_are_errors:warning_clean {
             # GCC prints this bogus warning, after it has inlined a lot of code
             # error: assuming signed overflow does not occur when assuming that (X + c) < X is always false
             QMAKE_CXXFLAGS_WARN_ON += -Wno-error=strict-overflow
+
+            # GCC 7 includes -Wimplicit-fallthrough in -Wextra, but Qt is not yet free of implicit fallthroughs.
+            greaterThan(QT_GCC_MAJOR_VERSION, 6): QMAKE_CXXFLAGS_WARN_ON += -Wno-error=implicit-fallthrough
 
             # Work-around for bug https://code.google.com/p/android/issues/detail?id=58135
             android: QMAKE_CXXFLAGS_WARN_ON += -Wno-error=literal-suffix

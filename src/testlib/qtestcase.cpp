@@ -94,6 +94,7 @@
 #include <errno.h>
 #include <signal.h>
 #include <time.h>
+#include <sys/resource.h>
 #endif
 
 #if defined(Q_OS_MACX)
@@ -105,6 +106,21 @@ QT_BEGIN_NAMESPACE
 using QtMiscUtils::toHexUpper;
 using QtMiscUtils::fromHex;
 
+static void disableCoreDump()
+{
+    bool ok = false;
+    const int disableCoreDump = qEnvironmentVariableIntValue("QTEST_DISABLE_CORE_DUMP", &ok);
+    if (ok && disableCoreDump == 1) {
+#if defined(Q_OS_UNIX)
+        struct rlimit limit;
+        limit.rlim_cur = 0;
+        limit.rlim_max = 0;
+        if (setrlimit(RLIMIT_CORE, &limit) != 0)
+            qWarning("Failed to disable core dumps: %d", errno);
+#endif
+    }
+}
+Q_CONSTRUCTOR_FUNCTION(disableCoreDump);
 
 static void stackTrace()
 {
@@ -244,7 +260,7 @@ static void stackTrace()
    \relates QTest
 
    The QTRY_VERIFY_WITH_TIMEOUT() macro is similar to QVERIFY(), but checks the \a condition
-   repeatedly, until either the condition becomes true or the \a timeout is
+   repeatedly, until either the condition becomes true or the \a timeout (in milliseconds) is
    reached.  Between each evaluation, events will be processed.  If the timeout
    is reached, a failure is recorded in the test log and the test won't be
    executed further.
@@ -276,7 +292,7 @@ static void stackTrace()
 
    The QTRY_VERIFY2_WITH_TIMEOUT macro is similar to QTRY_VERIFY_WITH_TIMEOUT()
    except that it outputs a verbose \a message when \a condition is still false
-   after the specified \a timeout. The \a message is a plain C string.
+   after the specified \a timeout (in milliseconds). The \a message is a plain C string.
 
    Example:
    \code
@@ -316,7 +332,7 @@ static void stackTrace()
 
    The QTRY_COMPARE_WITH_TIMEOUT() macro is similar to QCOMPARE(), but performs the comparison
    of the \a actual and \a expected values repeatedly, until either the two values
-   are equal or the \a timeout is reached.  Between each comparison, events
+   are equal or the \a timeout (in milliseconds) is reached.  Between each comparison, events
    will be processed.  If the timeout is reached, a failure is recorded in the
    test log and the test won't be executed further.
 

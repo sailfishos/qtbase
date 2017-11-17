@@ -659,7 +659,7 @@ void QFileDialogPrivate::retranslateStrings()
     /* WIDGETS */
     if (defaultFileTypes)
         q->setNameFilter(QFileDialog::tr("All Files (*)"));
-    if (nativeDialogInUse)
+    if (!usingWidgets())
         return;
 
     QList<QAction*> actions = qFileDialogUi->treeView->header()->actions();
@@ -695,12 +695,14 @@ void QFileDialogPrivate::emitFilesSelected(const QStringList &files)
 
 bool QFileDialogPrivate::canBeNativeDialog() const
 {
-    Q_Q(const QFileDialog);
+    // Don't use Q_Q here! This function is called from ~QDialog,
+    // so Q_Q calling q_func() invokes undefined behavior (invalid cast in q_func()).
+    const QDialog * const q = static_cast<const QDialog*>(q_ptr);
     if (nativeDialogInUse)
         return true;
     if (q->testAttribute(Qt::WA_DontShowOnScreen))
         return false;
-    if (q->options() & QFileDialog::DontUseNativeDialog)
+    if (options->options() & QFileDialog::DontUseNativeDialog)
         return false;
 
     QLatin1String staticName(QFileDialog::staticMetaObject.className());
@@ -894,6 +896,9 @@ void QFileDialogPrivate::_q_goToUrl(const QUrl &url)
         {QStandardPaths::standardLocations(QStandardPaths::PicturesLocation).last()},
         a native image picker dialog will be used for accessing the user's photo album.
         The filename returned can be loaded using QFile and related APIs.
+        For this to be enabled, the Info.plist assigned to QMAKE_INFO_PLIST in the
+        project file must contain the key \c NSPhotoLibraryUsageDescription. See
+        Info.plist documentation from Apple for more information regarding this key.
         This feature was added in Qt 5.5.
 */
 void QFileDialog::setDirectory(const QString &directory)
@@ -2040,10 +2045,12 @@ QString QFileDialog::labelText(DialogLabel label) const
             button = d->qFileDialogUi->buttonBox->button(QDialogButtonBox::Save);
         if (button)
             return button->text();
+        break;
     case Reject:
         button = d->qFileDialogUi->buttonBox->button(QDialogButtonBox::Cancel);
         if (button)
             return button->text();
+        break;
     }
     return QString();
 }

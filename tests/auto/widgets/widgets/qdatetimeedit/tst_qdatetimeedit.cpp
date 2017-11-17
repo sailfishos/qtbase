@@ -252,6 +252,7 @@ private slots:
     void timeSpec_data();
     void timeSpec();
     void timeSpecBug();
+    void timeSpecInit();
 
     void monthEdgeCase();
     void setLocale();
@@ -3215,6 +3216,13 @@ void tst_QDateTimeEdit::timeSpecBug()
     QCOMPARE(oldText, testWidget->text());
 }
 
+void tst_QDateTimeEdit::timeSpecInit()
+{
+    QDateTime utc(QDate(2000, 1, 1), QTime(12, 0, 0), Qt::UTC);
+    QDateTimeEdit widget(utc);
+    QCOMPARE(widget.dateTime(), utc);
+}
+
 void tst_QDateTimeEdit::cachedDayTest()
 {
     testWidget->setDisplayFormat("MM/dd");
@@ -3741,7 +3749,7 @@ void tst_QDateTimeEdit::dateEditCorrectSectionSize()
         QTest::keyClick(&edit, keyPair.first, keyPair.second);
 
     QDateTimeEditPrivate* edit_d_ptr(static_cast<QDateTimeEditPrivate*>(qt_widget_private(&edit)));
-    QCOMPARE(edit_d_ptr->text, expectedDisplayString);
+    QCOMPARE(edit_d_ptr->QDateTimeParser::displayText(), expectedDisplayString);
 }
 #endif
 

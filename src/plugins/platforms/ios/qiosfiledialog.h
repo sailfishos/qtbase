@@ -66,6 +66,8 @@ private:
     QList<QUrl> m_selection;
     QEventLoop m_eventLoop;
     UIViewController *m_viewController;
+
+    bool showImagePickerDialog(QWindow *parent);
 };
 
 QT_END_NAMESPACE

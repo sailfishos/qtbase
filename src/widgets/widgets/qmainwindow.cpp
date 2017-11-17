@@ -320,7 +320,7 @@ void QMainWindowPrivate::init()
     direction.
 
     Two dock widgets may also be stacked on top of each other. A
-    QTabBar is then used to select which of the widgets that should be
+    QTabBar is then used to select which of the widgets should be
     displayed.
 
     We give an example of how to create and add dock widgets to a
@@ -664,8 +664,10 @@ QWidget *QMainWindow::takeCentralWidget()
 {
     Q_D(QMainWindow);
     QWidget *oldcentralwidget = d->layout->centralWidget();
-    oldcentralwidget->setParent(0);
-    d->layout->setCentralWidget(0);
+    if (oldcentralwidget) {
+        oldcentralwidget->setParent(0);
+        d->layout->setCentralWidget(0);
+    }
     return oldcentralwidget;
 }
 

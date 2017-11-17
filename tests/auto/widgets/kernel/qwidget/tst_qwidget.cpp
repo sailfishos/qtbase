@@ -294,6 +294,7 @@ private slots:
     void showHideEvent_data();
     void showHideEvent();
     void showHideEventWhileMinimize();
+    void showHideChildrenWhileMinimize_QTBUG50589();
 
     void lostUpdatesOnHide();
 
@@ -4078,19 +4079,30 @@ class ShowHideEventWidget : public QWidget
 {
 public:
     int numberOfShowEvents, numberOfHideEvents;
+    int numberOfSpontaneousShowEvents, numberOfSpontaneousHideEvents;
 
     ShowHideEventWidget(QWidget *parent = 0)
-        : QWidget(parent), numberOfShowEvents(0), numberOfHideEvents(0)
+        : QWidget(parent)
+        , numberOfShowEvents(0), numberOfHideEvents(0)
+        , numberOfSpontaneousShowEvents(0), numberOfSpontaneousHideEvents(0)
     { }
 
     void create()
     { QWidget::create(); }
 
-    void showEvent(QShowEvent *)
-    { ++numberOfShowEvents; }
+    void showEvent(QShowEvent *e)
+    {
+        ++numberOfShowEvents;
+        if (e->spontaneous())
+            ++numberOfSpontaneousShowEvents;
+    }
 
-    void hideEvent(QHideEvent *)
-    { ++numberOfHideEvents; }
+    void hideEvent(QHideEvent *e)
+    {
+        ++numberOfHideEvents;
+        if (e->spontaneous())
+            ++numberOfSpontaneousHideEvents;
+    }
 };
 
 void tst_QWidget::showHideEvent_data()
@@ -4180,6 +4192,32 @@ void tst_QWidget::showHideEventWhileMinimize()
     QTRY_COMPARE(widget.numberOfHideEvents, hideEventsBeforeMinimize + 1);
     widget.showNormal();
     QTRY_COMPARE(widget.numberOfShowEvents, showEventsBeforeMinimize + 1);
+}
+
+void tst_QWidget::showHideChildrenWhileMinimize_QTBUG50589()
+{
+    const QPlatformIntegration *pi = QGuiApplicationPrivate::platformIntegration();
+    if (!pi->hasCapability(QPlatformIntegration::MultipleWindows)
+        || !pi->hasCapability(QPlatformIntegration::NonFullScreenWindows)
+        || !pi->hasCapability(QPlatformIntegration::WindowManagement)) {
+        QSKIP("This test requires window management capabilities");
+    }
+
+    QWidget parent;
+    ShowHideEventWidget child(&parent);
+
+    parent.setWindowTitle(QTest::currentTestFunction());
+    parent.resize(m_testWidgetSize);
+    centerOnScreen(&parent);
+    parent.show();
+    QVERIFY(QTest::qWaitForWindowExposed(&parent));
+
+    const int showEventsBeforeMinimize = child.numberOfSpontaneousShowEvents;
+    const int hideEventsBeforeMinimize = child.numberOfSpontaneousHideEvents;
+    parent.showMinimized();
+    QTRY_COMPARE(child.numberOfSpontaneousHideEvents, hideEventsBeforeMinimize + 1);
+    parent.showNormal();
+    QTRY_COMPARE(child.numberOfSpontaneousShowEvents, showEventsBeforeMinimize + 1);
 }
 
 void tst_QWidget::update()
@@ -5097,7 +5135,8 @@ void tst_QWidget::moveChild()
 
     ColorWidget parent(0, Qt::Window | Qt::WindowStaysOnTopHint);
     // prevent custom styles
-    parent.setStyle(QStyleFactory::create(QLatin1String("Windows")));
+    const QScopedPointer<QStyle> style(QStyleFactory::create(QLatin1String("Windows")));
+    parent.setStyle(style.data());
     ColorWidget child(&parent, Qt::Widget, Qt::blue);
 
 #ifndef Q_OS_WINCE
@@ -5146,7 +5185,8 @@ void tst_QWidget::showAndMoveChild()
         QSKIP("Wayland: This fails. Figure out why.");
     QWidget parent(0, Qt::Window | Qt::WindowStaysOnTopHint);
     // prevent custom styles
-    parent.setStyle(QStyleFactory::create(QLatin1String("Windows")));
+    const QScopedPointer<QStyle> style(QStyleFactory::create(QLatin1String("Windows")));
+    parent.setStyle(style.data());
 
     QDesktopWidget desktop;
     QRect desktopDimensions = desktop.availableGeometry(&parent);
@@ -6642,7 +6682,9 @@ void tst_QWidget::renderWithPainter()
 {
     QWidget widget(0, Qt::Tool);
     // prevent custom styles
-    widget.setStyle(QStyleFactory::create(QLatin1String("Windows")));
+
+    const QScopedPointer<QStyle> style(QStyleFactory::create(QLatin1String("Windows")));
+    widget.setStyle(style.data());
     widget.show();
     widget.resize(70, 50);
     widget.setAutoFillBackground(true);
@@ -10320,8 +10362,11 @@ void tst_QWidget::underMouse()
     QCOMPARE(childWidget2.leaves, 0);
 
     // Mouse leaves popup and enters topLevelWidget, should cause leave for popup
-    // but no enter to topLevelWidget. Again, artificial leave event needed.
+    // but no enter to topLevelWidget.
+#ifdef Q_OS_DARWIN
+    // Artificial leave event needed for Cocoa.
     QWindowSystemInterface::handleLeaveEvent(popupWindow);
+#endif
     QTest::mouseMove(popupWindow, popupWindow->mapFromGlobal(window->mapToGlobal(inWindowPoint)));
     QApplication::processEvents();
     QVERIFY(!topLevelWidget.underMouse());
@@ -10385,14 +10430,13 @@ public slots:
 
     bool eventFilter(QObject *o, QEvent *e)
     {
-        if (modal && modal->button && o == modal->button) {
-            switch (e->type()) {
-            case QEvent::Enter:
+        switch (e->type()) {
+        case QEvent::Enter:
+            if (modal && modal->button && o == modal->button)
                 enters++;
-                break;
-            default:
-                break;
-            }
+            break;
+        default:
+            break;
         }
         return QDialog::eventFilter(o, e);
     }

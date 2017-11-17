@@ -1,9 +1,9 @@
 /****************************************************************************
 **
-** Copyright (C) 2015 The Qt Company Ltd.
-** Contact: http://www.qt.io/licensing/
+** Copyright (C) 2016 The Qt Company Ltd.
+** Contact: https://www.qt.io/licensing/
 **
-** This file is part of the plugins of the Qt Toolkit.
+** This file is part of the QtGui module of the Qt Toolkit.
 **
 ** $QT_BEGIN_LICENSE:LGPL21$
 ** Commercial License Usage
@@ -31,25 +31,52 @@
 **
 ****************************************************************************/
 
-#ifndef QIOSFILEENGINEFACTORY_H
-#define QIOSFILEENGINEFACTORY_H
+#include "qinputcontrol_p.h"
+#include <QtGui/qevent.h>
 
-#include <QtCore/qstandardpaths.h>
-#include <QtCore/private/qabstractfileengine_p.h>
-#include "qiosfileengineassetslibrary.h"
+QT_BEGIN_NAMESPACE
 
-class QIOSFileEngineFactory : public QAbstractFileEngineHandler
+QInputControl::QInputControl(Type type, QObject *parent)
+    : QObject(parent)
+    , m_type(type)
 {
-public:
-    QAbstractFileEngine* create(const QString &fileName) const
-    {
-        static QLatin1String assetsScheme("assets-library:");
+}
 
-        if (fileName.toLower().startsWith(assetsScheme))
-            return new QIOSFileEngineAssetsLibrary(fileName);
+QInputControl::QInputControl(Type type, QObjectPrivate &dd, QObject *parent)
+    : QObject(dd, parent)
+    , m_type(type)
+{
+}
 
-        return 0;
+bool QInputControl::isAcceptableInput(const QKeyEvent *event) const
+{
+    const QString text = event->text();
+    if (text.isEmpty())
+        return false;
+
+    const QChar c = text.at(0);
+
+    // Formatting characters such as ZWNJ, ZWJ, RLM, etc. This needs to go before the
+    // next test, since CTRL+SHIFT is sometimes used to input it on Windows.
+    if (c.category() == QChar::Other_Format)
+        return true;
+
+    // QTBUG-35734: ignore Ctrl/Ctrl+Shift; accept only AltGr (Alt+Ctrl) on German keyboards
+    if (event->modifiers() == Qt::ControlModifier
+            || event->modifiers() == (Qt::ShiftModifier | Qt::ControlModifier)) {
+        return false;
     }
-};
 
-#endif // QIOSFILEENGINEFACTORY_H
+    if (c.isPrint())
+        return true;
+
+    if (c.category() == QChar::Other_PrivateUse)
+        return true;
+
+    if (m_type == TextEdit && c == QLatin1Char('\t'))
+        return true;
+
+    return false;
+}
+
+QT_END_NAMESPACE
