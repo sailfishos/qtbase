@@ -1808,7 +1808,7 @@ void QWindowPrivate::destroy()
     }
 
     if (QGuiApplicationPrivate::focus_window == q)
-        QGuiApplicationPrivate::focus_window = q->parent();
+        QWindowSystemInterface::handleWindowActivated(q->parent());
     if (QGuiApplicationPrivate::currentMouseWindow == q)
         QGuiApplicationPrivate::currentMouseWindow = q->parent();
     if (QGuiApplicationPrivate::currentMousePressWindow == q)
