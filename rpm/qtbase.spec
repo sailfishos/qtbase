@@ -415,7 +415,7 @@ applications that use QtAccessibilitySupport
 
 %package qtdevicediscoverysupport-devel
 Summary:    Development files for QtDeviceDiscoverySupport
-Requires:   %{name}-qtgui-devel = %{version}-%{release}
+Requires:   %{name}-qtcore-devel = %{version}-%{release}
 
 %description qtdevicediscoverysupport-devel
 This package contains the files necessary to develop
@@ -448,6 +448,8 @@ applications that use QtFbSupport
 %package qtfontdatabasesupport-devel
 Summary:    Development files for QtFontDatabaseSupport
 Requires:   %{name}-qtgui-devel = %{version}-%{release}
+Requires:   pkgconfig(fontconfig)
+Requires:   pkgconfig(freetype2)
 
 %description qtfontdatabasesupport-devel
 This package contains the files necessary to develop
@@ -481,6 +483,7 @@ applications that use QtServiceSupport
 %package qtthemesupport-devel
 Summary:    Development files for QtThemeSupport
 Requires:   %{name}-qtgui-devel = %{version}-%{release}
+Requires:   %{name}-qtdbus-devel = %{version}-%{release}
 
 %description qtthemesupport-devel
 This package contains the files necessary to develop
@@ -498,6 +501,15 @@ This package contains Qt5EglFSDeviceIntegration library
 %package qteglfsdeviceintegration-devel
 Summary:    Development files for QtEglFSDeviceIntegration
 Requires:   %{name}-qteglfsdeviceintegration = %{version}-%{release}
+Requires:   %{name}-qtdevicediscoverysupport-devel = %{version}-%{release}
+Requires:   %{name}-qteventdispatchersupport-devel = %{version}-%{release}
+Requires:   %{name}-qtservicesupport-devel = %{version}-%{release}
+Requires:   %{name}-qtthemesupport-devel = %{version}-%{release}
+Requires:   %{name}-qtfontdatabasesupport-devel = %{version}-%{release}
+Requires:   %{name}-qtfbsupport-devel = %{version}-%{release}
+Requires:   %{name}-qteglsupport-devel = %{version}-%{release}
+Requires:   %{name}-qtinputsupport-devel = %{version}-%{release}
+Requires:   %{name}-qtplatformcompositorsupport-devel = %{version}-%{release}
 
 %description qteglfsdeviceintegration-devel
 This package contains the files necessary to develop
