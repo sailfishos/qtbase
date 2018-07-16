@@ -106,6 +106,10 @@ public:
 
     virtual void *wlDisplay() const;
 
+    // MER: extensions for hwcomposer device integration.
+    virtual bool swapBuffers(QPlatformSurface *surface);
+    virtual void *nativeResourceForIntegration(const QByteArray &resource);
+
     static EGLConfig chooseConfig(EGLDisplay display, const QSurfaceFormat &format);
 };
 

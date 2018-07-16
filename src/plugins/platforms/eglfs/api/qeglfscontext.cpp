@@ -333,7 +333,8 @@ void QEglFSContext::swapBuffers(QPlatformSurface *surface)
     }
 
     qt_egl_device_integration()->waitForVSync(surface);
-    QEGLPlatformContext::swapBuffers(surface);
+    if (!qt_egl_device_integration()->swapBuffers(surface))
+        QEGLPlatformContext::swapBuffers(surface);
     qt_egl_device_integration()->presentBuffer(surface);
 }
 

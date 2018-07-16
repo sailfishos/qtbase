@@ -47,6 +47,7 @@
 #include "qeglfshooks_p.h"
 
 #include <QtEglSupport/private/qeglconvenience_p.h>
+#include <QtEglSupport/private/qeglplatformcontext_p.h>
 #include <QGuiApplication>
 #include <private/qguiapplication_p.h>
 #include <QScreen>
@@ -336,6 +337,12 @@ void QEglFSDeviceIntegration::waitForVSync(QPlatformSurface *surface) const
 #endif
 }
 
+bool QEglFSDeviceIntegration::swapBuffers(QPlatformSurface *surface)
+{
+    Q_UNUSED(surface);
+    return false;
+}
+
 void QEglFSDeviceIntegration::presentBuffer(QPlatformSurface *surface)
 {
     Q_UNUSED(surface);
@@ -354,6 +361,13 @@ bool QEglFSDeviceIntegration::supportsSurfacelessContexts() const
 void *QEglFSDeviceIntegration::wlDisplay() const
 {
     return Q_NULLPTR;
+}
+
+void *QEglFSDeviceIntegration::nativeResourceForIntegration(const QByteArray &resource)
+{
+    Q_UNUSED(resource);
+
+    return nullptr;
 }
 
 EGLConfig QEglFSDeviceIntegration::chooseConfig(EGLDisplay display, const QSurfaceFormat &format)
