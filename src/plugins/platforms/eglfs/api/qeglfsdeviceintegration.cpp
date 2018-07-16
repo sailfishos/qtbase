@@ -356,6 +356,13 @@ void *QEglFSDeviceIntegration::wlDisplay() const
     return Q_NULLPTR;
 }
 
+void *QEglFSDeviceIntegration::nativeResourceForIntegration(const QByteArray &resource)
+{
+    Q_UNUSED(resource);
+
+    return nullptr;
+}
+
 EGLConfig QEglFSDeviceIntegration::chooseConfig(EGLDisplay display, const QSurfaceFormat &format)
 {
     class Chooser : public QEglConfigChooser {

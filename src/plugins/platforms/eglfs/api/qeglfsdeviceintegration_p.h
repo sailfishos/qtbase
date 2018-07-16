@@ -106,6 +106,8 @@ public:
 
     virtual void *wlDisplay() const;
 
+    virtual void *nativeResourceForIntegration(const QByteArray &resource);
+
     static EGLConfig chooseConfig(EGLDisplay display, const QSurfaceFormat &format);
 };
 
