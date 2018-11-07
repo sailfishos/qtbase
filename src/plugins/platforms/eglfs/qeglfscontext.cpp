@@ -339,6 +339,7 @@ QOpenGLFramebufferObject *QEglFSContext::fbo(QPlatformSurface *surface) const
     if (!m_fbo || m_fbo->size() != size) {
         delete m_fbo;
         m_fbo = new QOpenGLFramebufferObject(size);
+        m_fbo->setAttachment(QOpenGLFramebufferObject::CombinedDepthStencil);
     }
     return m_fbo;
 }
