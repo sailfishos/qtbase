@@ -136,6 +136,7 @@ public:
         keyboardScheme = settings.value(QStringLiteral("GenericUnixTheme/KeyboardScheme"), static_cast<int>(QPlatformTheme::X11KeyboardScheme));
         passwordMaskDelay = settings.value(QStringLiteral("GenericUnixTheme/PasswordMaskDelay"), 1000);
         startDragDistance = settings.value(QStringLiteral("GenericUnixTheme/StartDragDistance"), 20);
+        mousePressAndHoldInterval = settings.value(QStringLiteral("GenericUnixTheme/MousePressAndHoldInterval"), 600);
     }
 
     QFont systemFont;
@@ -147,6 +148,7 @@ public:
     QVariant keyboardScheme;
     QVariant passwordMaskDelay;
     QVariant startDragDistance;
+    QVariant mousePressAndHoldInterval;
 };
 
 QGenericUnixTheme::QGenericUnixTheme()
@@ -219,6 +221,8 @@ QVariant QGenericUnixTheme::themeHint(ThemeHint hint) const
         return d->passwordMaskDelay;
     case QPlatformTheme::StartDragDistance:
         return d->startDragDistance;
+    case QPlatformTheme::MousePressAndHoldInterval:
+        return d->mousePressAndHoldInterval;
     default:
         break;
     }
