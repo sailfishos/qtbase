@@ -2,6 +2,9 @@ TARGET = qeglfs
 
 QT += platformsupport-private eglfs_device_lib-private
 
+# Avoid X11 header collision
+DEFINES += MESA_EGL_NO_X11_HEADERS
+
 SOURCES += $$PWD/qeglfsmain.cpp
 
 OTHER_FILES += $$PWD/eglfs.json
