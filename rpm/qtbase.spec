@@ -511,7 +511,8 @@ MAKEFLAGS=%{?_smp_mflags} \
 	-no-pch \
 %endif
     -qreal float \
-    -journald
+    -journald \
+    -no-use-gold-linker
 fi # config.status check
 #%if ! 0%{?qt5_release_build}
 #    -developer-build \
