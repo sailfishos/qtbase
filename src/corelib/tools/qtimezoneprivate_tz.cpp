@@ -1013,11 +1013,18 @@ QByteArray QTzTimeZonePrivate::systemTimeZoneId() const
 
     // On other distros /etc/localtime is symlink to real file so can extract name from the path
     if (ianaId.isEmpty()) {
-        const QString path = QFile::symLinkTarget(QStringLiteral("/etc/localtime"));
-        if (!path.isEmpty()) {
+        QString path = QFile::symLinkTarget(QStringLiteral("/etc/localtime"));
+        int index;
+        int iteration = 0;
+        // Symlink may point to another symlink etc. before being under zoneinfo/
+        while (iteration < 5 && !path.isEmpty()
+               && (index = path.indexOf(QLatin1String("/zoneinfo/"))) < 0) {
+            path = QFile::symLinkTarget(path);
+            iteration += 1;
+        }
+        if (!path.isEmpty() && index >= 0) {
             // /etc/localtime is a symlink to the current TZ file, so extract from path
-            int index = path.indexOf(QLatin1String("/zoneinfo/")) + 10;
-            ianaId = path.mid(index).toUtf8();
+            ianaId = path.mid(index + 10).toUtf8();
         }
     }
 
