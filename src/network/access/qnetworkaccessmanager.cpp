@@ -1652,6 +1652,12 @@ void QNetworkAccessManagerPrivate::_q_networkSessionClosed()
 void QNetworkAccessManagerPrivate::_q_networkSessionStateChanged(QNetworkSession::State state)
 {
     Q_Q(QNetworkAccessManager);
+
+    if ((state == QNetworkSession::Connecting) && (!getNetworkSession())) {
+        qCWarning(lcNetworkAccess) << "QNAM: ignoring Connecting state received after the session closed";
+        return;
+    }
+
     bool reallyOnline = false;
     //Do not emit the networkSessionConnected signal here, except for roaming -> connected
     //transition, otherwise it is emitted twice in a row when opening a connection.
