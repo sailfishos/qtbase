@@ -1616,11 +1616,8 @@ void QNetworkAccessManagerPrivate::createSession(const QNetworkConfiguration &co
     QObject::connect(networkSessionStrongRef.data(), SIGNAL(opened()), q, SIGNAL(networkSessionConnected()), Qt::QueuedConnection);
     //QueuedConnection is used to avoid deleting the networkSession inside its closed signal
     QObject::connect(networkSessionStrongRef.data(), SIGNAL(closed()), q, SLOT(_q_networkSessionClosed()), Qt::QueuedConnection);
-    QObject::connect(networkSessionStrongRef.data(), &QNetworkSession::stateChanged,
-                     q, [this](QNetworkSession::State s) {
-        qCDebug(lcNetworkAccess) << "QNAM: network session state changed:" << s;
-        _q_networkSessionStateChanged(s);
-    }, Qt::QueuedConnection);
+    QObject::connect(networkSessionStrongRef.data(), SIGNAL(stateChanged(QNetworkSession::State)),
+                     q, SLOT(_q_networkSessionStateChanged(QNetworkSession::State)), Qt::QueuedConnection);
     QObject::connect(networkSessionStrongRef.data(), SIGNAL(error(QNetworkSession::SessionError)),
                         q, SLOT(_q_networkSessionFailed(QNetworkSession::SessionError)));
 
@@ -1652,6 +1649,13 @@ void QNetworkAccessManagerPrivate::_q_networkSessionClosed()
 void QNetworkAccessManagerPrivate::_q_networkSessionStateChanged(QNetworkSession::State state)
 {
     Q_Q(QNetworkAccessManager);
+    qCDebug(lcNetworkAccess) << "QNAM: network session state changed:" << state;
+
+    if ((state == QNetworkSession::Connecting) && (!getNetworkSession())) {
+        qCWarning(lcNetworkAccess) << "QNAM: ignoring Connecting state received after the session closed";
+        return;
+    }
+
     bool reallyOnline = false;
     //Do not emit the networkSessionConnected signal here, except for roaming -> connected
     //transition, otherwise it is emitted twice in a row when opening a connection.
