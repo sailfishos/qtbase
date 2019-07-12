@@ -137,10 +137,17 @@ QEglFSKmsScreen::~QEglFSKmsScreen()
 
 QRect QEglFSKmsScreen::geometry() const
 {
-    const int mode = m_output.mode;
-    return QRect(m_pos.x(), m_pos.y(),
-                 m_output.modes[mode].hdisplay,
-                 m_output.modes[mode].vdisplay);
+    static const int width = qEnvironmentVariableIntValue("QT_QPA_EGLFS_WIDTH");
+    static const int height = qEnvironmentVariableIntValue("QT_QPA_EGLFS_HEIGHT");
+
+    if (width != 0 && height != 0) {
+        return QRect(0, 0, width, height);
+    } else {
+        const int mode = m_output.mode;
+        return QRect(m_pos.x(), m_pos.y(),
+                     m_output.modes[mode].hdisplay,
+                     m_output.modes[mode].vdisplay);
+    }
 }
 
 int QEglFSKmsScreen::depth() const
@@ -158,10 +165,18 @@ QSizeF QEglFSKmsScreen::physicalSize() const
     return m_output.physical_size;
 }
 
+QSize QEglFSKmsScreen::screenSize() const
+{
+    const int mode = m_output.mode;
+
+    return QSize(m_output.modes[mode].hdisplay,
+                 m_output.modes[mode].vdisplay);
+}
+
 QDpi QEglFSKmsScreen::logicalDpi() const
 {
     const QSizeF ps = physicalSize();
-    const QSize s = geometry().size();
+    const QSize s = screenSize();
 
     if (!ps.isEmpty() && !s.isEmpty())
         return QDpi(25.4 * s.width() / ps.width(),
@@ -207,8 +222,8 @@ gbm_surface *QEglFSKmsScreen::createSurface()
     if (!m_gbm_surface) {
         qCDebug(qLcEglfsKmsDebug) << "Creating window for screen" << name();
         m_gbm_surface = gbm_surface_create(m_device->device(),
-                                           geometry().width(),
-                                           geometry().height(),
+                                           screenSize().width(),
+                                           screenSize().height(),
                                            GBM_FORMAT_XRGB8888,
                                            GBM_BO_USE_SCANOUT | GBM_BO_USE_RENDERING);
     }
