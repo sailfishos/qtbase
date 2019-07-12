@@ -78,6 +78,7 @@ public:
     QImage::Format format() const Q_DECL_OVERRIDE;
 
     QSizeF physicalSize() const Q_DECL_OVERRIDE;
+    QSize screenSize() const;
     QDpi logicalDpi() const Q_DECL_OVERRIDE;
     Qt::ScreenOrientation nativeOrientation() const Q_DECL_OVERRIDE;
     Qt::ScreenOrientation orientation() const Q_DECL_OVERRIDE;
