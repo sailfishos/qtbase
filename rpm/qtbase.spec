@@ -678,7 +678,7 @@ ln -s %{_sysconfdir}/xdg/qtchooser/5.conf %{buildroot}%{_sysconfdir}/xdg/qtchoos
 %{_datadir}/qt5/mkspecs/devices/
 %{_datadir}/qt5/mkspecs/qdevice.pri
 %{_datadir}/qt5/mkspecs/qfeatures.pri
-%config(noreplace) %{_sysconfdir}/rpm/macros.qt5-default
+%config %{_sysconfdir}/rpm/macros.qt5-default
 
 %files qtdbus
 %defattr(-,root,root,-)
