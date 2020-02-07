@@ -49,7 +49,6 @@ BuildRequires:  pam-devel
 BuildRequires:  readline-devel
 BuildRequires:  sharutils
 #BuildRequires:  gdb
-BuildRequires:  python
 BuildRequires:  pkgconfig(fontconfig)
 
 %description
