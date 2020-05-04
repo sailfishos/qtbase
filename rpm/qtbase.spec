@@ -35,7 +35,7 @@ BuildRequires:  pkgconfig(sqlite3)
 BuildRequires:  pkgconfig(zlib)
 BuildRequires:  pkgconfig(udev)
 BuildRequires:  pkgconfig(mtdev)
-BuildRequires:  pkgconfig(libsystemd-journal)
+BuildRequires:  pkgconfig(libsystemd)
 BuildRequires:  pkgconfig(libdrm)
 BuildRequires:  pkgconfig(gbm)
 BuildRequires:  cups-devel
