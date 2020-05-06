@@ -298,7 +298,6 @@ static QString locatePlugin(const QString& fileName)
         paths.append(fileName.left(slash)); // don't include the '/'
     } else {
         paths = QCoreApplication::libraryPaths();
-        paths.prepend(QStringLiteral(".")); // search in current dir first
     }
 
     foreach (const QString &path, paths) {
