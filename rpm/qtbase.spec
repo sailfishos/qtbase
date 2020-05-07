@@ -500,7 +500,6 @@ MAKEFLAGS=%{?_smp_mflags} \
     -verbose \
     -no-gtkstyle \
     -opengl es2 \
-    -no-opengles3 \
     -no-openvg \
     -lfontconfig \
     -I/usr/include/freetype2 \
