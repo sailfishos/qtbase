@@ -41,15 +41,10 @@ BuildRequires:  pkgconfig(gbm)
 BuildRequires:  cups-devel
 BuildRequires:  fdupes
 BuildRequires:  flex
-# Package not available but installed in OBS?
-#BuildRequires:  gcc-g++
 BuildRequires:  libjpeg-devel
-#BuildRequires:  libtiff-devel
 BuildRequires:  pam-devel
 BuildRequires:  readline-devel
 BuildRequires:  sharutils
-#BuildRequires:  gdb
-BuildRequires:  python
 BuildRequires:  pkgconfig(fontconfig)
 
 %description
@@ -70,14 +65,6 @@ Summary:    The QtCore library
 Requires(post):     /sbin/ldconfig
 Requires(postun):   /sbin/ldconfig
 Requires:   xdg-utils
-#TODO: Remove these conflicts after we are pass next stop release.
-Conflicts:  qt5-qtdbus < %{version}
-Conflicts:  qt5-qtgui < %{version}
-Conflicts:  qt5-qtnetwork < %{version}
-Conflicts:  qt5-qtopengl < %{version}
-Conflicts:  qt5-qtsql < %{version}
-Conflicts:  qt5-qtwidgets < %{version}
-Conflicts:  qt5-qtconcurrent < %{version}
 
 %description qtcore
 This package contains the QtCore library
@@ -149,13 +136,6 @@ Requires:   %{name}-qtcore = %{version}-%{release}
 
 %description plugin-imageformat-jpeg
 This package contains the JPEG imageformat plugin
-
-
-#%package plugin-imageformat-tiff
-#Summary:    TIFF image format plugin
-#
-#%description plugin-imageformat-tiff
-#This package contains the TIFF imageformat plugin
 
 
 %package plugin-platform-minimal
@@ -613,7 +593,6 @@ ln -s %{_sysconfdir}/xdg/qtchooser/5.conf %{buildroot}%{_sysconfdir}/xdg/qtchoos
 %{_libdir}/qt5/bin/uic
 %{_libdir}/qt5/bin/qlalr
 %{_libdir}/qt5/bin/fixqt4headers.pl
-#%{_libdir}/qt5/bin/qdoc
 %{_docdir}/qt5/*
 
 %files qtcore
@@ -813,14 +792,12 @@ ln -s %{_sysconfdir}/xdg/qtchooser/5.conf %{buildroot}%{_sysconfdir}/xdg/qtchoos
 %{_includedir}/qt5/QtPlatformSupport/
 %{_libdir}/libQt5PlatformSupport.prl
 %{_libdir}/libQt5PlatformSupport.a
-#%{_libdir}/pkgconfig/Qt5PlatformSupport.pc
 %{_datadir}/qt5/mkspecs/modules/qt_lib_platformsupport_private.pri
 
 %files qtbootstrap-devel
 %defattr(-,root,root,-)
 %{_libdir}/libQt5Bootstrap.prl
 %{_libdir}/libQt5Bootstrap.a
-#%{_libdir}/pkgconfig/Qt5Bootstrap.pc
 %{_datadir}/qt5/mkspecs/modules/qt_lib_bootstrap_private.pri
 
 %files qtprintsupport
@@ -875,10 +852,6 @@ ln -s %{_sysconfdir}/xdg/qtchooser/5.conf %{buildroot}%{_sysconfdir}/xdg/qtchoos
 %files plugin-imageformat-jpeg
 %defattr(-,root,root,-)
 %{_libdir}/qt5/plugins/imageformats/libqjpeg.so
-
-#%files plugin-imageformat-tiff
-#%defattr(-,root,root,-)
-#%{_libdir}/qt5/plugins/imageformats/libqtiff.so
 
 %files plugin-platform-minimal
 %defattr(-,root,root,-)
