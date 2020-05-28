@@ -82,6 +82,8 @@
 #define QT_PCLOSE pclose
 #endif
 
+#include "qplatformdefs.h"
+
 using namespace QMakeInternal;
 
 QT_BEGIN_NAMESPACE
@@ -1602,8 +1604,8 @@ QMakeEvaluator::VisitReturn QMakeEvaluator::evaluateBuiltinConditional(
         const QString &tfn = resolvePath(args.at(0).toQString(m_tmp1));
         const QString &rfn = resolvePath(args.at(1).toQString(m_tmp2));
 #ifdef Q_OS_UNIX
-        struct stat st;
-        if (stat(rfn.toLocal8Bit().constData(), &st)) {
+        QT_STATBUF st;
+        if (QT_STAT(rfn.toLocal8Bit().constData(), &st)) {
             evalError(fL1S("Cannot stat() reference file %1: %2.").arg(rfn, fL1S(strerror(errno))));
             return ReturnFalse;
         }

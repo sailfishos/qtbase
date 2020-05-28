@@ -488,6 +488,7 @@ MAKEFLAGS=%{?_smp_mflags} \
     -no-xkbcommon \
     -no-xcb \
     -no-xinput2 \
+    -largefile \
 %ifarch aarch64
 	-no-pch \
 %endif
