@@ -55,6 +55,8 @@
 #include <share.h>
 #endif
 
+#include "qplatformdefs.h"
+
 QT_BEGIN_NAMESPACE
 
 // FIXME: a line ending in CRLF gets counted as two lines.
@@ -513,7 +515,7 @@ bool QMakeSourceFileInfo::findDeps(SourceFile *file)
 
     const QMakeLocalFileName sourceFile = fixPathForFile(file->file, true);
 
-    struct stat fst;
+    QT_STATBUF fst;
     char *buffer = 0;
     int buffer_len = 0;
     {
@@ -525,7 +527,7 @@ bool QMakeSourceFileInfo::findDeps(SourceFile *file)
 #else
         fd = open(sourceFile.local().toLatin1().constData(), O_RDONLY);
 #endif
-        if (fd == -1 || fstat(fd, &fst) || S_ISDIR(fst.st_mode)) {
+        if (fd == -1 || QT_FSTAT(fd, &fst) || S_ISDIR(fst.st_mode)) {
             if (fd != -1)
                 QT_CLOSE(fd);
             return false;
@@ -893,7 +895,7 @@ bool QMakeSourceFileInfo::findMocs(SourceFile *file)
     int buffer_len = 0;
     char *buffer = 0;
     {
-        struct stat fst;
+        QT_STATBUF fst;
         int fd;
 #if defined(_MSC_VER) && _MSC_VER >= 1400
         if (_sopen_s(&fd, fixPathForFile(file->file, true).local().toLocal8Bit().constData(),
@@ -902,7 +904,7 @@ bool QMakeSourceFileInfo::findMocs(SourceFile *file)
 #else
         fd = open(fixPathForFile(file->file, true).local().toLocal8Bit().constData(), O_RDONLY);
 #endif
-        if (fd == -1 || fstat(fd, &fst) || S_ISDIR(fst.st_mode)) {
+        if (fd == -1 || QT_FSTAT(fd, &fst) || S_ISDIR(fst.st_mode)) {
             if (fd != -1)
                 QT_CLOSE(fd);
             return false; //shouldn't happen

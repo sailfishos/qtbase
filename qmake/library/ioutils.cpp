@@ -32,6 +32,7 @@
 ****************************************************************************/
 
 #include "ioutils.h"
+#include "qplatformdefs.h"
 
 #include <qdir.h>
 #include <qfile.h>
@@ -57,8 +58,8 @@ IoUtils::FileType IoUtils::fileType(const QString &fileName)
         return FileNotFound;
     return (attr & FILE_ATTRIBUTE_DIRECTORY) ? FileIsDir : FileIsRegular;
 #else
-    struct ::stat st;
-    if (::stat(fileName.toLocal8Bit().constData(), &st))
+    QT_STATBUF st;
+    if (QT_STAT(fileName.toLocal8Bit().constData(), &st))
         return FileNotFound;
     return S_ISDIR(st.st_mode) ? FileIsDir : FileIsRegular;
 #endif
