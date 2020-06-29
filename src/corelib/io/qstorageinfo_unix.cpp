@@ -459,7 +459,10 @@ void QStorageInfoPrivate::initRootPath()
         const QString mountDir = it.rootPath();
         const QByteArray fsName = it.fileSystemType();
         // we try to find most suitable entry
-        if (isParentOf(mountDir, oldRootPath) && maxLength < mountDir.length()) {
+        if (isParentOf(mountDir, oldRootPath)
+                && (maxLength < mountDir.length()
+                    // Alternative device that's not rootfs, overwrites pivoted root
+                    || (rootPath == mountDir && device == "rootfs"))) {
             maxLength = mountDir.length();
             rootPath = mountDir;
             device = it.device();
