@@ -63,6 +63,7 @@ QT_BEGIN_NAMESPACE
 
 class QSocketNotifier;
 class QEvdevTouchScreenData;
+struct QEvdevTouchInputEvent;
 
 class QEvdevTouchScreenHandler : public QObject
 {
@@ -119,7 +120,7 @@ signals:
 private:
     Q_INVOKABLE void notifyTouchDeviceRegistered();
 
-    void filterAndSendTouchPoints();
+    void filterAndSendTouchPoints(QEvdevTouchInputEvent &lastEvent, QEvdevTouchInputEvent &event);
 
     QString m_device;
     QString m_spec;
