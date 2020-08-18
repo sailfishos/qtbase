@@ -215,10 +215,15 @@ int q_ASN1_STRING_length(ASN1_STRING *a);
 int q_ASN1_STRING_to_UTF8(unsigned char **a, ASN1_STRING *b);
 long q_BIO_ctrl(BIO *a, int b, long c, void *d);
 int q_BIO_free(BIO *a);
-BIO *q_BIO_new(BIO_METHOD *a);
 BIO *q_BIO_new_mem_buf(void *a, int b);
 int q_BIO_read(BIO *a, void *b, int c);
+#if OPENSSL_VERSION_NUMBER >= 0x10100000L
+BIO *q_BIO_new(const BIO_METHOD *a);
+const BIO_METHOD *q_BIO_s_mem();
+#else
+BIO *q_BIO_new(BIO_METHOD *a);
 BIO_METHOD *q_BIO_s_mem();
+#endif
 int q_BIO_write(BIO *a, const void *b, int c);
 int q_BN_num_bits(const BIGNUM *a);
 #ifndef OPENSSL_NO_EC
@@ -228,8 +233,13 @@ int q_EC_GROUP_get_degree(const EC_GROUP* g);
 int q_CRYPTO_num_locks();
 void q_CRYPTO_set_locking_callback(void (*a)(int, int, const char *, int));
 void q_CRYPTO_set_id_callback(unsigned long (*a)());
+#if OPENSSL_VERSION_NUMBER >= 0x10100000L
+void q_CRYPTO_free(void *a, const char *b, int c);
+#else
 void q_CRYPTO_free(void *a);
+#endif
 DSA *q_DSA_new();
+int q_DSA_bits(const DSA *d);
 void q_DSA_free(DSA *a);
 X509 *q_d2i_X509(X509 **a, const unsigned char **b, long c);
 char *q_ERR_error_string(unsigned long a, char *b);
@@ -253,10 +263,13 @@ int q_EVP_PKEY_set1_EC_KEY(EVP_PKEY *a, EC_KEY *b);
 #endif
 void q_EVP_PKEY_free(EVP_PKEY *a);
 RSA *q_EVP_PKEY_get1_RSA(EVP_PKEY *a);
+RSA *q_EVP_PKEY_get0_RSA(EVP_PKEY *a);
 DSA *q_EVP_PKEY_get1_DSA(EVP_PKEY *a);
+DSA *q_EVP_PKEY_get0_DSA(EVP_PKEY *a);
 #ifndef OPENSSL_NO_EC
 EC_KEY *q_EVP_PKEY_get1_EC_KEY(EVP_PKEY *a);
 #endif
+const EVP_MD *q_EVP_sha1();
 int q_EVP_PKEY_type(int a);
 Q_AUTOTEST_EXPORT EVP_PKEY *q_EVP_PKEY_new();
 int q_i2d_X509(X509 *a, unsigned char **b);
@@ -300,6 +313,7 @@ int q_PEM_write_bio_EC_PUBKEY(BIO *a, EC_KEY *b);
 void q_RAND_seed(const void *a, int b);
 int q_RAND_status();
 RSA *q_RSA_new();
+int q_RSA_bits(const RSA *r);
 void q_RSA_free(RSA *a);
 int q_sk_num(STACK *a);
 void q_sk_pop_free(STACK *a, void (*b)(void *));
@@ -372,7 +386,7 @@ typedef unsigned int (*q_psk_client_callback_t)(SSL *ssl, const char *hint, char
 void q_SSL_set_psk_client_callback(SSL *ssl, q_psk_client_callback_t callback);
 #endif // OPENSSL_VERSION_NUMBER >= 0x10001000L && !defined(OPENSSL_NO_PSK)
 #if OPENSSL_VERSION_NUMBER >= 0x10000000L
-#ifndef OPENSSL_NO_SSL2
+#if !defined(OPENSSL_NO_SSL2) && OPENSSL_VERSION_NUMBER < 0x10100000L
 const SSL_METHOD *q_SSLv2_client_method();
 #endif
 #ifndef OPENSSL_NO_SSL3_METHOD
@@ -382,7 +396,7 @@ const SSL_METHOD *q_SSLv23_client_method();
 const SSL_METHOD *q_TLSv1_client_method();
 const SSL_METHOD *q_TLSv1_1_client_method();
 const SSL_METHOD *q_TLSv1_2_client_method();
-#ifndef OPENSSL_NO_SSL2
+#if !defined(OPENSSL_NO_SSL2) && OPENSSL_VERSION_NUMBER < 0x10100000L
 const SSL_METHOD *q_SSLv2_server_method();
 #endif
 #ifndef OPENSSL_NO_SSL3_METHOD
@@ -423,6 +437,7 @@ void *q_ASN1_dup(i2d_of_void *i2d, d2i_of_void *d2i, char *x);
 #else
 X509 *q_X509_dup(X509 *a);
 #endif
+int q_X509_digest(const X509 *x509, const EVP_MD *type, unsigned char *md, unsigned int *len);
 void q_X509_print(BIO *a, X509*b);
 ASN1_OBJECT *q_X509_EXTENSION_get_object(X509_EXTENSION *a);
 void q_X509_free(X509 *a);
@@ -510,7 +525,12 @@ DSA *q_d2i_DSAPrivateKey(DSA **a, unsigned char **pp, long length);
         PEM_ASN1_write_bio((int (*)(void*, unsigned char**))q_i2d_DSAPrivateKey,PEM_STRING_DSA,\
                            bp,(char *)x,enc,kstr,klen,cb,u)
 #endif
+#if OPENSSL_VERSION_NUMBER < 0x10100000L
 #define q_SSL_CTX_set_options(ctx,op) q_SSL_CTX_ctrl((ctx),SSL_CTRL_OPTIONS,(op),NULL)
+#else
+unsigned long q_SSL_CTX_set_options(SSL_CTX *ctx, unsigned long options);
+unsigned long q_SSL_SESSION_get_ticket_lifetime_hint(const SSL_SESSION *session);
+#endif
 #define q_SSL_CTX_set_mode(ctx,op) q_SSL_CTX_ctrl((ctx),SSL_CTRL_MODE,(op),NULL)
 #define q_SKM_sk_num(type, st) ((int (*)(const STACK_OF(type) *))q_sk_num)(st)
 #define q_SKM_sk_value(type, st,i) ((type * (*)(const STACK_OF(type) *, int))q_sk_value)(st, i)
@@ -554,6 +574,12 @@ void q_SSL_get0_next_proto_negotiated(const SSL *s, const unsigned char **data,
 // Helper function
 class QDateTime;
 QDateTime q_getTimeFromASN1(const ASN1_TIME *aTime);
+
+extern "C" {
+typedef int (*q_SSL_psk_use_session_cb_func_t)(SSL *, const EVP_MD *, const unsigned char **, size_t *,
+                                               SSL_SESSION **);
+}
+void q_SSL_set_psk_use_session_callback(SSL *s, q_SSL_psk_use_session_cb_func_t);
 
 QT_END_NAMESPACE
 

@@ -58,9 +58,11 @@ bool QSslCertificate::operator==(const QSslCertificate &other) const
 uint qHash(const QSslCertificate &key, uint seed) Q_DECL_NOTHROW
 {
     if (X509 * const x509 = key.d->x509) {
-        (void)q_X509_cmp(x509, x509); // populate x509->sha1_hash
-                                      // (if someone knows a better way...)
-        return qHashBits(x509->sha1_hash, SHA_DIGEST_LENGTH, seed);
+        const EVP_MD *evp_md_sha1 = q_EVP_sha1();
+        unsigned int len = 0;
+        unsigned char evp_md[EVP_MAX_MD_SIZE];
+        q_X509_digest(x509, evp_md_sha1, evp_md, &len);
+        return qHashBits(evp_md, len, seed);
     } else {
         return seed;
     }
@@ -84,7 +86,7 @@ QByteArray QSslCertificate::version() const
     QMutexLocker lock(QMutexPool::globalInstanceGet(d.data()));
     if (d->versionString.isEmpty() && d->x509)
         d->versionString =
-            QByteArray::number(qlonglong(q_ASN1_INTEGER_get(d->x509->cert_info->version)) + 1);
+            QByteArray::number(qlonglong(X509_get_version(d->x509)) + 1);
 
     return d->versionString;
 }
@@ -93,7 +95,7 @@ QByteArray QSslCertificate::serialNumber() const
 {
     QMutexLocker lock(QMutexPool::globalInstanceGet(d.data()));
     if (d->serialNumberString.isEmpty() && d->x509) {
-        ASN1_INTEGER *serialNumber = d->x509->cert_info->serialNumber;
+        ASN1_INTEGER *serialNumber = X509_get_serialNumber(d->x509);
         QByteArray hexString;
         hexString.reserve(serialNumber->length * 3);
         for (int a = 0; a < serialNumber->length; ++a) {
@@ -229,25 +231,22 @@ QSslKey QSslCertificate::publicKey() const
     QSslKey key;
 
     key.d->type = QSsl::PublicKey;
-    X509_PUBKEY *xkey = d->x509->cert_info->key;
+    X509_PUBKEY *xkey = X509_get_X509_PUBKEY(d->x509);
     EVP_PKEY *pkey = q_X509_PUBKEY_get(xkey);
     Q_ASSERT(pkey);
 
-    if (q_EVP_PKEY_type(pkey->type) == EVP_PKEY_RSA) {
-        key.d->rsa = q_EVP_PKEY_get1_RSA(pkey);
+    if ((key.d->rsa = q_EVP_PKEY_get1_RSA(pkey))) {
         key.d->algorithm = QSsl::Rsa;
         key.d->isNull = false;
-    } else if (q_EVP_PKEY_type(pkey->type) == EVP_PKEY_DSA) {
-        key.d->dsa = q_EVP_PKEY_get1_DSA(pkey);
+    } else if ((key.d->dsa = q_EVP_PKEY_get1_DSA(pkey))) {
         key.d->algorithm = QSsl::Dsa;
         key.d->isNull = false;
 #ifndef OPENSSL_NO_EC
-    } else if (q_EVP_PKEY_type(pkey->type) == EVP_PKEY_EC) {
-        key.d->ec = q_EVP_PKEY_get1_EC_KEY(pkey);
+    } else if ((key.d->ec = q_EVP_PKEY_get1_EC_KEY(pkey))) {
         key.d->algorithm = QSsl::Ec;
         key.d->isNull = false;
 #endif
-    } else if (q_EVP_PKEY_type(pkey->type) == EVP_PKEY_DH) {
+    } else if (EVP_PKEY_get1_DH(pkey)) {
         // DH unsupported
     } else {
         // error?
@@ -601,7 +600,11 @@ static QMap<QByteArray, QString> _q_mapFromX509Name(X509_NAME *name)
         unsigned char *data = 0;
         int size = q_ASN1_STRING_to_UTF8(&data, q_X509_NAME_ENTRY_get_data(e));
         info.insertMulti(name, QString::fromUtf8((char*)data, size));
+#if OPENSSL_VERSION_NUMBER >= 0x10100000L
+	q_CRYPTO_free(data, OPENSSL_FILE, OPENSSL_LINE);
+#else
         q_CRYPTO_free(data);
+#endif
     }
 
     return info;
