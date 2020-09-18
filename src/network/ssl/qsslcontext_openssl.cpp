@@ -104,7 +104,7 @@ QSslContext* QSslContext::fromConfiguration(QSslSocket::SslMode mode, const QSsl
 init_context:
     switch (sslContext->sslConfiguration.protocol()) {
     case QSsl::SslV2:
-#ifndef OPENSSL_NO_SSL2
+#if !defined(OPENSSL_NO_SSL2) && OPENSSL_VERSION_NUMBER < 0x10100000L
         sslContext->ctx = q_SSL_CTX_new(client ? q_SSLv2_client_method() : q_SSLv2_server_method());
 #else
         // SSL 2 not supported by the system, but chosen deliberately -> error
@@ -185,7 +185,7 @@ init_context:
     }
 
     // Enable bug workarounds.
-    long options = QSslSocketBackendPrivate::setupOpenSslOptions(configuration.protocol(), configuration.d->sslOptions);
+    unsigned long options = QSslSocketBackendPrivate::setupOpenSslOptions(configuration.protocol(), configuration.d->sslOptions);
     q_SSL_CTX_set_options(sslContext->ctx, options);
 
 #if OPENSSL_VERSION_NUMBER >= 0x10000000L
@@ -324,7 +324,7 @@ init_context:
     q_DH_free(dh);
 
 #ifndef OPENSSL_NO_EC
-#if OPENSSL_VERSION_NUMBER >= 0x10002000L
+#if OPENSSL_VERSION_NUMBER >= 0x10002000L && OPENSSL_VERSION_NUMBER < 0x10100000L
     if (q_SSLeay() >= 0x10002000L) {
         q_SSL_CTX_ctrl(sslContext->ctx, SSL_CTRL_SET_ECDH_AUTO, 1, NULL);
     } else
@@ -470,7 +470,7 @@ bool QSslContext::cacheSession(SSL* ssl)
             unsigned char *data = reinterpret_cast<unsigned char *>(m_sessionASN1.data());
             if (!q_i2d_SSL_SESSION(session, &data))
                 qCWarning(lcSsl, "could not store persistent version of SSL session");
-            m_sessionTicketLifeTimeHint = session->tlsext_tick_lifetime_hint;
+            m_sessionTicketLifeTimeHint = q_SSL_SESSION_get_ticket_lifetime_hint(session);
         }
     }
 

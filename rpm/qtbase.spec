@@ -475,6 +475,7 @@ MAKEFLAGS=%{?_smp_mflags} \
     -no-rpath \
     -optimized-qmake \
     -dbus-linked \
+    -openssl-linked \
     -no-strip \
     -no-separate-debug-info \
     -verbose \
@@ -496,7 +497,8 @@ MAKEFLAGS=%{?_smp_mflags} \
     -gbm \
     -qreal float \
     -journald \
-    -no-use-gold-linker
+    -no-use-gold-linker \
+    -openssl-linked
 fi # config.status check
 #%if ! 0%{?qt5_release_build}
 #    -developer-build \

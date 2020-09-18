@@ -99,7 +99,7 @@ private:
     EVP_PKEY *pkey;
     SSL_SESSION *session;
     QByteArray m_sessionASN1;
-    int m_sessionTicketLifeTimeHint;
+    unsigned long m_sessionTicketLifeTimeHint;
     QSslError::SslError errorCode;
     QString errorStr;
     QSslConfiguration sslConfiguration;
