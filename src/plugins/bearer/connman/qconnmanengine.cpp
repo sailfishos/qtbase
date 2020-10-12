@@ -124,6 +124,10 @@ void QConnmanEngine::changedModem()
     if (ofonoContextManager)
         delete ofonoContextManager;
     ofonoContextManager = new QOfonoDataConnectionManagerInterface(ofonoManager->currentModem(),this);
+
+    if (connmanManager) {
+        refreshConfigurations();
+    }
 }
 
 void QConnmanEngine::servicesReady(const QStringList &list)
@@ -486,9 +490,15 @@ QNetworkConfiguration::BearerType QConnmanEngine::ofonoTechToBearerType(const QS
             return QNetworkConfiguration::BearerHSPA;
         } else if (currentTechnology == QLatin1String("lte")) {
             return QNetworkConfiguration::BearerLTE;
+        } else {
+            qCWarning(qLcLibBearer) << "QConnmanEngine: Unable to translate the bearer type of the unknown network technology:" << currentTechnology;
         }
+    } else {
+        qCWarning(qLcLibBearer) << "QConnmanEngine: Attempted to query the bearer type of a cellular connection but Ofono isn't available";
     }
-    return QNetworkConfiguration::BearerUnknown;
+
+    // If the actual type is unknown return something that still identifies it as a cellular connection.
+    return QNetworkConfiguration::Bearer2G;
 }
 
 bool QConnmanEngine::isRoamingAllowed(const QString &context)
@@ -531,6 +541,18 @@ void QConnmanEngine::addServiceConfiguration(const QString &servicePath)
     }
 
     if (!accessPointConfigurations.contains(servicePath)) {
+        QConnmanServiceInterface *service = connmanServiceInterfaces.value(servicePath);
+
+        const QString connectionType = service->type();
+
+        // ofonoNetwork is queried to identify the specific bearer type of a cellular connection,
+        // and if it's not available at this time that type will be unresolvable so skip the
+        // connection for now. When ofonoNetwork does become available a new attempt at adding
+        // the service configuration will be made.
+        if (!ofonoNetwork && connectionType == QLatin1String("cellular")) {
+            qCWarning(qLcLibBearer) << "QConnmanEngine: Deferring a cellular service configuration because ofonoNetwork is unavailable";
+            return;
+        }
 
         serviceNetworks.append(servicePath);
 
@@ -538,11 +560,9 @@ void QConnmanEngine::addServiceConfiguration(const QString &servicePath)
                 this,SLOT(serviceStateChanged(QString)));
 
         QNetworkConfigurationPrivate* cpPriv = new QNetworkConfigurationPrivate();
-        QConnmanServiceInterface *service = connmanServiceInterfaces.value(servicePath);
 
         QString networkName = service->name();
 
-        const QString connectionType = service->type();
         if (connectionType == QLatin1String("ethernet")) {
             cpPriv->bearerType = QNetworkConfiguration::BearerEthernet;
         } else if (connectionType == QLatin1String("wifi")) {
@@ -553,6 +573,7 @@ void QConnmanEngine::addServiceConfiguration(const QString &servicePath)
         } else if (connectionType == QLatin1String("wimax")) {
             cpPriv->bearerType = QNetworkConfiguration::BearerWiMAX;
         } else {
+            qCWarning(qLcLibBearer) << "QConnmanEngine: Unable to translate the bearer type of the unknown connection type:" << connectionType;
             cpPriv->bearerType = QNetworkConfiguration::BearerUnknown;
         }
 
@@ -600,9 +621,15 @@ void QConnmanEngine::setupConfigurations()
     connect(connmanManager,SIGNAL(servicesReady(QStringList)),this,SLOT(servicesReady(QStringList)));
     connect(connmanManager,SIGNAL(scanFinished(bool)),this,SLOT(finishedScan(bool)));
 
+    refreshConfigurations();
+}
+
+void QConnmanEngine::refreshConfigurations()
+{
     foreach (const QString &servPath, connmanManager->getServices()) {
         addServiceConfiguration(servPath);
     }
+
     Q_EMIT updateCompleted();
 }
 
@@ -672,6 +699,11 @@ void QConnmanEngine::ofonoRegistered(const QString &serviceName)
 
     connect(ofonoManager,SIGNAL(modemChanged()),this,SLOT(changedModem()));
     connect(ofonoContextManager,SIGNAL(roamingAllowedChanged(bool)),this,SLOT(reEvaluateCellular()));
+
+    QMutexLocker locker(&mutex);
+    if (connmanManager && !connmanManager->getServices().isEmpty()) {
+        refreshConfigurations();
+    }
 }
 
 void QConnmanEngine::ofonoUnRegistered(const QString &serviceName)

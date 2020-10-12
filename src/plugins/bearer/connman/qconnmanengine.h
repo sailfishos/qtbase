@@ -120,6 +120,7 @@ private:
     void addServiceConfiguration(const QString &servicePath);
 
     void setupConfigurations();
+    void refreshConfigurations();
 
     QDateTime activeTime;
 
