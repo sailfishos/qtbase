@@ -49,6 +49,8 @@
 
 QT_BEGIN_NAMESPACE
 
+Q_DECLARE_LOGGING_CATEGORY(qLcLibBearer)
+
 QDBusArgument &operator<<(QDBusArgument &argument, const ConnmanMap &map)
 {
     argument.beginStructure();
@@ -123,7 +125,7 @@ void QConnmanManagerInterface::propertiesReply(QDBusPendingCallWatcher *call)
     QDBusPendingReply<QVariantMap> props_reply = *call;
 
     if (props_reply.isError()) {
-        qDebug() << props_reply.error().message();
+        qCWarning(qLcLibBearer) << "QConnmanManagerInterface::propertiesReply()" << props_reply.error().message();
     } else {
         propertiesCacheMap = props_reply.value();
     }
@@ -135,7 +137,7 @@ void QConnmanManagerInterface::servicesReply(QDBusPendingCallWatcher *call)
     QDBusPendingReply<ConnmanMapList> serv_reply = *call;
 
     if (serv_reply.isError()) {
-        qDebug() << serv_reply.error().message();
+        qCWarning(qLcLibBearer) << "QConnmanManagerInterface::servicesReply()" << serv_reply.error().message();
     } else {
         servicesList.clear(); //connman list changes order
         ConnmanMap connmanobj;
@@ -156,7 +158,7 @@ void QConnmanManagerInterface::connectNotify(const QMetaMethod &signal)
                                QLatin1String(CONNMAN_MANAGER_INTERFACE),
                                QLatin1String("PropertyChanged"),
                                    this,SIGNAL(propertyChanged(QString,QDBusVariant)))) {
-            qWarning() << "PropertyChanged not connected";
+            qCWarning(qLcLibBearer) << "QConnmanManagerInterface: PropertyChanged not connected";
         }
     }
 
@@ -167,7 +169,7 @@ void QConnmanManagerInterface::connectNotify(const QMetaMethod &signal)
                                QLatin1String(CONNMAN_MANAGER_INTERFACE),
                                QLatin1String("ServicesChanged"),
                                this,SLOT(onServicesChanged(ConnmanMapList, QList<QDBusObjectPath>)))) {
-            qWarning() << "servicesChanged not connected";
+            qCWarning(qLcLibBearer) << "QConnmanManagerInterface: servicesChanged not connected";
         }
     }
 }
@@ -319,7 +321,7 @@ void QConnmanServiceInterface::propertiesReply(QDBusPendingCallWatcher *call)
 {
     QDBusPendingReply<QVariantMap> props_reply = *call;
     if (props_reply.isError()) {
-        qDebug() << props_reply.error().message();
+        qCWarning(qLcLibBearer) << "QConnmanServiceInterface::propertiesReply" << props_reply.error().message();
         return;
     }
     propertiesCacheMap = props_reply.value();
@@ -502,7 +504,7 @@ void QConnmanTechnologyInterface::scanReply(QDBusPendingCallWatcher *call)
 {
     QDBusPendingReply<void> props_reply = *call;
     if (props_reply.isError()) {
-        qDebug() << props_reply.error().message();
+        qCWarning(qLcLibBearer) << "QConnmanTechnologyInterface::scanReply()" << props_reply.error().message();
     }
     Q_EMIT scanFinished(props_reply.isError());
     call->deleteLater();
