@@ -1825,7 +1825,7 @@ bool QSslSocketBackendPrivate::importPkcs12(QIODevice *device,
     // Convert to Qt types
     if (!key->d->fromEVP_PKEY(pkey)) {
         qCWarning(lcSsl, "Unable to convert private key");
-        q_sk_pop_free(reinterpret_cast<STACK *>(ca), reinterpret_cast<void(*)(void*)>(q_sk_free));
+        q_sk_pop_free(reinterpret_cast<STACK *>(ca), reinterpret_cast<void(*)(void*)>(q_X509_free));
         q_X509_free(x509);
         q_EVP_PKEY_free(pkey);
         q_PKCS12_free(p12);
@@ -1840,7 +1840,7 @@ bool QSslSocketBackendPrivate::importPkcs12(QIODevice *device,
         *caCertificates = QSslSocketBackendPrivate::STACKOFX509_to_QSslCertificates(ca);
 
     // Clean up
-    q_sk_pop_free(reinterpret_cast<STACK *>(ca), reinterpret_cast<void(*)(void*)>(q_sk_free));
+    q_sk_pop_free(reinterpret_cast<STACK *>(ca), reinterpret_cast<void(*)(void*)>(q_X509_free));
     q_X509_free(x509);
     q_EVP_PKEY_free(pkey);
     q_PKCS12_free(p12);
