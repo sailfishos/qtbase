@@ -490,7 +490,7 @@ QNetworkConfiguration::BearerType QConnmanEngine::ofonoTechToBearerType(const QS
             return QNetworkConfiguration::BearerHSPA;
         } else if (currentTechnology == QLatin1String("lte")) {
             return QNetworkConfiguration::BearerLTE;
-        } else if (currentTechnology != QLatin1String("vpn")) { // we know this exists, but can't map it. warn for others
+        } else {
             qCWarning(qLcLibBearer) << "QConnmanEngine: Unable to translate the bearer type of the unknown network technology:" << currentTechnology;
         }
     } else {
@@ -573,7 +573,9 @@ void QConnmanEngine::addServiceConfiguration(const QString &servicePath)
         } else if (connectionType == QLatin1String("wimax")) {
             cpPriv->bearerType = QNetworkConfiguration::BearerWiMAX;
         } else {
-            qCWarning(qLcLibBearer) << "QConnmanEngine: Unable to translate the bearer type of the unknown connection type:" << connectionType;
+            if (connectionType != QLatin1String("vpn")) { // we know this exists but can't map it. warn for others
+                qCWarning(qLcLibBearer) << "QConnmanEngine: Unable to translate the bearer type of the unknown connection type:" << connectionType;
+            }
             cpPriv->bearerType = QNetworkConfiguration::BearerUnknown;
         }
 
