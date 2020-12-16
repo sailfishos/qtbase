@@ -15,8 +15,7 @@ Name:       qt5
 Summary:    Cross-platform application and UI framework
 Version:    5.6.3
 Release:    1%{?dist}
-Group:      Qt/Qt
-License:    LGPLv2.1 with exception or GPLv3
+License:    LGPLv2 with exception or LGPLv3 or GPLv3 or Qt Commercial
 URL:        https://www.qt.io/
 Source0:    %{name}-%{version}.tar.bz2
 Source1:    macros.qt5-default
@@ -415,7 +414,6 @@ applications that use QtConcurrent
 
 %package -n qt5-default
 Summary:    Qt5 development defaults packafge
-Group:      Development/Libraries
 Requires:   qtchooser
 Provides:   qt-default
 Conflicts:   qt4-default
@@ -602,6 +600,7 @@ ln -s %{_sysconfdir}/xdg/qtchooser/5.conf %{buildroot}%{_sysconfdir}/xdg/qtchoos
 
 %files qtcore
 %defattr(-,root,root,-)
+%license LICENSE.LGPLv21 LICENSE.LGPLv3 LGPL_EXCEPTION.txt LICENSE.GPLv3
 %dir %{_includedir}/qt5/
 %dir %{_datadir}/qt5/
 %dir %{_libdir}/qt5/
