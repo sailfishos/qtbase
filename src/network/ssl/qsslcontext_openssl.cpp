@@ -324,11 +324,12 @@ init_context:
     q_DH_free(dh);
 
 #ifndef OPENSSL_NO_EC
-#if OPENSSL_VERSION_NUMBER >= 0x10002000L && OPENSSL_VERSION_NUMBER < 0x10100000L
+#if OPENSSL_VERSION_NUMBER < 0x10100000L // Auto is the default after 0x10100000L
+#if OPENSSL_VERSION_NUMBER >= 0x10002000L
     if (q_SSLeay() >= 0x10002000L) {
         q_SSL_CTX_ctrl(sslContext->ctx, SSL_CTRL_SET_ECDH_AUTO, 1, NULL);
     } else
-#endif
+#endif // OPENSSL_VERSION_NUMBER >= 0x10002000L
     {
         // Set temp ECDH params
         EC_KEY *ecdh = 0;
@@ -336,6 +337,7 @@ init_context:
         q_SSL_CTX_set_tmp_ecdh(sslContext->ctx, ecdh);
         q_EC_KEY_free(ecdh);
     }
+#endif // OPENSSL_VERSION_NUMBER < 0x10100000L
 #endif // OPENSSL_NO_EC
 
     const QVector<QSslEllipticCurve> qcurves = sslContext->sslConfiguration.ellipticCurves();
