@@ -3565,7 +3565,11 @@ QString QDateTime::toString(Qt::DateFormat format) const
                                                    .arg(dt.day())
                                                    .arg(tm.toString(Qt::TextDate))
                                                    .arg(dt.year());
-        if (timeSpec() != Qt::LocalTime) {
+        if (timeSpec() == Qt::TimeZone) {
+#ifndef QT_BOOTSTRAPPED
+            buf += QStringLiteral(" ") + d->m_timeZone.d->abbreviation(d->toMSecsSinceEpoch());
+#endif
+        } else if (timeSpec() != Qt::LocalTime) {
             buf += QStringLiteral(" GMT");
             if (d->m_spec == Qt::OffsetFromUTC)
                 buf += toOffsetString(Qt::TextDate, d->m_offsetFromUtc);
@@ -3587,6 +3591,9 @@ QString QDateTime::toString(Qt::DateFormat format) const
             buf += QLatin1Char('Z');
             break;
         case Qt::OffsetFromUTC:
+#ifndef QT_BOOTSTRAPPED
+        case Qt::TimeZone:
+#endif
             buf += toOffsetString(Qt::ISODate, d->m_offsetFromUtc);
             break;
         default:
