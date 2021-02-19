@@ -147,18 +147,29 @@ Q_NORETURN
 static void qt_message_fatal(QtMsgType, const QMessageLogContext &context, const QString &message);
 static void qt_message_print(QtMsgType, const QMessageLogContext &context, const QString &message);
 
+static bool fatalCriticalsInitialized = false;
+static bool fatalWarningsInitialized = false;
+
 static bool isFatal(QtMsgType msgType)
 {
     if (msgType == QtFatalMsg)
         return true;
 
     if (msgType == QtCriticalMsg) {
-        static bool fatalCriticals = !qEnvironmentVariableIsEmpty("QT_FATAL_CRITICALS");
+        static bool fatalCriticals = false;
+        if (!fatalCriticalsInitialized) {
+            fatalCriticals = !qEnvironmentVariableIsEmpty("QT_FATAL_CRITICALS");
+            fatalCriticalsInitialized = true;
+        }
         return fatalCriticals;
     }
 
     if (msgType == QtWarningMsg || msgType == QtCriticalMsg) {
-        static bool fatalWarnings = !qEnvironmentVariableIsEmpty("QT_FATAL_WARNINGS");
+        static bool fatalWarnings = false;
+        if (!fatalWarningsInitialized) {
+            fatalWarnings = !qEnvironmentVariableIsEmpty("QT_FATAL_WARNINGS");
+            fatalWarningsInitialized = true;
+        }
         return fatalWarnings;
     }
 
@@ -208,9 +219,15 @@ static bool willLogToConsole()
 #endif
 }
 
+static bool logToConsoleInitialized = false;
+
 Q_CORE_EXPORT bool qt_logging_to_console()
 {
-    static const bool logToConsole = willLogToConsole();
+    static bool logToConsole = false;
+    if (!logToConsoleInitialized) {
+        logToConsole = willLogToConsole();
+        logToConsoleInitialized = true;
+    }
     return logToConsole;
 }
 
@@ -1907,5 +1924,25 @@ void QMessageLogContext::copy(const QMessageLogContext &logContext)
     Constructs a QMessageLogContext with for file \a fileName at line
     \a lineNumber, in function \a functionName, and category \a categoryName.
 */
+
+/*!
+    \internal
+
+    For MDeclarativeCache.
+ */
+Q_CORE_EXPORT void qt_reinit_logging()
+{
+#ifndef QT_BOOTSTRAPPED
+    fatalCriticalsInitialized = false;
+    fatalWarningsInitialized = false;
+    logToConsoleInitialized = false;
+    QLoggingRegistry::instance()->init();
+    const QString envPattern = QString::fromLocal8Bit(qgetenv("QT_MESSAGE_PATTERN"));
+    if (!envPattern.isEmpty()) {
+        QMutexLocker lock(&QMessagePattern::mutex);
+        qMessagePattern()->setPattern(envPattern);
+    }
+#endif
+}
 
 QT_END_NAMESPACE
