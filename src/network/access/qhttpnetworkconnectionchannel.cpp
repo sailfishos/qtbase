@@ -860,7 +860,9 @@ void QHttpNetworkConnectionChannel::_q_error(QAbstractSocket::SocketError socket
         } else if (state != QHttpNetworkConnectionChannel::IdleState && state != QHttpNetworkConnectionChannel::ReadingState) {
             // Try to reconnect/resend before sending an error.
             // While "Reading" the _q_disconnected() will handle this.
-            if (reconnectAttempts-- > 0) {
+            // If the protocolHandler hasn't been set up on a TLS connection by this point, it's because
+            // the connection was closed before the handshake completed and we shouldn't retry.
+            if (reconnectAttempts-- > 0 && (!ssl || protocolHandler)) {
                 resendCurrentRequest();
                 return;
             } else {
