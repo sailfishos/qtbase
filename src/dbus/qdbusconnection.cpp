@@ -68,16 +68,6 @@ static void preventDllUnload();
 
 Q_GLOBAL_STATIC(QDBusConnectionManager, _q_manager)
 
-static void shutdownConnectionManager()
-{
-    if (_q_manager.exists()) {
-        auto manager = _q_manager();
-
-        manager->quit();
-        manager->wait();
-    }
-}
-
 struct QDBusConnectionManager::ConnectionRequestData
 {
     enum RequestType {
@@ -152,12 +142,12 @@ QDBusConnectionManager::QDBusConnectionManager()
 #endif
     defaultBuses[0] = defaultBuses[1] = Q_NULLPTR;
     start();
-
-    qAddPostRoutine(shutdownConnectionManager);
 }
 
 QDBusConnectionManager::~QDBusConnectionManager()
 {
+    quit();
+    wait();
 }
 
 QDBusConnectionManager* QDBusConnectionManager::instance()
