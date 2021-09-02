@@ -543,6 +543,10 @@ install -D -p -m 0644 %{_sourcedir}/macros.qt5-default \
 mkdir -p %{buildroot}/etc/xdg/qtchooser
 ln -s %{_sysconfdir}/xdg/qtchooser/5.conf %{buildroot}%{_sysconfdir}/xdg/qtchooser/default.conf
 
+# Add Qt binaries to PATH
+mkdir -p %{buildroot}/%{_sysconfdir}/profile.d/
+echo "export PATH=\$PATH:"%{_libdir}/qt5/bin > %{buildroot}/%{_sysconfdir}/profile.d/qt_bin_path.sh
+
 #
 %fdupes %{buildroot}/%{_libdir}
 %fdupes %{buildroot}/%{_includedir}
@@ -908,5 +912,6 @@ ln -s %{_sysconfdir}/xdg/qtchooser/5.conf %{buildroot}%{_sysconfdir}/xdg/qtchoos
 %files -n qt5-default
 %defattr(-,root,root,-)
 %{_sysconfdir}/xdg/qtchooser/default.conf
+%{_sysconfdir}/profile.d/qt_bin_path.sh
 
 #### No changelog section, separate $pkg.changes contains the history
