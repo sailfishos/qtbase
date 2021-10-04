@@ -543,6 +543,11 @@ install -D -p -m 0644 %{_sourcedir}/macros.qt5-default \
 mkdir -p %{buildroot}/etc/xdg/qtchooser
 ln -s %{_sysconfdir}/xdg/qtchooser/5.conf %{buildroot}%{_sysconfdir}/xdg/qtchooser/default.conf
 
+# Help accelerated qmake find the configuration
+%if "%{_libdir}" == "/usr/lib64"
+install -D -p -m 0644 %{_sourcedir}/qt.conf %{buildroot}%{_libdir}/qt5/bin/qt.conf
+%endif
+
 #
 %fdupes %{buildroot}/%{_libdir}
 %fdupes %{buildroot}/%{_includedir}
@@ -625,6 +630,9 @@ ln -s %{_sysconfdir}/xdg/qtchooser/5.conf %{buildroot}%{_sysconfdir}/xdg/qtchoos
 %files qmake
 %defattr(-,root,root,-)
 %{_libdir}/qt5/bin/qmake
+%if "%{_libdir}" == "/usr/lib64"
+%{_libdir}/qt5/bin/qt.conf
+%endif
 %{_datadir}/qt5/mkspecs/aix-*/
 %{_datadir}/qt5/mkspecs/android-clang/*
 %{_datadir}/qt5/mkspecs/blackberry*/
