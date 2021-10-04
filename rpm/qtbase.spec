@@ -19,6 +19,7 @@ License:    LGPLv2 with exception or LGPLv3 or GPLv3 or Qt Commercial
 URL:        https://www.qt.io/
 Source0:    %{name}-%{version}.tar.bz2
 Source1:    macros.qt5-default
+Source2:    qt.conf
 Source100:  qtbase-rpmlintrc
 BuildRequires:  pkgconfig(alsa)
 BuildRequires:  pkgconfig(dbus-1)
