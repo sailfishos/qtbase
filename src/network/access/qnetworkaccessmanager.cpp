@@ -1652,11 +1652,22 @@ void QNetworkAccessManagerPrivate::_q_networkSessionStateChanged(QNetworkSession
     qCDebug(lcNetworkAccess) << "QNAM: network session state changed:" << state;
 
     bool reallyOnline = false;
+    bool updateStateOnly = false;
     //Do not emit the networkSessionConnected signal here, except for roaming -> connected
     //transition, otherwise it is emitted twice in a row when opening a connection.
     if (state == QNetworkSession::Connected && lastSessionState != QNetworkSession::Roaming)
         emit q->networkSessionConnected();
+
+    // This is the case when VPN resets itself and goes directly from connected back to connecting
+    // Just update session state and stop processing.
+    if (state == QNetworkSession::Connecting && lastSessionState == QNetworkSession::Connected) {
+        updateStateOnly = true;
+    }
+
     lastSessionState = state;
+
+    if (updateStateOnly)
+        return;
 
     if ((state == QNetworkSession::Disconnected) || (state == QNetworkSession::Connecting)) {
         Q_FOREACH (const QNetworkConfiguration &cfg, networkConfigurationManager.allConfigurations()) {
