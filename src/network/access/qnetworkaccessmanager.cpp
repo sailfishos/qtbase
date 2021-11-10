@@ -1666,9 +1666,6 @@ void QNetworkAccessManagerPrivate::_q_networkSessionStateChanged(QNetworkSession
 
     lastSessionState = state;
 
-    if (updateStateOnly)
-        return;
-
     if ((state == QNetworkSession::Disconnected) || (state == QNetworkSession::Connecting)) {
         Q_FOREACH (const QNetworkConfiguration &cfg, networkConfigurationManager.allConfigurations()) {
             if (cfg.state().testFlag(QNetworkConfiguration::Active)) {
@@ -1693,6 +1690,10 @@ void QNetworkAccessManagerPrivate::_q_networkSessionStateChanged(QNetworkSession
                 emit q->networkAccessibleChanged(networkAccessible);
             }
     }
+
+    if (updateStateOnly)
+        return;
+
     online = reallyOnline;
     if (online && (state != QNetworkSession::Connected && state != QNetworkSession::Roaming)) {
         _q_networkSessionClosed();
