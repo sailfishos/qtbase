@@ -38,6 +38,7 @@ BuildRequires:  pkgconfig(mtdev)
 BuildRequires:  pkgconfig(libsystemd)
 BuildRequires:  pkgconfig(libdrm)
 BuildRequires:  pkgconfig(gbm)
+BuildRequires:  pkgconfig(libproxy-1.0)
 BuildRequires:  cups-devel
 BuildRequires:  fdupes
 BuildRequires:  flex
