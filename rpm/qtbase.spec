@@ -626,7 +626,8 @@ install -D -p -m 0644 %{_sourcedir}/qt.conf %{buildroot}%{_libdir}/qt5/bin/qt.co
 %{_libdir}/pkgconfig/Qt5Core.pc
 %{_datadir}/qt5/mkspecs/modules/qt_lib_core.pri
 %{_datadir}/qt5/mkspecs/modules/qt_lib_core_private.pri
-%{_libdir}/cmake/
+%{_libdir}/cmake/Qt5
+%{_libdir}/cmake/Qt5Core
 
 %files qmake
 %defattr(-,root,root,-)
@@ -686,6 +687,7 @@ install -D -p -m 0644 %{_sourcedir}/qt.conf %{buildroot}%{_libdir}/qt5/bin/qt.co
 %{_libdir}/pkgconfig/Qt5DBus.pc
 %{_datadir}/qt5/mkspecs/modules/qt_lib_dbus.pri
 %{_datadir}/qt5/mkspecs/modules/qt_lib_dbus_private.pri
+%{_libdir}/cmake/Qt5DBus
 
 
 %files qtgui
@@ -704,6 +706,7 @@ install -D -p -m 0644 %{_sourcedir}/qt.conf %{buildroot}%{_libdir}/qt5/bin/qt.co
 %{_libdir}/pkgconfig/Qt5Gui.pc
 %{_datadir}/qt5/mkspecs/modules/qt_lib_gui.pri
 %{_datadir}/qt5/mkspecs/modules/qt_lib_gui_private.pri
+%{_libdir}/cmake/Qt5Gui
 
 
 %files qtnetwork
@@ -720,6 +723,7 @@ install -D -p -m 0644 %{_sourcedir}/qt.conf %{buildroot}%{_libdir}/qt5/bin/qt.co
 %{_libdir}/pkgconfig/Qt5Network.pc
 %{_datadir}/qt5/mkspecs/modules/qt_lib_network.pri
 %{_datadir}/qt5/mkspecs/modules/qt_lib_network_private.pri
+%{_libdir}/cmake/Qt5Network
 
 
 %files qtopengl
@@ -743,6 +747,8 @@ install -D -p -m 0644 %{_sourcedir}/qt.conf %{buildroot}%{_libdir}/qt5/bin/qt.co
 %{_datadir}/qt5/mkspecs/android-g++/qplatformdefs.h
 %{_datadir}/qt5/mkspecs/modules/qt_lib_openglextensions.pri
 %{_datadir}/qt5/mkspecs/modules/qt_lib_openglextensions_private.pri
+%{_libdir}/cmake/Qt5OpenGL
+%{_libdir}/cmake/Qt5OpenGLExtensions
 
 
 %files qtsql
@@ -759,6 +765,7 @@ install -D -p -m 0644 %{_sourcedir}/qt.conf %{buildroot}%{_libdir}/qt5/bin/qt.co
 %{_libdir}/pkgconfig/Qt5Sql.pc
 %{_datadir}/qt5/mkspecs/modules/qt_lib_sql.pri
 %{_datadir}/qt5/mkspecs/modules/qt_lib_sql_private.pri
+%{_libdir}/cmake/Qt5Sql
 
 
 %files qttest
@@ -773,6 +780,7 @@ install -D -p -m 0644 %{_sourcedir}/qt.conf %{buildroot}%{_libdir}/qt5/bin/qt.co
 %{_libdir}/pkgconfig/Qt5Test.pc
 %{_datadir}/qt5/mkspecs/modules/qt_lib_testlib.pri
 %{_datadir}/qt5/mkspecs/modules/qt_lib_testlib_private.pri
+%{_libdir}/cmake/Qt5Test
 
 %files qtxml
 %defattr(-,root,root,-)
@@ -786,6 +794,7 @@ install -D -p -m 0644 %{_sourcedir}/qt.conf %{buildroot}%{_libdir}/qt5/bin/qt.co
 %{_libdir}/pkgconfig/Qt5Xml.pc
 %{_datadir}/qt5/mkspecs/modules/qt_lib_xml.pri
 %{_datadir}/qt5/mkspecs/modules/qt_lib_xml_private.pri
+%{_libdir}/cmake/Qt5Xml
 
 %files qtwidgets
 %defattr(-,root,root,-)
@@ -799,6 +808,7 @@ install -D -p -m 0644 %{_sourcedir}/qt.conf %{buildroot}%{_libdir}/qt5/bin/qt.co
 %{_libdir}/pkgconfig/Qt5Widgets.pc
 %{_datadir}/qt5/mkspecs/modules/qt_lib_widgets.pri
 %{_datadir}/qt5/mkspecs/modules/qt_lib_widgets_private.pri
+%{_libdir}/cmake/Qt5Widgets
 
 %files qtplatformsupport-devel
 %defattr(-,root,root,-)
@@ -825,6 +835,7 @@ install -D -p -m 0644 %{_sourcedir}/qt.conf %{buildroot}%{_libdir}/qt5/bin/qt.co
 %{_libdir}/pkgconfig/Qt5PrintSupport.pc
 %{_datadir}/qt5/mkspecs/modules/qt_lib_printsupport.pri
 %{_datadir}/qt5/mkspecs/modules/qt_lib_printsupport_private.pri
+%{_libdir}/cmake/Qt5PrintSupport
 
 %files qtconcurrent
 %defattr(-,root,root,-)
@@ -838,6 +849,7 @@ install -D -p -m 0644 %{_sourcedir}/qt.conf %{buildroot}%{_libdir}/qt5/bin/qt.co
 %{_libdir}/pkgconfig/Qt5Concurrent.pc
 %{_datadir}/qt5/mkspecs/modules/qt_lib_concurrent.pri
 %{_datadir}/qt5/mkspecs/modules/qt_lib_concurrent_private.pri
+%{_libdir}/cmake/Qt5Concurrent
 
 
 
