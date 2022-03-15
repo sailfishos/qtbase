@@ -472,6 +472,7 @@ MAKEFLAGS=%{?_smp_mflags} \
     -system-zlib \
     -system-libpng \
     -system-libjpeg \
+    -system-proxies \
     -no-rpath \
     -optimized-qmake \
     -dbus-linked \
