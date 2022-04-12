@@ -1651,6 +1651,10 @@ void QNetworkAccessManagerPrivate::_q_networkSessionStateChanged(QNetworkSession
     Q_Q(QNetworkAccessManager);
     qCDebug(lcNetworkAccess) << "QNAM: network session state changed:" << state;
 
+    if (state == lastSessionState) {
+        return;
+    }
+
     bool reallyOnline = false;
     bool updateStateOnly = false;
     //Do not emit the networkSessionConnected signal here, except for roaming -> connected
