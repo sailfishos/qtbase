@@ -491,7 +491,7 @@ QNetworkConfiguration::BearerType QConnmanEngine::ofonoTechToBearerType(const QS
         } else if (currentTechnology == QLatin1String("lte")) {
             return QNetworkConfiguration::BearerLTE;
         } else {
-            qCWarning(qLcLibBearer) << "QConnmanEngine: Unable to translate the bearer type of the unknown network technology:" << currentTechnology;
+            qCDebug(qLcLibBearer) << "QConnmanEngine: Unable to translate the bearer type of the unknown network technology:" << currentTechnology;
         }
     } else {
         qCWarning(qLcLibBearer) << "QConnmanEngine: Attempted to query the bearer type of a cellular connection but Ofono isn't available";
