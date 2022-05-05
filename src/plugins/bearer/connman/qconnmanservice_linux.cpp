@@ -494,6 +494,11 @@ QString QConnmanTechnologyInterface::type()
 
 void QConnmanTechnologyInterface::scan()
 {
+    if (!getProperty(QStringLiteral("Powered")).toBool()) {
+        qCDebug(qLcLibBearer) << "QConnmanTechnologyInterface::scan() technology not powered";
+        return;
+    }
+
     QDBusPendingReply<> reply = asyncCall(QLatin1String("Scan"));
     QDBusPendingCallWatcher *watcher = new QDBusPendingCallWatcher(reply, this);
     connect(watcher, SIGNAL(finished(QDBusPendingCallWatcher*)),
