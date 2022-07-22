@@ -115,6 +115,10 @@ public:
 #if OPENSSL_VERSION_NUMBER >= 0x10001000L
     static int s_indexForSSLExtraData; // index used in SSL_get_ex_data to get the matching QSslSocketBackendPrivate
 #endif
+#if OPENSSL_VERSION_NUMBER >= 0x10100000L
+    static int s_indexForSSLErrorExtraData; // user data index used for attaching a list of errors to a SSL struct
+    static int s_indexForX509StoreErrorExtraData; // user data index used for attaching a list of errors to a X509_STORE
+#endif
 
     // Platform specific functions
     void startClientEncryption() Q_DECL_OVERRIDE;

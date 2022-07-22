@@ -95,6 +95,8 @@ bool QSslSocketPrivate::s_loadRootCertsOnDemand = false;
 
 #if OPENSSL_VERSION_NUMBER >= 0x10001000L
 int QSslSocketBackendPrivate::s_indexForSSLExtraData = -1;
+int QSslSocketBackendPrivate::s_indexForSSLErrorExtraData = -1;
+int QSslSocketBackendPrivate::s_indexForX509StoreErrorExtraData = -1;
 #endif
 
 /* \internal
@@ -257,21 +259,10 @@ QSslCipher QSslSocketBackendPrivate::QSslCipher_from_SSL_CIPHER(SSL_CIPHER *ciph
     }
     return ciph;
 }
-
-// ### This list is shared between all threads, and protected by a
-// mutex. Investigate using thread local storage instead.
-struct QSslErrorList
-{
-    QMutex mutex;
-    QList<QPair<int, int> > errors;
-};
-Q_GLOBAL_STATIC(QSslErrorList, _q_sslErrorList)
-
 int q_X509Callback(int ok, X509_STORE_CTX *ctx)
 {
     if (!ok) {
         // Store the error and at which depth the error was detected.
-        _q_sslErrorList()->errors << qMakePair<int, int>(q_X509_STORE_CTX_get_error(ctx), q_X509_STORE_CTX_get_error_depth(ctx));
 #ifdef QSSLSOCKET_DEBUG
         qCDebug(lcSsl) << "verification error: dumping bad certificate";
         qCDebug(lcSsl) << QSslCertificatePrivate::QSslCertificate_from_X509(q_X509_STORE_CTX_get_current_cert(ctx)).toPem();
@@ -292,6 +283,28 @@ int q_X509Callback(int ok, X509_STORE_CTX *ctx)
             qCDebug(lcSsl) << "Valid:" << cert.effectiveDate() << '-' << cert.expiryDate();
         }
 #endif
+        QList<QPair<int, int>> *errorList = nullptr;
+        // Check if the error list is stored as exdata in the X509 store
+        if (X509_STORE *store = q_X509_STORE_CTX_get0_store(ctx)) {
+            errorList = static_cast<QList<QPair<int, int>> *>(q_X509_STORE_get_ex_data(store, QSslSocketBackendPrivate::s_indexForX509StoreErrorExtraData));
+        }
+
+        // If not found, check if it is stored as exdata in the SSL object
+        if (errorList == nullptr) {
+            if (SSL *ssl = static_cast<SSL *>(q_X509_STORE_CTX_get_ex_data(ctx, q_SSL_get_ex_data_X509_STORE_CTX_idx()))) {
+                errorList = static_cast<QList<QPair<int, int>> *>(q_SSL_get_ex_data(ssl, QSslSocketBackendPrivate::s_indexForSSLErrorExtraData));
+            } else {
+                qCWarning(lcSsl, "No SSL attached to X509_STORE_CTX");
+            }
+        }
+
+        if (errorList == nullptr) {
+            qCWarning(lcSsl, "Neither the X509_STORE_CTX or SSL struct contain an error list. This should not be happening.");
+            return 0;
+        } else {
+            auto errorPair = QPair<int, int>(q_X509_STORE_CTX_get_error(ctx), q_X509_STORE_CTX_get_error_depth(ctx));
+            errorList->append(errorPair);
+        }
     }
     // Always return OK to allow verification to continue. We're handle the
     // errors gracefully after collecting all errors, after verification has
@@ -484,8 +497,11 @@ bool QSslSocketPrivate::ensureLibraryLoaded()
         q_OpenSSL_add_all_algorithms();
 
 #if OPENSSL_VERSION_NUMBER >= 0x10001000L
-        if (q_SSLeay() >= 0x10001000L)
+        if (q_SSLeay() >= 0x10001000L) {
             QSslSocketBackendPrivate::s_indexForSSLExtraData = q_SSL_get_ex_new_index(0L, NULL, NULL, NULL, NULL);
+            QSslSocketBackendPrivate::s_indexForSSLErrorExtraData = q_SSL_get_ex_new_index(0L, nullptr, nullptr, nullptr, nullptr);
+            QSslSocketBackendPrivate::s_indexForX509StoreErrorExtraData = q_CRYPTO_get_ex_new_index(CRYPTO_EX_INDEX_X509_STORE, 0l, nullptr, nullptr, nullptr, nullptr);
+        }
 #endif
 
         // Initialize OpenSSL's random seed.
@@ -1096,11 +1112,11 @@ bool QSslSocketBackendPrivate::startHandshake()
 
     // Check if the connection has been established. Get all errors from the
     // verification stage.
-    _q_sslErrorList()->mutex.lock();
-    _q_sslErrorList()->errors.clear();
+    QList<QPair<int, int>> lastErrors;
+    q_SSL_set_ex_data(ssl, s_indexForSSLErrorExtraData, &lastErrors);
     int result = (mode == QSslSocket::SslClientMode) ? q_SSL_connect(ssl) : q_SSL_accept(ssl);
+    q_SSL_set_ex_data(ssl, s_indexForSSLErrorExtraData, nullptr); // clear exdata to prevent invalid memory access
 
-    const QList<QPair<int, int> > &lastErrors = _q_sslErrorList()->errors;
     if (!lastErrors.isEmpty())
         storePeerCertificates();
     for (int i = 0; i < lastErrors.size(); ++i) {
@@ -1112,7 +1128,6 @@ bool QSslSocketBackendPrivate::startHandshake()
     }
 
     errorList << lastErrors;
-    _q_sslErrorList()->mutex.unlock();
 
     // Connection aborted during handshake phase.
     if (q->state() != QAbstractSocket::ConnectedState)
@@ -1692,7 +1707,14 @@ QList<QSslError> QSslSocketBackendPrivate::verify(const QList<QSslCertificate> &
         }
     }
 
-    QMutexLocker sslErrorListMutexLocker(&_q_sslErrorList()->mutex);
+    QList<QPair<int, int>> lastErrors;
+#if OPENSSL_VERSION_NUMBER >= 0x10100000
+    if (!q_X509_STORE_set_ex_data(certStore, s_indexForX509StoreErrorExtraData, &lastErrors)) {
+        qCWarning(lcSsl, "Cannot attach exdata to the certificate store");
+        errors << QSslError(QSslError::UnspecifiedError);
+        q_X509_STORE_free(certStore);
+    }
+#endif
 
     // Register a custom callback to get all verification errors.
     X509_STORE_set_verify_cb_func(certStore, q_X509Callback);
@@ -1749,10 +1771,6 @@ QList<QSslError> QSslSocketBackendPrivate::verify(const QList<QSslCertificate> &
 #endif
 
     // Now process the errors
-    const QList<QPair<int, int> > errorList = _q_sslErrorList()->errors;
-    _q_sslErrorList()->errors.clear();
-
-    sslErrorListMutexLocker.unlock();
 
     // Translate the errors
     if (QSslCertificatePrivate::isBlacklisted(certificateChain[0])) {
@@ -1768,10 +1786,10 @@ QList<QSslError> QSslSocketBackendPrivate::verify(const QList<QSslCertificate> &
     }
 
     // Translate errors from the error list into QSslErrors.
-    const int numErrors = errorList.size();
+    const int numErrors = lastErrors.size();
     errors.reserve(errors.size() + numErrors);
     for (int i = 0; i < numErrors; ++i) {
-        const QPair<int, int> &errorAndDepth = errorList.at(i);
+        const QPair<int, int> &errorAndDepth = lastErrors.at(i);
         int err = errorAndDepth.first;
         int depth = errorAndDepth.second;
         errors << _q_OpenSSL_to_QSslError(err, certificateChain.value(depth));

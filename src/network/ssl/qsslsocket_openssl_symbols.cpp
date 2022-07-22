@@ -194,6 +194,8 @@ DEFINEFUNC(int, EC_GROUP_get_degree, const EC_GROUP* g, g, return 0, return)
 DEFINEFUNC(int, CRYPTO_num_locks, DUMMYARG, DUMMYARG, return 0, return)
 DEFINEFUNC(void, CRYPTO_set_locking_callback, void (*a)(int, int, const char *, int), a, return, DUMMYARG)
 DEFINEFUNC(void, CRYPTO_set_id_callback, unsigned long (*a)(), a, return, DUMMYARG)
+DEFINEFUNC3(int, CRYPTO_set_ex_data, CRYPTO_EX_DATA * r, r, int idx, idx, void * arg, arg, return 0, return);
+DEFINEFUNC2(void *, CRYPTO_get_ex_data, CRYPTO_EX_DATA * r, r, int idx, idx, return nullptr, return);
 #if OPENSSL_VERSION_NUMBER >= 0x10100000L
 DEFINEFUNC3(void, CRYPTO_free, void *str, str, const char *file, file, int line, line, return, DUMMYARG)
 #else
@@ -341,6 +343,7 @@ DEFINEFUNC(SSL_SESSION*, SSL_get_session, const SSL *ssl, ssl, return 0, return)
 DEFINEFUNC5(int, SSL_get_ex_new_index, long argl, argl, void *argp, argp, CRYPTO_EX_new *new_func, new_func, CRYPTO_EX_dup *dup_func, dup_func, CRYPTO_EX_free *free_func, free_func, return -1, return)
 DEFINEFUNC3(int, SSL_set_ex_data, SSL *ssl, ssl, int idx, idx, void *arg, arg, return 0, return)
 DEFINEFUNC2(void *, SSL_get_ex_data, const SSL *ssl, ssl, int idx, idx, return NULL, return)
+DEFINEFUNC(int, SSL_get_ex_data_X509_STORE_CTX_idx, void, DUMMYARG, return -1, return)
 #endif
 #if OPENSSL_VERSION_NUMBER >= 0x10001000L && !defined(OPENSSL_NO_PSK)
 DEFINEFUNC2(void, SSL_set_psk_client_callback, SSL* ssl, ssl, q_psk_client_callback_t callback, callback, return, DUMMYARG)
@@ -423,6 +426,10 @@ DEFINEFUNC(EVP_PKEY *, X509_PUBKEY_get, X509_PUBKEY *a, a, return 0, return)
 DEFINEFUNC(void, X509_STORE_free, X509_STORE *a, a, return, DUMMYARG)
 DEFINEFUNC(X509_STORE *, X509_STORE_new, DUMMYARG, DUMMYARG, return 0, return)
 DEFINEFUNC2(int, X509_STORE_add_cert, X509_STORE *a, a, X509 *b, b, return 0, return)
+#if OPENSSL_VERSION_NUMBER >= 0x10100000L
+DEFINEFUNC3(int, X509_STORE_set_ex_data, X509_STORE *d, d, int idx, idx, void *data, data, return -1, return)
+DEFINEFUNC2(void *, X509_STORE_get_ex_data, X509_STORE *d, d, int idx, idx, return nullptr, return)
+#endif
 DEFINEFUNC(void, X509_STORE_CTX_free, X509_STORE_CTX *a, a, return, DUMMYARG)
 DEFINEFUNC4(int, X509_STORE_CTX_init, X509_STORE_CTX *a, a, X509_STORE *b, b, X509 *c, c, STACK_OF(X509) *d, d, return -1, return)
 DEFINEFUNC2(int, X509_STORE_CTX_set_purpose, X509_STORE_CTX *a, a, int b, b, return -1, return)
@@ -430,7 +437,14 @@ DEFINEFUNC(int, X509_STORE_CTX_get_error, X509_STORE_CTX *a, a, return -1, retur
 DEFINEFUNC(int, X509_STORE_CTX_get_error_depth, X509_STORE_CTX *a, a, return -1, return)
 DEFINEFUNC(X509 *, X509_STORE_CTX_get_current_cert, X509_STORE_CTX *a, a, return 0, return)
 DEFINEFUNC(STACK_OF(X509) *, X509_STORE_CTX_get_chain, X509_STORE_CTX *a, a, return 0, return)
+DEFINEFUNC(X509_STORE *, X509_STORE_CTX_get0_store, X509_STORE_CTX *ctx, ctx, return nullptr, return)
 DEFINEFUNC(X509_STORE_CTX *, X509_STORE_CTX_new, DUMMYARG, DUMMYARG, return 0, return)
+
+#if OPENSSL_VERSION_NUMBER >= 0x10100000L
+DEFINEFUNC3(int, X509_STORE_CTX_set_ex_data, X509_STORE_CTX *d, d, int idx, idx, void *data, data, return -1, return)
+DEFINEFUNC2(void *, X509_STORE_CTX_get_ex_data, X509_STORE_CTX *d, d, int idx, idx, return nullptr, return)
+#endif
+
 #ifdef SSLEAY_MACROS
 DEFINEFUNC2(int, i2d_DSAPrivateKey, const DSA *a, a, unsigned char **b, b, return -1, return)
 DEFINEFUNC2(int, i2d_RSAPrivateKey, const RSA *a, a, unsigned char **b, b, return -1, return)
@@ -975,6 +989,7 @@ bool q_resolveOpenSslSymbols()
     RESOLVEFUNC(SSL_get_ex_new_index)
     RESOLVEFUNC(SSL_set_ex_data)
     RESOLVEFUNC(SSL_get_ex_data)
+    RESOLVEFUNC(SSL_get_ex_data_X509_STORE_CTX_idx)
 #endif
 #if OPENSSL_VERSION_NUMBER >= 0x10001000L && !defined(OPENSSL_NO_PSK)
     RESOLVEFUNC(SSL_set_psk_client_callback)
@@ -1012,6 +1027,10 @@ bool q_resolveOpenSslSymbols()
     RESOLVEFUNC(X509_STORE_free)
     RESOLVEFUNC(X509_STORE_new)
     RESOLVEFUNC(X509_STORE_add_cert)
+#if OPENSSL_VERSION_NUMBER >= 0x10100000L
+    RESOLVEFUNC(X509_STORE_get_ex_data)
+    RESOLVEFUNC(X509_STORE_set_ex_data)
+#endif
     RESOLVEFUNC(X509_STORE_CTX_free)
     RESOLVEFUNC(X509_STORE_CTX_init)
     RESOLVEFUNC(X509_STORE_CTX_new)
@@ -1020,6 +1039,11 @@ bool q_resolveOpenSslSymbols()
     RESOLVEFUNC(X509_STORE_CTX_get_error_depth)
     RESOLVEFUNC(X509_STORE_CTX_get_current_cert)
     RESOLVEFUNC(X509_STORE_CTX_get_chain)
+    RESOLVEFUNC(X509_STORE_CTX_get0_store)
+#if OPENSSL_VERSION_NUMBER >= 0x10100000L
+    RESOLVEFUNC(X509_STORE_CTX_get_ex_data)
+    RESOLVEFUNC(X509_STORE_CTX_set_ex_data)
+#endif
     RESOLVEFUNC(X509_cmp)
 #ifndef SSLEAY_MACROS
     RESOLVEFUNC(X509_dup)

@@ -233,7 +233,12 @@ int q_EC_GROUP_get_degree(const EC_GROUP* g);
 int q_CRYPTO_num_locks();
 void q_CRYPTO_set_locking_callback(void (*a)(int, int, const char *, int));
 void q_CRYPTO_set_id_callback(unsigned long (*a)());
+int q_CRYPTO_set_ex_data(CRYPTO_EX_DATA *r, int idx, void *arg);
+void *q_CRYPTO_get_ex_data(CRYPTO_EX_DATA *r, int idx);
 #if OPENSSL_VERSION_NUMBER >= 0x10100000L
+int q_CRYPTO_get_ex_new_index(int class_index, long arg1, void *argp,
+                              CRYPTO_EX_new *new_func, CRYPTO_EX_dup *dup_func,
+                              CRYPTO_EX_free *free_func);
 void q_CRYPTO_free(void *a, const char *b, int c);
 #else
 void q_CRYPTO_free(void *a);
@@ -380,6 +385,7 @@ SSL_SESSION *q_SSL_get_session(const SSL *ssl);
 int q_SSL_get_ex_new_index(long argl, void *argp, CRYPTO_EX_new *new_func, CRYPTO_EX_dup *dup_func, CRYPTO_EX_free *free_func);
 int q_SSL_set_ex_data(SSL *ssl, int idx, void *arg);
 void *q_SSL_get_ex_data(const SSL *ssl, int idx);
+int q_SSL_get_ex_data_X509_STORE_CTX_idx();
 #endif
 #if OPENSSL_VERSION_NUMBER >= 0x10001000L && !defined(OPENSSL_NO_PSK)
 typedef unsigned int (*q_psk_client_callback_t)(SSL *ssl, const char *hint, char *identity, unsigned int max_identity_len, unsigned char *psk, unsigned int max_psk_len);
@@ -467,6 +473,12 @@ EVP_PKEY *q_X509_PUBKEY_get(X509_PUBKEY *a);
 void q_X509_STORE_free(X509_STORE *store);
 X509_STORE *q_X509_STORE_new();
 int q_X509_STORE_add_cert(X509_STORE *ctx, X509 *x);
+
+#if OPENSSL_VERSION_NUMBER >= 0x10100000L
+int q_X509_STORE_set_ex_data(X509_STORE *d, int idx, void *data);
+void *q_X509_STORE_get_ex_data(X509_STORE *d, int idx);
+#endif
+
 void q_X509_STORE_CTX_free(X509_STORE_CTX *storeCtx);
 int q_X509_STORE_CTX_init(X509_STORE_CTX *ctx, X509_STORE *store,
                           X509 *x509, STACK_OF(X509) *chain);
@@ -476,6 +488,12 @@ int q_X509_STORE_CTX_get_error(X509_STORE_CTX *ctx);
 int q_X509_STORE_CTX_get_error_depth(X509_STORE_CTX *ctx);
 X509 *q_X509_STORE_CTX_get_current_cert(X509_STORE_CTX *ctx);
 STACK_OF(X509) *q_X509_STORE_CTX_get_chain(X509_STORE_CTX *ctx);
+X509_STORE *q_X509_STORE_CTX_get0_store(X509_STORE_CTX *ctx);
+
+#if OPENSSL_VERSION_NUMBER >= 0x10100000L
+int q_X509_STORE_CTX_set_ex_data(X509_STORE_CTX *d, int idx, void *data);
+void *q_X509_STORE_CTX_get_ex_data(X509_STORE_CTX *d, int idx);
+#endif
 
 // Diffie-Hellman support
 DH *q_DH_new();
