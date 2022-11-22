@@ -222,6 +222,9 @@ QEvdevTouchScreenHandler::QEvdevTouchScreenHandler(const QString &device, const 
                 QString optionValue = option.section(QLatin1Char('='), 1, 1);
                 bool ok;
                 pencil = optionValue.toUInt(&ok) == 1;
+
+                // Remove this
+                qDebug() << "========================== Extra option for device" << device << "is pencil:" << pencil << spec;
             }
         }
     }
@@ -492,6 +495,9 @@ void QEvdevTouchScreenData::addTouchPoint(QList<QWindowSystemInterface::TouchPoi
 void QEvdevTouchScreenData::processInputEvent(input_event *data)
 {
     QSystraceEvent systrace("touch", "QEvdevTouchScreenData::processInputEvent");
+
+    qDebug("========================= processInputEvent type: %x code: %x, m_pencil: %d", data->type, data->code, m_pencil);
+
     if (m_pencil) {
         m_contacts[m_currentSlot].flags = QTouchEvent::TouchPoint::Pen;
     }
