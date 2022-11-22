@@ -134,6 +134,7 @@ public:
     QString hw_name;
     bool m_forceToActiveWindow;
     bool m_typeB;
+    bool m_pencil;
     QTransform m_rotate;
     bool m_singleTouch;
 
@@ -158,7 +159,8 @@ QEvdevTouchScreenData::QEvdevTouchScreenData(QEvdevTouchScreenHandler *q_ptr, co
       hw_range_x_min(0), hw_range_x_max(0),
       hw_range_y_min(0), hw_range_y_max(0),
       hw_pressure_min(0), hw_pressure_max(0),
-      m_forceToActiveWindow(false), m_typeB(false), m_singleTouch(false),
+      m_forceToActiveWindow(false), m_typeB(false),
+      m_pencil(false), m_singleTouch(false),
       m_filtered(false), m_prediction(0)
 {
     for (int i=0; i<args.size(); ++i) {
@@ -194,6 +196,7 @@ QEvdevTouchScreenHandler::QEvdevTouchScreenHandler(const QString &device, const 
     int rotationAngle = 0;
     bool invertx = false;
     bool inverty = false;
+    bool pencil = false;
     for (int i = 0; i < args.count(); ++i) {
         if (args.at(i).startsWith(QLatin1String("rotate"))) {
             QString rotateArg = args.at(i).section(QLatin1Char('='), 1, 1);
@@ -213,6 +216,13 @@ QEvdevTouchScreenHandler::QEvdevTouchScreenHandler(const QString &device, const 
             invertx = true;
         } else if (args.at(i) == QLatin1String("inverty")) {
             inverty = true;
+        } else if (QStringLiteral("/dev/%1").arg(args.at(i)).startsWith(device)) {
+            QString option = args.at(i).section(QLatin1Char('/'), -1);
+            if (option.startsWith(QLatin1String("pencil="))) {
+                QString optionValue = option.section(QLatin1Char('='), 1, 1);
+                bool ok;
+                pencil = optionValue.toUInt(&ok) == 1;
+            }
         }
     }
 
@@ -239,6 +249,7 @@ QEvdevTouchScreenHandler::QEvdevTouchScreenHandler(const QString &device, const 
 #endif
 
     d = new QEvdevTouchScreenData(this, args);
+    d->m_pencil = pencil;
 
 #if !defined(QT_NO_MTDEV)
     const char *mtdevStr = "(mtdev)";
@@ -481,6 +492,10 @@ void QEvdevTouchScreenData::addTouchPoint(QList<QWindowSystemInterface::TouchPoi
 void QEvdevTouchScreenData::processInputEvent(input_event *data)
 {
     QSystraceEvent systrace("touch", "QEvdevTouchScreenData::processInputEvent");
+    if (m_pencil) {
+        m_contacts[m_currentSlot].flags = QTouchEvent::TouchPoint::Pen;
+    }
+
     if (data->type == EV_ABS) {
 
         if (data->code == ABS_MT_POSITION_X || (m_singleTouch && data->code == ABS_X)) {
