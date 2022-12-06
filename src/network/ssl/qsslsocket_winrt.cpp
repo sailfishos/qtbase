@@ -235,7 +235,6 @@ void QSslSocketBackendPrivate::startClientEncryption()
     case QSsl::SslV3:
         protectionLevel = SocketProtectionLevel_Ssl; // Only use this value if weak cipher support is required
         break;
-    case QSsl::SecureProtocols:
     case QSsl::TlsV1SslV3:
     case QSsl::TlsV1_0:
         protectionLevel = SocketProtectionLevel_Tls10;
@@ -243,6 +242,7 @@ void QSslSocketBackendPrivate::startClientEncryption()
     case QSsl::TlsV1_1:
         protectionLevel = SocketProtectionLevel_Tls11;
         break;
+    case QSsl::SecureProtocols:
     case QSsl::TlsV1_2:
         protectionLevel = SocketProtectionLevel_Tls12;
         break;
