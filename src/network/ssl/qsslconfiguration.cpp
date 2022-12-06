@@ -865,7 +865,7 @@ QSslConfiguration::NextProtocolNegotiationStatus QSslConfiguration::nextProtocol
 
     \list
       \li no local certificate and no private key
-      \li protocol SecureProtocols (meaning either TLS 1.0 or SSL 3 will be used)
+      \li protocol SecureProtocols (meaning TLS 1.2 or later will be used)
       \li the system's default CA certificate list
       \li the cipher list equal to the list of the SSL libraries'
          supported SSL ciphers that are 128 bits or more
