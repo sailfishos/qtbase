@@ -427,9 +427,22 @@ embedded operating systems without rewriting the source code.
 
 This package contains the Qt5 development defaults package
 
-
-
 ##### Build section
+
+%define qt5_prefix         %{_prefix}
+%define qt5_bindir         %{_libdir}/qt5/bin
+%define qt5_libdir         %{_libdir}
+%define qt5_archdatadir    %{qt5_libdir}/qt5
+%define qt5_libexecdir     %{_libexecdir}/qt5
+%define qt5_docdir         %{_prefix}/share/doc/qt5
+%define qt5_includedir     %{_includedir}/qt5
+%define qt5_datadir        %{_prefix}/share/qt5
+%define qt5_translationdir %{qt5_datadir}/translations
+%define qt5_plugindir      %{qt5_archdatadir}/plugins
+%define qt5_importdir      %{qt5_archdatadir}/imports
+%define qt5_demosdir       %{qt5_archdatadir}/demos
+%define qt5_examplesdir    %{qt5_archdatadir}/examples
+%define qt5_sysconfdir     %{_sysconfdir}/xdg
 
 %prep
 %setup -q -n qt5-%{version}
@@ -444,21 +457,21 @@ MAKEFLAGS=%{?_smp_mflags} \
 ./configure --disable-static \
     -confirm-license \
     -platform linux-g++ \
-    -prefix "%{_prefix}" \
-    -bindir "%{_libdir}/qt5/bin" \
-    -libdir "%{_libdir}" \
-    -docdir "%{_docdir}/qt5/" \
-    -headerdir "%{_includedir}/qt5" \
-    -datadir "%{_datadir}/qt5" \
-    -plugindir "%{_libdir}/qt5/plugins" \
-    -importdir "%{_libdir}/qt5/imports" \
-    -translationdir "%{_datadir}/qt5/translations" \
-    -sysconfdir "%{_sysconfdir}/xdg" \
-    -examplesdir "%{_libdir}/qt5/examples" \
-    -archdatadir "%{_datadir}/qt5" \
-    -testsdir "%{_libdir}/qt5/tests" \
-    -qmldir "%{_libdir}/qt5/qml" \
-    -libexecdir "%{_libdir}/qt5/libexec" \
+    -prefix "%{qt5_prefix}" \
+    -bindir "%{qt5_bindir}" \
+    -libdir "%{qt5_libdir}" \
+    -docdir "%{qt5_docdir}" \
+    -headerdir "%{qt5_includedir}" \
+    -datadir "%{qt5_datadir}" \
+    -plugindir "%{qt5_plugindir}" \
+    -importdir "%{qt5_importdir}" \
+    -translationdir "%{qt5_translationsdir}" \
+    -sysconfdir "%{qt5_sysconfdir}" \
+    -examplesdir "%{qt5_examplesdir}" \
+    -archdatadir "%{qt5_archdatadir}" \
+    -testsdir "%{qt5_archdatadir}/tests" \
+    -qmldir "%{qt5_archdatadir}/qml" \
+    -libexecdir "%{qt5_libexecdir}" \
     -opensource \
     -no-sql-ibase \
     -no-sql-mysql \
@@ -515,40 +528,40 @@ rm -rf %{buildroot}
 %make_install
 #
 # We don't need qt5/Qt/
-rm -rf %{buildroot}/%{_includedir}/qt5/Qt
+rm -rf %{buildroot}%{qt5_includedir}/Qt
 
 # Fix wrong path in pkgconfig files
-find %{buildroot}%{_libdir}/pkgconfig -type f -name '*.pc' \
+find %{buildroot}%{qt5_libdir}/pkgconfig -type f -name '*.pc' \
 -exec perl -pi -e "s, -L%{_builddir}/?\S+,,g" {} \;
 # Fix wrong path in prl files
 find %{buildroot}%{_libdir} -type f -name '*.prl' \
 -exec sed -i -e "/^QMAKE_PRL_BUILD_DIR/d;s/\(QMAKE_PRL_LIBS =\).*/\1/" {} \;
 
 # these manage to really royally screw up cmake
-find %{buildroot}%{_libdir} -type f -name "*_*Plugin.cmake" \
+find %{buildroot}%{qt5_libdir} -type f -name "*_*Plugin.cmake" \
 -exec rm {} \;
 
 find %{buildroot}%{_docdir}/qt5/ -type f -exec chmod ugo-x {} \;
 
 # Make sure these are around
-mkdir -p %{buildroot}%{_includedir}/qt5/
-mkdir -p %{buildroot}%{_datadir}/qt5/
-mkdir -p %{buildroot}%{_libdir}/qt5/plugins/
-mkdir -p %{buildroot}%{_libdir}/qt5/imports/
-mkdir -p %{buildroot}%{_libdir}/qt5/translations/
-mkdir -p %{buildroot}%{_libdir}/qt5/examples/
+mkdir -p %{buildroot}%{qt5_includedir}
+mkdir -p %{buildroot}%{qt5_datadir}
+mkdir -p %{buildroot}%{qt5_archdatadir}/plugins/
+mkdir -p %{buildroot}%{qt5_archdatadir}/imports/
+mkdir -p %{buildroot}%{qt5_archdatadir}/translations/
+mkdir -p %{buildroot}%{qt5_archdatadir}/examples/
 #
 # Install qmake rpm macros
 install -D -p -m 0644 %{_sourcedir}/macros.qt5-default \
 %{buildroot}/%{_sysconfdir}/rpm/macros.qt5-default
 
 # Add a configuration link for qtchooser - the 5.conf is installed by qtchooser
-mkdir -p %{buildroot}/etc/xdg/qtchooser
-ln -s %{_sysconfdir}/xdg/qtchooser/5.conf %{buildroot}%{_sysconfdir}/xdg/qtchooser/default.conf
+mkdir -p %{buildroot}%{qt5_sysconfdir}/qtchooser
+ln -s %{qt5_sysconfdir}/qtchooser/5.conf %{buildroot}%{qt5_sysconfdir}/qtchooser/default.conf
 
 # Help accelerated qmake find the configuration
-%if "%{_libdir}" == "/usr/lib64"
-install -D -p -m 0644 %{_sourcedir}/qt.conf %{buildroot}%{_libdir}/qt5/bin/qt.conf
+%if "%{qt5_libdir}" == "/usr/lib64"
+install -D -p -m 0644 %{_sourcedir}/qt.conf %{buildroot}%{qt5_bindir}/qt.conf
 %endif
 
 #
@@ -598,338 +611,338 @@ install -D -p -m 0644 %{_sourcedir}/qt.conf %{buildroot}%{_libdir}/qt5/bin/qt.co
 
 %files tools
 %defattr(-,root,root,-)
-%{_libdir}/qt5/bin/moc
-%{_libdir}/qt5/bin/rcc
-%{_libdir}/qt5/bin/syncqt.pl
-%{_libdir}/qt5/bin/uic
-%{_libdir}/qt5/bin/qlalr
-%{_libdir}/qt5/bin/fixqt4headers.pl
-%{_docdir}/qt5/*
+%{qt5_bindir}/moc
+%{qt5_bindir}/rcc
+%{qt5_bindir}/syncqt.pl
+%{qt5_bindir}/uic
+%{qt5_bindir}/qlalr
+%{qt5_bindir}/fixqt4headers.pl
+%{qt5_docdir}/*
 
 %files qtcore
 %defattr(-,root,root,-)
 %license LICENSE.LGPLv21 LICENSE.LGPLv3 LGPL_EXCEPTION.txt LICENSE.GPLv3
-%dir %{_includedir}/qt5/
+%dir %{qt5_includedir}/
 %dir %{_datadir}/qt5/
-%dir %{_libdir}/qt5/
-%dir %{_libdir}/qt5/bin/
-%dir %{_libdir}/qt5/plugins/
-%dir %{_libdir}/qt5/plugins/platforms/
-%dir %{_libdir}/qt5/imports/
-%dir %{_libdir}/qt5/translations/
-%dir %{_libdir}/qt5/examples/
-%{_libdir}/libQt5Core.so.*
+%dir %{qt5_archdatadir}/
+%dir %{qt5_bindir}/
+%dir %{qt5_archdatadir}/plugins/
+%dir %{qt5_archdatadir}/plugins/platforms/
+%dir %{qt5_archdatadir}/imports/
+%dir %{qt5_archdatadir}/translations/
+%dir %{qt5_archdatadir}/examples/
+%{qt5_libdir}/libQt5Core.so.*
 
 %files qtcore-devel
 %defattr(-,root,root,-)
-%{_includedir}/qt5/QtCore/
-%{_libdir}/libQt5Core.prl
-%{_libdir}/libQt5Core.so
-%{_libdir}/pkgconfig/Qt5Core.pc
-%{_datadir}/qt5/mkspecs/modules/qt_lib_core.pri
-%{_datadir}/qt5/mkspecs/modules/qt_lib_core_private.pri
-%{_libdir}/cmake/Qt5
-%{_libdir}/cmake/Qt5Core
+%{qt5_includedir}/QtCore/
+%{qt5_libdir}/libQt5Core.prl
+%{qt5_libdir}/libQt5Core.so
+%{qt5_libdir}/pkgconfig/Qt5Core.pc
+%{qt5_archdatadir}/mkspecs/modules/qt_lib_core.pri
+%{qt5_archdatadir}/mkspecs/modules/qt_lib_core_private.pri
+%{qt5_libdir}/cmake/Qt5
+%{qt5_libdir}/cmake/Qt5Core
 
 %files qmake
 %defattr(-,root,root,-)
-%{_libdir}/qt5/bin/qmake
-%if "%{_libdir}" == "/usr/lib64"
-%{_libdir}/qt5/bin/qt.conf
+%{qt5_bindir}/qmake
+%if "%{qt5_libdir}" == "/usr/lib64"
+%{qt5_bindir}/qt.conf
 %endif
-%{_datadir}/qt5/mkspecs/aix-*/
-%{_datadir}/qt5/mkspecs/android-clang/*
-%{_datadir}/qt5/mkspecs/blackberry*/
-%{_datadir}/qt5/mkspecs/common/
-%{_datadir}/qt5/mkspecs/cygwin-*/
-%{_datadir}/qt5/mkspecs/darwin-*/
-%{_datadir}/qt5/mkspecs/features/
-%{_datadir}/qt5/mkspecs/freebsd-*/
-%{_datadir}/qt5/mkspecs/haiku-g++/
-%{_datadir}/qt5/mkspecs/hpux-*
-%{_datadir}/qt5/mkspecs/hpuxi-*
-%{_datadir}/qt5/mkspecs/hurd-g++/
-%{_datadir}/qt5/mkspecs/irix-*/
-%{_datadir}/qt5/mkspecs/linux-*/
-%{_datadir}/qt5/mkspecs/lynxos-*/
-%{_datadir}/qt5/mkspecs/macx-*/
-%{_datadir}/qt5/mkspecs/netbsd-*/
-%{_datadir}/qt5/mkspecs/openbsd-*/
-%{_datadir}/qt5/mkspecs/qconfig.pri
-%{_datadir}/qt5/mkspecs/qmodule.pri
-%{_datadir}/qt5/mkspecs/qnx*/
-%{_datadir}/qt5/mkspecs/sco-*/
-%{_datadir}/qt5/mkspecs/solaris-*/
-%{_datadir}/qt5/mkspecs/tru64-*/
-%{_datadir}/qt5/mkspecs/unixware-*/
-%{_datadir}/qt5/mkspecs/unsupported/
-%{_datadir}/qt5/mkspecs/win32-g++/
-%{_datadir}/qt5/mkspecs/win32-icc/
-%{_datadir}/qt5/mkspecs/win32-msvc20*/
-%{_datadir}/qt5/mkspecs/wince*/
-%{_datadir}/qt5/mkspecs/winphone*/
-%{_datadir}/qt5/mkspecs/winrt*/
-%{_datadir}/qt5/mkspecs/devices/
-%{_datadir}/qt5/mkspecs/qdevice.pri
-%{_datadir}/qt5/mkspecs/qfeatures.pri
+%{qt5_archdatadir}/mkspecs/aix-*/
+%{qt5_archdatadir}/mkspecs/android-clang/*
+%{qt5_archdatadir}/mkspecs/blackberry*/
+%{qt5_archdatadir}/mkspecs/common/
+%{qt5_archdatadir}/mkspecs/cygwin-*/
+%{qt5_archdatadir}/mkspecs/darwin-*/
+%{qt5_archdatadir}/mkspecs/features/
+%{qt5_archdatadir}/mkspecs/freebsd-*/
+%{qt5_archdatadir}/mkspecs/haiku-g++/
+%{qt5_archdatadir}/mkspecs/hpux-*
+%{qt5_archdatadir}/mkspecs/hpuxi-*
+%{qt5_archdatadir}/mkspecs/hurd-g++/
+%{qt5_archdatadir}/mkspecs/irix-*/
+%{qt5_archdatadir}/mkspecs/linux-*/
+%{qt5_archdatadir}/mkspecs/lynxos-*/
+%{qt5_archdatadir}/mkspecs/macx-*/
+%{qt5_archdatadir}/mkspecs/netbsd-*/
+%{qt5_archdatadir}/mkspecs/openbsd-*/
+%{qt5_archdatadir}/mkspecs/qconfig.pri
+%{qt5_archdatadir}/mkspecs/qmodule.pri
+%{qt5_archdatadir}/mkspecs/qnx*/
+%{qt5_archdatadir}/mkspecs/sco-*/
+%{qt5_archdatadir}/mkspecs/solaris-*/
+%{qt5_archdatadir}/mkspecs/tru64-*/
+%{qt5_archdatadir}/mkspecs/unixware-*/
+%{qt5_archdatadir}/mkspecs/unsupported/
+%{qt5_archdatadir}/mkspecs/win32-g++/
+%{qt5_archdatadir}/mkspecs/win32-icc/
+%{qt5_archdatadir}/mkspecs/win32-msvc20*/
+%{qt5_archdatadir}/mkspecs/wince*/
+%{qt5_archdatadir}/mkspecs/winphone*/
+%{qt5_archdatadir}/mkspecs/winrt*/
+%{qt5_archdatadir}/mkspecs/devices/
+%{qt5_archdatadir}/mkspecs/qdevice.pri
+%{qt5_archdatadir}/mkspecs/qfeatures.pri
 %config %{_sysconfdir}/rpm/macros.qt5-default
 
 %files qtdbus
 %defattr(-,root,root,-)
-%{_libdir}/libQt5DBus.so.*
+%{qt5_libdir}/libQt5DBus.so.*
 
 
 %files qtdbus-devel
 %defattr(-,root,root,-)
-%{_libdir}/qt5/bin/qdbuscpp2xml
-%{_libdir}/qt5/bin/qdbusxml2cpp
-%{_includedir}/qt5/QtDBus/
-%{_libdir}/libQt5DBus.so
-%{_libdir}/libQt5DBus.prl
-%{_libdir}/pkgconfig/Qt5DBus.pc
-%{_datadir}/qt5/mkspecs/modules/qt_lib_dbus.pri
-%{_datadir}/qt5/mkspecs/modules/qt_lib_dbus_private.pri
-%{_libdir}/cmake/Qt5DBus
+%{qt5_bindir}/qdbuscpp2xml
+%{qt5_bindir}/qdbusxml2cpp
+%{qt5_includedir}/QtDBus/
+%{qt5_libdir}/libQt5DBus.so
+%{qt5_libdir}/libQt5DBus.prl
+%{qt5_libdir}/pkgconfig/Qt5DBus.pc
+%{qt5_archdatadir}/mkspecs/modules/qt_lib_dbus.pri
+%{qt5_archdatadir}/mkspecs/modules/qt_lib_dbus_private.pri
+%{qt5_libdir}/cmake/Qt5DBus
 
 
 %files qtgui
 %defattr(-,root,root,-)
-%dir %{_libdir}/qt5/plugins/imageformats/
-%dir %{_libdir}/qt5/plugins/platforminputcontexts/
-%{_libdir}/libQt5Gui.so.*
+%dir %{qt5_plugindir}/imageformats/
+%dir %{qt5_plugindir}/platforminputcontexts/
+%{qt5_libdir}/libQt5Gui.so.*
 
 
 %files qtgui-devel
 %defattr(-,root,root,-)
-%{_includedir}/qt5/QtGui/
-%{_includedir}/qt5/QtPlatformHeaders/
-%{_libdir}/libQt5Gui.prl
-%{_libdir}/libQt5Gui.so
-%{_libdir}/pkgconfig/Qt5Gui.pc
-%{_datadir}/qt5/mkspecs/modules/qt_lib_gui.pri
-%{_datadir}/qt5/mkspecs/modules/qt_lib_gui_private.pri
-%{_libdir}/cmake/Qt5Gui
+%{qt5_includedir}/QtGui/
+%{qt5_includedir}/QtPlatformHeaders/
+%{qt5_libdir}/libQt5Gui.prl
+%{qt5_libdir}/libQt5Gui.so
+%{qt5_libdir}/pkgconfig/Qt5Gui.pc
+%{qt5_archdatadir}/mkspecs/modules/qt_lib_gui.pri
+%{qt5_archdatadir}/mkspecs/modules/qt_lib_gui_private.pri
+%{qt5_libdir}/cmake/Qt5Gui
 
 
 %files qtnetwork
 %defattr(-,root,root,-)
-%dir %{_libdir}/qt5/plugins/bearer/
-%{_libdir}/libQt5Network.so.*
+%dir %{qt5_plugindir}/bearer/
+%{qt5_libdir}/libQt5Network.so.*
 
 
 %files qtnetwork-devel
 %defattr(-,root,root,-)
-%{_includedir}/qt5/QtNetwork/
-%{_libdir}/libQt5Network.prl
-%{_libdir}/libQt5Network.so
-%{_libdir}/pkgconfig/Qt5Network.pc
-%{_datadir}/qt5/mkspecs/modules/qt_lib_network.pri
-%{_datadir}/qt5/mkspecs/modules/qt_lib_network_private.pri
-%{_libdir}/cmake/Qt5Network
+%{qt5_includedir}/QtNetwork/
+%{qt5_libdir}/libQt5Network.prl
+%{qt5_libdir}/libQt5Network.so
+%{qt5_libdir}/pkgconfig/Qt5Network.pc
+%{qt5_archdatadir}/mkspecs/modules/qt_lib_network.pri
+%{qt5_archdatadir}/mkspecs/modules/qt_lib_network_private.pri
+%{qt5_libdir}/cmake/Qt5Network
 
 
 %files qtopengl
 %defattr(-,root,root,-)
-%{_libdir}/libQt5OpenGL.so.*
+%{qt5_libdir}/libQt5OpenGL.so.*
 
 
 %files qtopengl-devel
 %defattr(-,root,root,-)
-%{_includedir}/qt5/QtOpenGL/
-%{_includedir}/qt5/QtOpenGLExtensions/
-%{_libdir}/libQt5OpenGL.prl
-%{_libdir}/libQt5OpenGLExtensions.prl
-%{_libdir}/libQt5OpenGL.so
-%{_libdir}/libQt5OpenGLExtensions.a
-%{_libdir}/pkgconfig/Qt5OpenGL.pc
-%{_libdir}/pkgconfig/Qt5OpenGLExtensions.pc
-%{_datadir}/qt5/mkspecs/modules/qt_lib_opengl.pri
-%{_datadir}/qt5/mkspecs/modules/qt_lib_opengl_private.pri
-%{_datadir}/qt5/mkspecs/android-g++/qmake.conf
-%{_datadir}/qt5/mkspecs/android-g++/qplatformdefs.h
-%{_datadir}/qt5/mkspecs/modules/qt_lib_openglextensions.pri
-%{_datadir}/qt5/mkspecs/modules/qt_lib_openglextensions_private.pri
-%{_libdir}/cmake/Qt5OpenGL
-%{_libdir}/cmake/Qt5OpenGLExtensions
+%{qt5_includedir}/QtOpenGL/
+%{qt5_includedir}/QtOpenGLExtensions/
+%{qt5_libdir}/libQt5OpenGL.prl
+%{qt5_libdir}/libQt5OpenGLExtensions.prl
+%{qt5_libdir}/libQt5OpenGL.so
+%{qt5_libdir}/libQt5OpenGLExtensions.a
+%{qt5_libdir}/pkgconfig/Qt5OpenGL.pc
+%{qt5_libdir}/pkgconfig/Qt5OpenGLExtensions.pc
+%{qt5_archdatadir}/mkspecs/modules/qt_lib_opengl.pri
+%{qt5_archdatadir}/mkspecs/modules/qt_lib_opengl_private.pri
+%{qt5_archdatadir}/mkspecs/android-g++/qmake.conf
+%{qt5_archdatadir}/mkspecs/android-g++/qplatformdefs.h
+%{qt5_archdatadir}/mkspecs/modules/qt_lib_openglextensions.pri
+%{qt5_archdatadir}/mkspecs/modules/qt_lib_openglextensions_private.pri
+%{qt5_libdir}/cmake/Qt5OpenGL
+%{qt5_libdir}/cmake/Qt5OpenGLExtensions
 
 
 %files qtsql
 %defattr(-,root,root,-)
-%dir %{_libdir}/qt5/plugins/sqldrivers/
-%{_libdir}/libQt5Sql.so.*
+%dir %{qt5_plugindir}/sqldrivers/
+%{qt5_libdir}/libQt5Sql.so.*
 
 
 %files qtsql-devel
 %defattr(-,root,root,-)
-%{_includedir}/qt5/QtSql/
-%{_libdir}/libQt5Sql.prl
-%{_libdir}/libQt5Sql.so
-%{_libdir}/pkgconfig/Qt5Sql.pc
-%{_datadir}/qt5/mkspecs/modules/qt_lib_sql.pri
-%{_datadir}/qt5/mkspecs/modules/qt_lib_sql_private.pri
-%{_libdir}/cmake/Qt5Sql
+%{qt5_includedir}/QtSql/
+%{qt5_libdir}/libQt5Sql.prl
+%{qt5_libdir}/libQt5Sql.so
+%{qt5_libdir}/pkgconfig/Qt5Sql.pc
+%{qt5_archdatadir}/mkspecs/modules/qt_lib_sql.pri
+%{qt5_archdatadir}/mkspecs/modules/qt_lib_sql_private.pri
+%{qt5_libdir}/cmake/Qt5Sql
 
 
 %files qttest
 %defattr(-,root,root,-)
-%{_libdir}/libQt5Test.so.*
+%{qt5_libdir}/libQt5Test.so.*
 
 %files qttest-devel
 %defattr(-,root,root,-)
-%{_includedir}/qt5/QtTest/
-%{_libdir}/libQt5Test.prl
-%{_libdir}/libQt5Test.so
-%{_libdir}/pkgconfig/Qt5Test.pc
-%{_datadir}/qt5/mkspecs/modules/qt_lib_testlib.pri
-%{_datadir}/qt5/mkspecs/modules/qt_lib_testlib_private.pri
-%{_libdir}/cmake/Qt5Test
+%{qt5_includedir}/QtTest/
+%{qt5_libdir}/libQt5Test.prl
+%{qt5_libdir}/libQt5Test.so
+%{qt5_libdir}/pkgconfig/Qt5Test.pc
+%{qt5_archdatadir}/mkspecs/modules/qt_lib_testlib.pri
+%{qt5_archdatadir}/mkspecs/modules/qt_lib_testlib_private.pri
+%{qt5_libdir}/cmake/Qt5Test
 
 %files qtxml
 %defattr(-,root,root,-)
-%{_libdir}/libQt5Xml.so.*
+%{qt5_libdir}/libQt5Xml.so.*
 
 %files qtxml-devel
 %defattr(-,root,root,-)
-%{_includedir}/qt5/QtXml/
-%{_libdir}/libQt5Xml.prl
-%{_libdir}/libQt5Xml.so
-%{_libdir}/pkgconfig/Qt5Xml.pc
-%{_datadir}/qt5/mkspecs/modules/qt_lib_xml.pri
-%{_datadir}/qt5/mkspecs/modules/qt_lib_xml_private.pri
-%{_libdir}/cmake/Qt5Xml
+%{qt5_includedir}/QtXml/
+%{qt5_libdir}/libQt5Xml.prl
+%{qt5_libdir}/libQt5Xml.so
+%{qt5_libdir}/pkgconfig/Qt5Xml.pc
+%{qt5_archdatadir}/mkspecs/modules/qt_lib_xml.pri
+%{qt5_archdatadir}/mkspecs/modules/qt_lib_xml_private.pri
+%{qt5_libdir}/cmake/Qt5Xml
 
 %files qtwidgets
 %defattr(-,root,root,-)
-%{_libdir}/libQt5Widgets.so.*
+%{qt5_libdir}/libQt5Widgets.so.*
 
 %files qtwidgets-devel
 %defattr(-,root,root,-)
-%{_includedir}/qt5/QtWidgets/
-%{_libdir}/libQt5Widgets.prl
-%{_libdir}/libQt5Widgets.so
-%{_libdir}/pkgconfig/Qt5Widgets.pc
-%{_datadir}/qt5/mkspecs/modules/qt_lib_widgets.pri
-%{_datadir}/qt5/mkspecs/modules/qt_lib_widgets_private.pri
-%{_libdir}/cmake/Qt5Widgets
+%{qt5_includedir}/QtWidgets/
+%{qt5_libdir}/libQt5Widgets.prl
+%{qt5_libdir}/libQt5Widgets.so
+%{qt5_libdir}/pkgconfig/Qt5Widgets.pc
+%{qt5_archdatadir}/mkspecs/modules/qt_lib_widgets.pri
+%{qt5_archdatadir}/mkspecs/modules/qt_lib_widgets_private.pri
+%{qt5_libdir}/cmake/Qt5Widgets
 
 %files qtplatformsupport-devel
 %defattr(-,root,root,-)
-%{_includedir}/qt5/QtPlatformSupport/
-%{_libdir}/libQt5PlatformSupport.prl
-%{_libdir}/libQt5PlatformSupport.a
-%{_datadir}/qt5/mkspecs/modules/qt_lib_platformsupport_private.pri
+%{qt5_includedir}/QtPlatformSupport/
+%{qt5_libdir}/libQt5PlatformSupport.prl
+%{qt5_libdir}/libQt5PlatformSupport.a
+%{qt5_archdatadir}/mkspecs/modules/qt_lib_platformsupport_private.pri
 
 %files qtbootstrap-devel
 %defattr(-,root,root,-)
-%{_libdir}/libQt5Bootstrap.prl
-%{_libdir}/libQt5Bootstrap.a
-%{_datadir}/qt5/mkspecs/modules/qt_lib_bootstrap_private.pri
+%{qt5_libdir}/libQt5Bootstrap.prl
+%{qt5_libdir}/libQt5Bootstrap.a
+%{qt5_archdatadir}/mkspecs/modules/qt_lib_bootstrap_private.pri
 
 %files qtprintsupport
 %defattr(-,root,root,-)
-%{_libdir}/libQt5PrintSupport.so.*
+%{qt5_libdir}/libQt5PrintSupport.so.*
 
 %files qtprintsupport-devel
 %defattr(-,root,root,-)
-%{_includedir}/qt5/QtPrintSupport/
-%{_libdir}/libQt5PrintSupport.prl
-%{_libdir}/libQt5PrintSupport.so
-%{_libdir}/pkgconfig/Qt5PrintSupport.pc
-%{_datadir}/qt5/mkspecs/modules/qt_lib_printsupport.pri
-%{_datadir}/qt5/mkspecs/modules/qt_lib_printsupport_private.pri
-%{_libdir}/cmake/Qt5PrintSupport
+%{qt5_includedir}/QtPrintSupport/
+%{qt5_libdir}/libQt5PrintSupport.prl
+%{qt5_libdir}/libQt5PrintSupport.so
+%{qt5_libdir}/pkgconfig/Qt5PrintSupport.pc
+%{qt5_archdatadir}/mkspecs/modules/qt_lib_printsupport.pri
+%{qt5_archdatadir}/mkspecs/modules/qt_lib_printsupport_private.pri
+%{qt5_libdir}/cmake/Qt5PrintSupport
 
 %files qtconcurrent
 %defattr(-,root,root,-)
-%{_libdir}/libQt5Concurrent.so.*
+%{qt5_libdir}/libQt5Concurrent.so.*
 
 %files qtconcurrent-devel
 %defattr(-,root,root,-)
-%{_includedir}/qt5/QtConcurrent/
-%{_libdir}/libQt5Concurrent.prl
-%{_libdir}/libQt5Concurrent.so
-%{_libdir}/pkgconfig/Qt5Concurrent.pc
-%{_datadir}/qt5/mkspecs/modules/qt_lib_concurrent.pri
-%{_datadir}/qt5/mkspecs/modules/qt_lib_concurrent_private.pri
-%{_libdir}/cmake/Qt5Concurrent
+%{qt5_includedir}/QtConcurrent/
+%{qt5_libdir}/libQt5Concurrent.prl
+%{qt5_libdir}/libQt5Concurrent.so
+%{qt5_libdir}/pkgconfig/Qt5Concurrent.pc
+%{qt5_archdatadir}/mkspecs/modules/qt_lib_concurrent.pri
+%{qt5_archdatadir}/mkspecs/modules/qt_lib_concurrent_private.pri
+%{qt5_libdir}/cmake/Qt5Concurrent
 
 
 
 
 %files plugin-bearer-connman
 %defattr(-,root,root,-)
-%{_libdir}/qt5/plugins/bearer/libqconnmanbearer.so
+%{qt5_plugindir}/bearer/libqconnmanbearer.so
 
 %files plugin-bearer-generic
 %defattr(-,root,root,-)
-%{_libdir}/qt5/plugins/bearer/libqgenericbearer.so
+%{qt5_plugindir}/bearer/libqgenericbearer.so
 
 %files plugin-bearer-nm
 %defattr(-,root,root,-)
-%{_libdir}/qt5/plugins/bearer/libqnmbearer.so
+%{qt5_plugindir}/bearer/libqnmbearer.so
 
 %files plugin-imageformat-gif
 %defattr(-,root,root,-)
-%{_libdir}/qt5/plugins/imageformats/libqgif.so
+%{qt5_plugindir}/imageformats/libqgif.so
 
 %files plugin-imageformat-ico
 %defattr(-,root,root,-)
-%{_libdir}/qt5/plugins/imageformats/libqico.so
+%{qt5_plugindir}/imageformats/libqico.so
 
 %files plugin-imageformat-jpeg
 %defattr(-,root,root,-)
-%{_libdir}/qt5/plugins/imageformats/libqjpeg.so
+%{qt5_plugindir}/imageformats/libqjpeg.so
 
 %files plugin-platform-minimal
 %defattr(-,root,root,-)
-%{_libdir}/qt5/plugins/platforms/libqminimal.so
+%{qt5_plugindir}/platforms/libqminimal.so
 
 %files plugin-platform-offscreen
 %defattr(-,root,root,-)
-%{_libdir}/qt5/plugins/platforms/libqoffscreen.so
+%{qt5_plugindir}/platforms/libqoffscreen.so
 
 %files plugin-platform-eglfs
 %defattr(-,root,root,-)
-%{_libdir}/libQt5EglDeviceIntegration.so*
-%{_libdir}/libQt5EglDeviceIntegration.prl
-%{_libdir}/qt5/plugins/platforms/libqeglfs.so
+%{qt5_libdir}/libQt5EglDeviceIntegration.so*
+%{qt5_libdir}/libQt5EglDeviceIntegration.prl
+%{qt5_plugindir}/platforms/libqeglfs.so
 %if %{with X11}
-%{_libdir}/qt5/plugins/egldeviceintegrations/libqeglfs-x11-integration.so
+%{qt5_plugindir}/egldeviceintegrations/libqeglfs-x11-integration.so
 %endif
-%{_libdir}/qt5/plugins/egldeviceintegrations/libqeglfs-kms-integration.so
-%{_libdir}/qt5/plugins/egldeviceintegrations/libqeglfs-kms-egldevice-integration.so
-%{_datadir}/qt5/mkspecs/modules/qt_lib_eglfs_device_lib_private.pri
+%{qt5_plugindir}/egldeviceintegrations/libqeglfs-kms-integration.so
+%{qt5_plugindir}/egldeviceintegrations/libqeglfs-kms-egldevice-integration.so
+%{qt5_archdatadir}/mkspecs/modules/qt_lib_eglfs_device_lib_private.pri
 
 %files plugin-platform-minimalegl
 %defattr(-,root,root,-)
-%{_libdir}/qt5/plugins/platforms/libqminimalegl.so
+%{qt5_plugindir}/platforms/libqminimalegl.so
 
 %files plugin-platform-linuxfb
 %defattr(-,root,root,-)
-%{_libdir}/qt5/plugins/platforms/libqlinuxfb.so
+%{qt5_plugindir}/platforms/libqlinuxfb.so
 
 %files plugin-printsupport-cups
 %defattr(-,root,root,-)
-%{_libdir}/qt5/plugins/printsupport/libcupsprintersupport.so
+%{qt5_plugindir}/printsupport/libcupsprintersupport.so
 
 %files plugin-sqldriver-sqlite
 %defattr(-,root,root,-)
-%{_libdir}/qt5/plugins/sqldrivers/libqsqlite.so
+%{qt5_plugindir}/sqldrivers/libqsqlite.so
 
 %files plugin-platforminputcontext-ibus
 %defattr(-,root,root,-)
-%{_libdir}/qt5/plugins/platforminputcontexts/libibusplatforminputcontextplugin.so
+%{qt5_plugindir}/platforminputcontexts/libibusplatforminputcontextplugin.so
 
 %files plugin-generic-evdev
 %defattr(-,root,root,-)
-%{_libdir}/qt5/plugins/generic/libqevdev*plugin.so
+%{qt5_plugindir}/generic/libqevdev*plugin.so
 
 %files plugin-generic-tuiotouch
 %defattr(-,root,root,-)
-%{_libdir}/qt5/plugins/generic/libqtuiotouchplugin.so
+%{qt5_plugindir}/generic/libqtuiotouchplugin.so
 
 %files -n qt5-default
 %defattr(-,root,root,-)
-%{_sysconfdir}/xdg/qtchooser/default.conf
+%{qt5_sysconfdir}/qtchooser/default.conf
 
 #### No changelog section, separate $pkg.changes contains the history
