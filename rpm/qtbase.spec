@@ -455,7 +455,7 @@ MAKEFLAGS=%{?_smp_mflags} \
     -translationdir "%{_datadir}/qt5/translations" \
     -sysconfdir "%{_sysconfdir}/xdg" \
     -examplesdir "%{_libdir}/qt5/examples" \
-    -archdatadir "%{_datadir}/qt5" \
+    -archdatadir "%{_libdir}/qt5" \
     -testsdir "%{_libdir}/qt5/tests" \
     -qmldir "%{_libdir}/qt5/qml" \
     -libexecdir "%{_libdir}/qt5/libexec" \
@@ -626,8 +626,8 @@ install -D -p -m 0644 %{_sourcedir}/qt.conf %{buildroot}%{_libdir}/qt5/bin/qt.co
 %{_libdir}/libQt5Core.prl
 %{_libdir}/libQt5Core.so
 %{_libdir}/pkgconfig/Qt5Core.pc
-%{_datadir}/qt5/mkspecs/modules/qt_lib_core.pri
-%{_datadir}/qt5/mkspecs/modules/qt_lib_core_private.pri
+%{_libdir}/qt5/mkspecs/modules/qt_lib_core.pri
+%{_libdir}/qt5/mkspecs/modules/qt_lib_core_private.pri
 %{_libdir}/cmake/Qt5
 %{_libdir}/cmake/Qt5Core
 
@@ -637,41 +637,41 @@ install -D -p -m 0644 %{_sourcedir}/qt.conf %{buildroot}%{_libdir}/qt5/bin/qt.co
 %if "%{_libdir}" == "/usr/lib64"
 %{_libdir}/qt5/bin/qt.conf
 %endif
-%{_datadir}/qt5/mkspecs/aix-*/
-%{_datadir}/qt5/mkspecs/android-clang/*
-%{_datadir}/qt5/mkspecs/blackberry*/
-%{_datadir}/qt5/mkspecs/common/
-%{_datadir}/qt5/mkspecs/cygwin-*/
-%{_datadir}/qt5/mkspecs/darwin-*/
-%{_datadir}/qt5/mkspecs/features/
-%{_datadir}/qt5/mkspecs/freebsd-*/
-%{_datadir}/qt5/mkspecs/haiku-g++/
-%{_datadir}/qt5/mkspecs/hpux-*
-%{_datadir}/qt5/mkspecs/hpuxi-*
-%{_datadir}/qt5/mkspecs/hurd-g++/
-%{_datadir}/qt5/mkspecs/irix-*/
-%{_datadir}/qt5/mkspecs/linux-*/
-%{_datadir}/qt5/mkspecs/lynxos-*/
-%{_datadir}/qt5/mkspecs/macx-*/
-%{_datadir}/qt5/mkspecs/netbsd-*/
-%{_datadir}/qt5/mkspecs/openbsd-*/
-%{_datadir}/qt5/mkspecs/qconfig.pri
-%{_datadir}/qt5/mkspecs/qmodule.pri
-%{_datadir}/qt5/mkspecs/qnx*/
-%{_datadir}/qt5/mkspecs/sco-*/
-%{_datadir}/qt5/mkspecs/solaris-*/
-%{_datadir}/qt5/mkspecs/tru64-*/
-%{_datadir}/qt5/mkspecs/unixware-*/
-%{_datadir}/qt5/mkspecs/unsupported/
-%{_datadir}/qt5/mkspecs/win32-g++/
-%{_datadir}/qt5/mkspecs/win32-icc/
-%{_datadir}/qt5/mkspecs/win32-msvc20*/
-%{_datadir}/qt5/mkspecs/wince*/
-%{_datadir}/qt5/mkspecs/winphone*/
-%{_datadir}/qt5/mkspecs/winrt*/
-%{_datadir}/qt5/mkspecs/devices/
-%{_datadir}/qt5/mkspecs/qdevice.pri
-%{_datadir}/qt5/mkspecs/qfeatures.pri
+%{_libdir}/qt5/mkspecs/aix-*/
+%{_libdir}/qt5/mkspecs/android-clang/*
+%{_libdir}/qt5/mkspecs/blackberry*/
+%{_libdir}/qt5/mkspecs/common/
+%{_libdir}/qt5/mkspecs/cygwin-*/
+%{_libdir}/qt5/mkspecs/darwin-*/
+%{_libdir}/qt5/mkspecs/features/
+%{_libdir}/qt5/mkspecs/freebsd-*/
+%{_libdir}/qt5/mkspecs/haiku-g++/
+%{_libdir}/qt5/mkspecs/hpux-*
+%{_libdir}/qt5/mkspecs/hpuxi-*
+%{_libdir}/qt5/mkspecs/hurd-g++/
+%{_libdir}/qt5/mkspecs/irix-*/
+%{_libdir}/qt5/mkspecs/linux-*/
+%{_libdir}/qt5/mkspecs/lynxos-*/
+%{_libdir}/qt5/mkspecs/macx-*/
+%{_libdir}/qt5/mkspecs/netbsd-*/
+%{_libdir}/qt5/mkspecs/openbsd-*/
+%{_libdir}/qt5/mkspecs/qconfig.pri
+%{_libdir}/qt5/mkspecs/qmodule.pri
+%{_libdir}/qt5/mkspecs/qnx*/
+%{_libdir}/qt5/mkspecs/sco-*/
+%{_libdir}/qt5/mkspecs/solaris-*/
+%{_libdir}/qt5/mkspecs/tru64-*/
+%{_libdir}/qt5/mkspecs/unixware-*/
+%{_libdir}/qt5/mkspecs/unsupported/
+%{_libdir}/qt5/mkspecs/win32-g++/
+%{_libdir}/qt5/mkspecs/win32-icc/
+%{_libdir}/qt5/mkspecs/win32-msvc20*/
+%{_libdir}/qt5/mkspecs/wince*/
+%{_libdir}/qt5/mkspecs/winphone*/
+%{_libdir}/qt5/mkspecs/winrt*/
+%{_libdir}/qt5/mkspecs/devices/
+%{_libdir}/qt5/mkspecs/qdevice.pri
+%{_libdir}/qt5/mkspecs/qfeatures.pri
 %config %{_sysconfdir}/rpm/macros.qt5-default
 
 %files qtdbus
@@ -687,8 +687,8 @@ install -D -p -m 0644 %{_sourcedir}/qt.conf %{buildroot}%{_libdir}/qt5/bin/qt.co
 %{_libdir}/libQt5DBus.so
 %{_libdir}/libQt5DBus.prl
 %{_libdir}/pkgconfig/Qt5DBus.pc
-%{_datadir}/qt5/mkspecs/modules/qt_lib_dbus.pri
-%{_datadir}/qt5/mkspecs/modules/qt_lib_dbus_private.pri
+%{_libdir}/qt5/mkspecs/modules/qt_lib_dbus.pri
+%{_libdir}/qt5/mkspecs/modules/qt_lib_dbus_private.pri
 %{_libdir}/cmake/Qt5DBus
 
 
@@ -706,8 +706,8 @@ install -D -p -m 0644 %{_sourcedir}/qt.conf %{buildroot}%{_libdir}/qt5/bin/qt.co
 %{_libdir}/libQt5Gui.prl
 %{_libdir}/libQt5Gui.so
 %{_libdir}/pkgconfig/Qt5Gui.pc
-%{_datadir}/qt5/mkspecs/modules/qt_lib_gui.pri
-%{_datadir}/qt5/mkspecs/modules/qt_lib_gui_private.pri
+%{_libdir}/qt5/mkspecs/modules/qt_lib_gui.pri
+%{_libdir}/qt5/mkspecs/modules/qt_lib_gui_private.pri
 %{_libdir}/cmake/Qt5Gui
 
 
@@ -723,8 +723,8 @@ install -D -p -m 0644 %{_sourcedir}/qt.conf %{buildroot}%{_libdir}/qt5/bin/qt.co
 %{_libdir}/libQt5Network.prl
 %{_libdir}/libQt5Network.so
 %{_libdir}/pkgconfig/Qt5Network.pc
-%{_datadir}/qt5/mkspecs/modules/qt_lib_network.pri
-%{_datadir}/qt5/mkspecs/modules/qt_lib_network_private.pri
+%{_libdir}/qt5/mkspecs/modules/qt_lib_network.pri
+%{_libdir}/qt5/mkspecs/modules/qt_lib_network_private.pri
 %{_libdir}/cmake/Qt5Network
 
 
@@ -743,12 +743,12 @@ install -D -p -m 0644 %{_sourcedir}/qt.conf %{buildroot}%{_libdir}/qt5/bin/qt.co
 %{_libdir}/libQt5OpenGLExtensions.a
 %{_libdir}/pkgconfig/Qt5OpenGL.pc
 %{_libdir}/pkgconfig/Qt5OpenGLExtensions.pc
-%{_datadir}/qt5/mkspecs/modules/qt_lib_opengl.pri
-%{_datadir}/qt5/mkspecs/modules/qt_lib_opengl_private.pri
-%{_datadir}/qt5/mkspecs/android-g++/qmake.conf
-%{_datadir}/qt5/mkspecs/android-g++/qplatformdefs.h
-%{_datadir}/qt5/mkspecs/modules/qt_lib_openglextensions.pri
-%{_datadir}/qt5/mkspecs/modules/qt_lib_openglextensions_private.pri
+%{_libdir}/qt5/mkspecs/modules/qt_lib_opengl.pri
+%{_libdir}/qt5/mkspecs/modules/qt_lib_opengl_private.pri
+%{_libdir}/qt5/mkspecs/android-g++/qmake.conf
+%{_libdir}/qt5/mkspecs/android-g++/qplatformdefs.h
+%{_libdir}/qt5/mkspecs/modules/qt_lib_openglextensions.pri
+%{_libdir}/qt5/mkspecs/modules/qt_lib_openglextensions_private.pri
 %{_libdir}/cmake/Qt5OpenGL
 %{_libdir}/cmake/Qt5OpenGLExtensions
 
@@ -765,8 +765,8 @@ install -D -p -m 0644 %{_sourcedir}/qt.conf %{buildroot}%{_libdir}/qt5/bin/qt.co
 %{_libdir}/libQt5Sql.prl
 %{_libdir}/libQt5Sql.so
 %{_libdir}/pkgconfig/Qt5Sql.pc
-%{_datadir}/qt5/mkspecs/modules/qt_lib_sql.pri
-%{_datadir}/qt5/mkspecs/modules/qt_lib_sql_private.pri
+%{_libdir}/qt5/mkspecs/modules/qt_lib_sql.pri
+%{_libdir}/qt5/mkspecs/modules/qt_lib_sql_private.pri
 %{_libdir}/cmake/Qt5Sql
 
 
@@ -780,8 +780,8 @@ install -D -p -m 0644 %{_sourcedir}/qt.conf %{buildroot}%{_libdir}/qt5/bin/qt.co
 %{_libdir}/libQt5Test.prl
 %{_libdir}/libQt5Test.so
 %{_libdir}/pkgconfig/Qt5Test.pc
-%{_datadir}/qt5/mkspecs/modules/qt_lib_testlib.pri
-%{_datadir}/qt5/mkspecs/modules/qt_lib_testlib_private.pri
+%{_libdir}/qt5/mkspecs/modules/qt_lib_testlib.pri
+%{_libdir}/qt5/mkspecs/modules/qt_lib_testlib_private.pri
 %{_libdir}/cmake/Qt5Test
 
 %files qtxml
@@ -794,8 +794,8 @@ install -D -p -m 0644 %{_sourcedir}/qt.conf %{buildroot}%{_libdir}/qt5/bin/qt.co
 %{_libdir}/libQt5Xml.prl
 %{_libdir}/libQt5Xml.so
 %{_libdir}/pkgconfig/Qt5Xml.pc
-%{_datadir}/qt5/mkspecs/modules/qt_lib_xml.pri
-%{_datadir}/qt5/mkspecs/modules/qt_lib_xml_private.pri
+%{_libdir}/qt5/mkspecs/modules/qt_lib_xml.pri
+%{_libdir}/qt5/mkspecs/modules/qt_lib_xml_private.pri
 %{_libdir}/cmake/Qt5Xml
 
 %files qtwidgets
@@ -808,8 +808,8 @@ install -D -p -m 0644 %{_sourcedir}/qt.conf %{buildroot}%{_libdir}/qt5/bin/qt.co
 %{_libdir}/libQt5Widgets.prl
 %{_libdir}/libQt5Widgets.so
 %{_libdir}/pkgconfig/Qt5Widgets.pc
-%{_datadir}/qt5/mkspecs/modules/qt_lib_widgets.pri
-%{_datadir}/qt5/mkspecs/modules/qt_lib_widgets_private.pri
+%{_libdir}/qt5/mkspecs/modules/qt_lib_widgets.pri
+%{_libdir}/qt5/mkspecs/modules/qt_lib_widgets_private.pri
 %{_libdir}/cmake/Qt5Widgets
 
 %files qtplatformsupport-devel
@@ -817,13 +817,13 @@ install -D -p -m 0644 %{_sourcedir}/qt.conf %{buildroot}%{_libdir}/qt5/bin/qt.co
 %{_includedir}/qt5/QtPlatformSupport/
 %{_libdir}/libQt5PlatformSupport.prl
 %{_libdir}/libQt5PlatformSupport.a
-%{_datadir}/qt5/mkspecs/modules/qt_lib_platformsupport_private.pri
+%{_libdir}/qt5/mkspecs/modules/qt_lib_platformsupport_private.pri
 
 %files qtbootstrap-devel
 %defattr(-,root,root,-)
 %{_libdir}/libQt5Bootstrap.prl
 %{_libdir}/libQt5Bootstrap.a
-%{_datadir}/qt5/mkspecs/modules/qt_lib_bootstrap_private.pri
+%{_libdir}/qt5/mkspecs/modules/qt_lib_bootstrap_private.pri
 
 %files qtprintsupport
 %defattr(-,root,root,-)
@@ -835,8 +835,8 @@ install -D -p -m 0644 %{_sourcedir}/qt.conf %{buildroot}%{_libdir}/qt5/bin/qt.co
 %{_libdir}/libQt5PrintSupport.prl
 %{_libdir}/libQt5PrintSupport.so
 %{_libdir}/pkgconfig/Qt5PrintSupport.pc
-%{_datadir}/qt5/mkspecs/modules/qt_lib_printsupport.pri
-%{_datadir}/qt5/mkspecs/modules/qt_lib_printsupport_private.pri
+%{_libdir}/qt5/mkspecs/modules/qt_lib_printsupport.pri
+%{_libdir}/qt5/mkspecs/modules/qt_lib_printsupport_private.pri
 %{_libdir}/cmake/Qt5PrintSupport
 
 %files qtconcurrent
@@ -849,8 +849,8 @@ install -D -p -m 0644 %{_sourcedir}/qt.conf %{buildroot}%{_libdir}/qt5/bin/qt.co
 %{_libdir}/libQt5Concurrent.prl
 %{_libdir}/libQt5Concurrent.so
 %{_libdir}/pkgconfig/Qt5Concurrent.pc
-%{_datadir}/qt5/mkspecs/modules/qt_lib_concurrent.pri
-%{_datadir}/qt5/mkspecs/modules/qt_lib_concurrent_private.pri
+%{_libdir}/qt5/mkspecs/modules/qt_lib_concurrent.pri
+%{_libdir}/qt5/mkspecs/modules/qt_lib_concurrent_private.pri
 %{_libdir}/cmake/Qt5Concurrent
 
 
@@ -898,7 +898,7 @@ install -D -p -m 0644 %{_sourcedir}/qt.conf %{buildroot}%{_libdir}/qt5/bin/qt.co
 %endif
 %{_libdir}/qt5/plugins/egldeviceintegrations/libqeglfs-kms-integration.so
 %{_libdir}/qt5/plugins/egldeviceintegrations/libqeglfs-kms-egldevice-integration.so
-%{_datadir}/qt5/mkspecs/modules/qt_lib_eglfs_device_lib_private.pri
+%{_libdir}/qt5/mkspecs/modules/qt_lib_eglfs_device_lib_private.pri
 
 %files plugin-platform-minimalegl
 %defattr(-,root,root,-)
