@@ -553,7 +553,7 @@ mkdir -p %{buildroot}%{qt5_archdatadir}/examples/
 #
 # Install qmake rpm macros
 install -D -p -m 0644 %{_sourcedir}/macros.qt5-default \
-%{buildroot}/%{_sysconfdir}/rpm/macros.qt5-default
+%{buildroot}/%{_rpmmacrodir}/macros.qt5-default
 
 # Add a configuration link for qtchooser - the 5.conf is installed by qtchooser
 mkdir -p %{buildroot}%{qt5_sysconfdir}/qtchooser
@@ -685,7 +685,7 @@ install -D -p -m 0644 %{_sourcedir}/qt.conf %{buildroot}%{qt5_bindir}/qt.conf
 %{qt5_archdatadir}/mkspecs/devices/
 %{qt5_archdatadir}/mkspecs/qdevice.pri
 %{qt5_archdatadir}/mkspecs/qfeatures.pri
-%config %{_sysconfdir}/rpm/macros.qt5-default
+%{_rpmmacrodir}/macros.qt5-default
 
 %files qtdbus
 %defattr(-,root,root,-)
