@@ -1,10 +1,3 @@
-# libQtPlatformSupport is not built as a shared library, only as a
-# static .a lib-archive. By default the OBS build removes all discovered
-# libFOO.a files and as such rpmlint never complains about
-# installed-but-unpackaged static libs.
-# This flag tells rpmbuild to behave.
-%define keepstatic 1
-
 # Version is the date of latest commit in qtbase, followed by 'g' + few
 # characters of the last git commit ID.
 # NOTE: tarball's prefix is 'qt5-base' until version number starts to
@@ -507,12 +500,10 @@ fi # config.status check
 #    -developer-build \
 #%endif
 
-make %{?_smp_mflags}
-
+%make_build
 
 %install
-rm -rf %{buildroot}
-%make_install
+%make_install INSTALL_ROOT=%{buildroot}
 #
 # We don't need qt5/Qt/
 rm -rf %{buildroot}/%{_includedir}/qt5/Qt
@@ -540,7 +531,7 @@ mkdir -p %{buildroot}%{_libdir}/qt5/examples/
 #
 # Install qmake rpm macros
 install -D -p -m 0644 %{_sourcedir}/macros.qt5-default \
-%{buildroot}/%{_sysconfdir}/rpm/macros.qt5-default
+%{buildroot}/%{_rpmmacrodir}/macros.qt5-default
 
 # Add a configuration link for qtchooser - the 5.conf is installed by qtchooser
 mkdir -p %{buildroot}/etc/xdg/qtchooser
@@ -672,7 +663,7 @@ install -D -p -m 0644 %{_sourcedir}/qt.conf %{buildroot}%{_libdir}/qt5/bin/qt.co
 %{_datadir}/qt5/mkspecs/devices/
 %{_datadir}/qt5/mkspecs/qdevice.pri
 %{_datadir}/qt5/mkspecs/qfeatures.pri
-%config %{_sysconfdir}/rpm/macros.qt5-default
+%{_rpmmacrodir}/macros.qt5-default
 
 %files qtdbus
 %defattr(-,root,root,-)
