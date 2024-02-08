@@ -23,7 +23,7 @@ BuildRequires:  pkgconfig(glib-2.0)
 BuildRequires:  pkgconfig(icu-uc)
 BuildRequires:  pkgconfig(libpng)
 BuildRequires:  pkgconfig(libxslt)
-BuildRequires:  pkgconfig(openssl)
+BuildRequires:  pkgconfig(openssl) < 3
 BuildRequires:  pkgconfig(sqlite3)
 BuildRequires:  pkgconfig(zlib)
 BuildRequires:  pkgconfig(udev)
