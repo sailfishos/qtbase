@@ -48,7 +48,7 @@ QT_BEGIN_NAMESPACE
 Q_DECLARE_LOGGING_CATEGORY(qLcEvdevMouse)
 
 QEvdevMouseManager::QEvdevMouseManager(const QString &key, const QString &specification, QObject *parent)
-    : QObject(parent), m_x(0), m_y(0), m_xoffset(0), m_yoffset(0)
+    : QObject(parent), m_x(0), m_y(0), m_xoffset(0), m_yoffset(0), m_rotate(0)
 {
     Q_UNUSED(key);
 
@@ -69,6 +69,11 @@ QEvdevMouseManager::QEvdevMouseManager(const QString &key, const QString &specif
             m_xoffset = arg.mid(8).toInt();
         } else if (arg.startsWith(QLatin1String("yoffset="))) {
             m_yoffset = arg.mid(8).toInt();
+        } else if (arg.startsWith(QLatin1String("rotate="))) {
+            int rotate = arg.mid(7).toInt();
+            if (rotate == 90 || rotate == 180 || rotate == 270) {
+                m_rotate = rotate;
+            }
         }
     }
 
@@ -124,8 +129,23 @@ void QEvdevMouseManager::handleMouseEvent(int x, int y, bool abs, Qt::MouseButto
 {
     // update current absolute coordinates
     if (!abs) {
-        m_x += x;
-        m_y += y;
+        switch (m_rotate) {
+            case 90:
+                m_x += y;
+                m_y += -x;
+                break;
+            case 180:
+                m_x += -x;
+                m_y += -y;
+                break;
+            case 270:
+                m_x += -y;
+                m_y += +x;
+                break;
+            default:
+                m_x += x;
+                m_y += y;
+        }
     } else {
         m_x = x;
         m_y = y;

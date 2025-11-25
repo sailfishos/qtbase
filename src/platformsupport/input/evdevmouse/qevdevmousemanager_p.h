@@ -81,6 +81,7 @@ private:
     int m_y;
     int m_xoffset;
     int m_yoffset;
+    int m_rotate;
 };
 
 QT_END_NAMESPACE
