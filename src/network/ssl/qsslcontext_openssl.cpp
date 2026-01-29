@@ -121,9 +121,6 @@ init_context:
         unsupportedProtocol = true;
 #endif
         break;
-    case QSsl::SecureProtocols:
-        // SSLv2 and SSLv3 will be disabled by SSL options
-        // But we need q_SSLv23_server_method() otherwise AnyProtocol will be unable to connect on Win32.
     case QSsl::TlsV1SslV3:
         // SSLv2 will will be disabled by SSL options
     case QSsl::AnyProtocol:
@@ -157,6 +154,7 @@ init_context:
         break;
     case QSsl::TlsV1_1OrLater:
     case QSsl::TlsV1_2OrLater:
+    case QSsl::SecureProtocols:
 #if OPENSSL_VERSION_NUMBER >= 0x10001000L
         // Specific protocols will be specified via SSL options.
         sslContext->ctx = q_SSL_CTX_new(client ? q_SSLv23_client_method() : q_SSLv23_server_method());
