@@ -263,9 +263,17 @@ int q_EVP_PKEY_set1_EC_KEY(EVP_PKEY *a, EC_KEY *b);
 #endif
 void q_EVP_PKEY_free(EVP_PKEY *a);
 RSA *q_EVP_PKEY_get1_RSA(EVP_PKEY *a);
+#if OPENSSL_VERSION_NUMBER >= 0x30000000L
+const RSA *q_EVP_PKEY_get0_RSA(EVP_PKEY *a);
+#else
 RSA *q_EVP_PKEY_get0_RSA(EVP_PKEY *a);
+#endif
 DSA *q_EVP_PKEY_get1_DSA(EVP_PKEY *a);
+#if OPENSSL_VERSION_NUMBER >= 0x30000000L
+const DSA *q_EVP_PKEY_get0_DSA(EVP_PKEY *a);
+#else
 DSA *q_EVP_PKEY_get0_DSA(EVP_PKEY *a);
+#endif
 #ifndef OPENSSL_NO_EC
 EC_KEY *q_EVP_PKEY_get1_EC_KEY(EVP_PKEY *a);
 #endif
@@ -528,7 +536,11 @@ DSA *q_d2i_DSAPrivateKey(DSA **a, unsigned char **pp, long length);
 #if OPENSSL_VERSION_NUMBER < 0x10100000L
 #define q_SSL_CTX_set_options(ctx,op) q_SSL_CTX_ctrl((ctx),SSL_CTRL_OPTIONS,(op),NULL)
 #else
+#if OPENSSL_VERSION_NUMBER >= 0x30000000L
+uint64_t q_SSL_CTX_set_options(SSL_CTX *ctx, uint64_t options);
+#else
 unsigned long q_SSL_CTX_set_options(SSL_CTX *ctx, unsigned long options);
+#endif
 unsigned long q_SSL_SESSION_get_ticket_lifetime_hint(const SSL_SESSION *session);
 #endif
 #define q_SSL_CTX_set_mode(ctx,op) q_SSL_CTX_ctrl((ctx),SSL_CTRL_MODE,(op),NULL)

@@ -159,7 +159,11 @@ DEFINEFUNC2(void, OPENSSL_sk_push, OPENSSL_STACK *a, a, void *b, b, return, DUMM
 DEFINEFUNC(void, OPENSSL_sk_free, OPENSSL_STACK *a, a, return, DUMMYARG)
 DEFINEFUNC2(void *, OPENSSL_sk_value, OPENSSL_STACK *a, a, int b, b, return nullptr, return)
 DEFINEFUNC(int, SSL_session_reused, SSL *a, a, return 0, return)
+#if OPENSSL_VERSION_NUMBER >= 0x30000000L
+DEFINEFUNC2(uint64_t, SSL_CTX_set_options, SSL_CTX *ctx, ctx, uint64_t op, op, return 0, return)
+#else
 DEFINEFUNC2(unsigned long, SSL_CTX_set_options, SSL_CTX *ctx, ctx, unsigned long op, op, return 0, return)
+#endif
 DEFINEFUNC2(int, SSL_CTX_set_ciphersuites, SSL_CTX *ctx, ctx, const char *str, str, return 0, return)
 DEFINEFUNC2(void, SSL_set_psk_use_session_callback, SSL *ssl, ssl, q_SSL_psk_use_session_cb_func_t callback, callback, return, DUMMYARG)
 DEFINEFUNC3(size_t, SSL_get_client_random, SSL *a, a, unsigned char *out, out, size_t outlen, outlen, return 0, return)
@@ -223,10 +227,18 @@ DEFINEFUNC2(int, EVP_PKEY_set1_DSA, EVP_PKEY *a, a, DSA *b, b, return -1, return
 DEFINEFUNC2(int, EVP_PKEY_set1_EC_KEY, EVP_PKEY *a, a, EC_KEY *b, b, return -1, return)
 #endif
 DEFINEFUNC(void, EVP_PKEY_free, EVP_PKEY *a, a, return, DUMMYARG)
+#if OPENSSL_VERSION_NUMBER >= 0x30000000L
+DEFINEFUNC(const DSA *, EVP_PKEY_get0_DSA, EVP_PKEY *a, a, return 0, return)
+#else
 DEFINEFUNC(DSA *, EVP_PKEY_get0_DSA, EVP_PKEY *a, a, return 0, return)
+#endif
 DEFINEFUNC(DSA *, EVP_PKEY_get1_DSA, EVP_PKEY *a, a, return 0, return)
 
+#if OPENSSL_VERSION_NUMBER >= 0x30000000L
+DEFINEFUNC(const RSA *, EVP_PKEY_get0_RSA, EVP_PKEY *a, a, return 0, return)
+#else
 DEFINEFUNC(RSA *, EVP_PKEY_get0_RSA, EVP_PKEY *a, a, return 0, return)
+#endif
 DEFINEFUNC(RSA *, EVP_PKEY_get1_RSA, EVP_PKEY *a, a, return 0, return)
 #ifndef OPENSSL_NO_EC
 DEFINEFUNC(EC_KEY *, EVP_PKEY_get1_EC_KEY, EVP_PKEY *a, a, return 0, return)
