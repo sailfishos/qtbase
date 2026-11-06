@@ -9,7 +9,7 @@ Summary:    Cross-platform application and UI framework
 Version:    5.6.3
 Release:    1%{?dist}
 License:    LGPLv2 with exception or LGPLv3 or GPLv3 or Qt Commercial
-URL:        https://www.qt.io/
+URL:        https://github.com/sailfishos/qtbase
 Source0:    %{name}-%{version}.tar.bz2
 Source1:    macros.qt5-default
 Source2:    qt.conf
