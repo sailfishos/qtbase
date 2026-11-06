@@ -9,7 +9,7 @@ Summary:    Cross-platform application and UI framework
 Version:    5.6.3
 Release:    1%{?dist}
 License:    LGPLv2 with exception or LGPLv3 or GPLv3 or Qt Commercial
-URL:        https://www.qt.io/
+URL:        https://github.com/sailfishos/qtbase
 Source0:    %{name}-%{version}.tar.bz2
 Source1:    macros.qt5-default
 Source2:    qt.conf
@@ -23,7 +23,7 @@ BuildRequires:  pkgconfig(glib-2.0)
 BuildRequires:  pkgconfig(icu-uc)
 BuildRequires:  pkgconfig(libpng)
 BuildRequires:  pkgconfig(libxslt)
-BuildRequires:  pkgconfig(openssl) < 3
+BuildRequires:  pkgconfig(openssl) >= 3
 BuildRequires:  pkgconfig(sqlite3)
 BuildRequires:  pkgconfig(zlib)
 BuildRequires:  pkgconfig(udev)

@@ -185,7 +185,7 @@ init_context:
     }
 
     // Enable bug workarounds.
-    unsigned long options = QSslSocketBackendPrivate::setupOpenSslOptions(configuration.protocol(), configuration.d->sslOptions);
+    quint64 options = QSslSocketBackendPrivate::setupOpenSslOptions(configuration.protocol(), configuration.d->sslOptions);
     q_SSL_CTX_set_options(sslContext->ctx, options);
 
 #if OPENSSL_VERSION_NUMBER >= 0x10000000L
