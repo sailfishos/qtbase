@@ -97,11 +97,33 @@ static const char * const connector_type_names[] = {
     "eDP",
 };
 
+// Headless devices: with SAILFISH_HEADLESS_WRITEBACK=1, ask the kernel to list
+// the display controller's writeback connectors, so that createScreens() can
+// fall back to one when no display is connected. It has to happen before the
+// connectors are enumerated. The kernel only lists writeback connectors to
+// atomic clients; the plugin itself keeps using legacy modesetting.
+// Returns 0 when not requested or enabled, otherwise -errno.
+static int enableHeadlessWriteback(int fd)
+{
+    if (qgetenv("SAILFISH_HEADLESS_WRITEBACK") != "1")
+        return 0;
+
+    if (drmSetClientCap(fd, DRM_CLIENT_CAP_ATOMIC, 1) != 0)
+        return errno ? -errno : -EIO;
+    if (drmSetClientCap(fd, DRM_CLIENT_CAP_WRITEBACK_CONNECTORS, 1) != 0)
+        return errno ? -errno : -EIO;
+    return 0;
+}
+
 static QByteArray nameForConnector(const drmModeConnectorPtr connector)
 {
     QByteArray connectorName("UNKNOWN");
 
-    if (connector->connector_type < ARRAY_LENGTH(connector_type_names))
+    // Only listed when headless writeback was requested (see above). Named
+    // explicitly so it can be addressed in the KMS output config.
+    if (connector->connector_type == DRM_MODE_CONNECTOR_WRITEBACK)
+        connectorName = "Writeback";
+    else if (connector->connector_type < ARRAY_LENGTH(connector_type_names))
         connectorName = connector_type_names[connector->connector_type];
 
     connectorName += QByteArray::number(connector->connector_type_id);
@@ -356,6 +378,16 @@ bool QEglFSKmsDevice::open()
         return false;
     }
 
+    const int headlessResult = enableHeadlessWriteback(m_dri_fd);
+    if (headlessResult < 0) {
+        qErrnoWarning(-headlessResult,
+                     "Could not enable headless writeback on %s",
+                     qPrintable(m_path));
+        qt_safe_close(m_dri_fd);
+        m_dri_fd = -1;
+        return false;
+    }
+
     qCDebug(qLcEglfsKmsDebug) << "Creating GBM device for file descriptor" << m_dri_fd
                               << "obtained from" << m_path;
     m_gbm_device = gbm_create_device(m_dri_fd);
@@ -399,22 +431,41 @@ void QEglFSKmsDevice::createScreens()
     QPoint pos(0, 0);
     QEglFSIntegration *integration = static_cast<QEglFSIntegration *>(QGuiApplicationPrivate::platformIntegration());
 
-    for (int i = 0; i < resources->count_connectors; i++) {
-        drmModeConnectorPtr connector = drmModeGetConnector(m_dri_fd, resources->connectors[i]);
-        if (!connector)
-            continue;
+    // Writeback connectors are only listed when headless writeback was
+    // requested. Use them as a fallback: real outputs first, and a writeback
+    // screen only if no real output gave a screen, so a monitor always wins.
+    for (int pass = 0; pass < 2 && siblings.isEmpty(); pass++) {
+        const bool writebackPass = (pass == 1);
+        for (int i = 0; i < resources->count_connectors; i++) {
+            drmModeConnectorPtr connector = drmModeGetConnector(m_dri_fd, resources->connectors[i]);
+            if (!connector)
+                continue;
 
-        QEglFSKmsScreen *screen = screenForConnector(resources, connector, pos);
-        if (screen) {
-            integration->addScreen(screen);
-            pos.rx() += screen->geometry().width();
-            siblings << screen;
+            const bool isWriteback = connector->connector_type == DRM_MODE_CONNECTOR_WRITEBACK;
+            if (isWriteback != writebackPass) {
+                drmModeFreeConnector(connector);
+                continue;
+            }
 
-            if (!primaryScreen)
-                primaryScreen = screen;
+            QEglFSKmsScreen *screen = screenForConnector(resources, connector, pos);
+            if (screen) {
+                if (isWriteback)
+                    qCDebug(qLcEglfsKmsDebug) << "No real output connected, using writeback output"
+                                              << nameForConnector(connector);
+                integration->addScreen(screen);
+                pos.rx() += screen->geometry().width();
+                siblings << screen;
+
+                if (!primaryScreen)
+                    primaryScreen = screen;
+            }
+
+            drmModeFreeConnector(connector);
+
+            // One writeback screen is enough.
+            if (writebackPass && screen)
+                break;
         }
-
-        drmModeFreeConnector(connector);
     }
 
     drmModeFreeResources(resources);
